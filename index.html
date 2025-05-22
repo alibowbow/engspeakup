@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpeakUp AI - AI 영어 회화 튜터</title> 
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f7fafc; /* bg-gray-50 */
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #d1d5db; /* bg-gray-300 */
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af; /* bg-gray-400 */
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .btn-primary-glow {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); /* blue-500 glow */
+        }
+        .btn-secondary-glow {
+             box-shadow: 0 0 15px rgba(251, 191, 36, 0.4); /* amber-400 glow */
+        }
+        .btn-tertiary-glow {
+            box-shadow: 0 0 15px rgba(20, 184, 166, 0.4); /* teal-500 glow */
+        }
+
+        /* 그라데이션 배경 */
+        .gradient-bg {
+            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); /* blue-400 to blue-500 */
+        }
+        .header-bg {
+            background-color: #2c5282; /* 어두운 파란색 계열 */
+        }
+        .chat-bg {
+            background-color: #f8fafc; /* 매우 밝은 회색, 거의 흰색 */
+        }
+        .user-bubble {
+            background-color: #3b82f6; /* blue-500 */
+        }
+        .ai-bubble {
+            background-color: #e5e7eb; /* gray-200 */
+        }
+        .button-area-bg {
+            background-color: #f1f5f9; /* slate-100 */
+        }
+        .input-area-bg {
+            background-color: #ffffff; /* white */
+        }
+        .modal-bg-overlay {
+            background-color: rgba(0, 0, 0, 0.6);
+        }
+        .scenario-picker-item:hover {
+            background-color: #eff6ff; /* blue-50 */
+        }
+        .scenario-picker-item-selected {
+            background-color: #dbeafe; /* blue-100 */
+            font-weight: 600;
+            color: #1d4ed8; /* blue-700 */
+        }
+        .category-header:hover {
+            background-color: #f0f9ff; /* sky-50 */
+        }
+
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen gradient-bg p-2 sm:p-4">
+
+    <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col" style="height: calc(100vh - 30px); max-height: 800px;">
+        <header class="header-bg text-white p-4 sm:p-5 rounded-t-2xl flex items-center justify-between relative shadow-md">
+            <div class="flex items-center">
+                <div class="relative" id="scenarioPickerContainer">
+                    <button id="scenarioPickerButton" class="flex items-center text-sm sm:text-base bg-sky-700 hover:bg-sky-600 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
+                        <span id="currentScenarioDisplay">시나리오</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 ml-1.5 opacity-80"> <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" /> </svg>
+                    </button>
+                    <div id="scenarioDropdown" class="hidden absolute left-0 mt-2 w-72 sm:w-80 bg-white rounded-lg shadow-xl z-20 border border-slate-200 max-h-96 overflow-y-auto custom-scrollbar fade-in">
+                        </div>
+                </div>
+            </div>
+            <h1 id="headerTitle" class="text-xl sm:text-2xl font-semibold text-center absolute left-1/2 transform -translate-x-1/2 truncate max-w-[45%] sm:max-w-[55%]" title="SpeakUp AI">SpeakUp AI</h1> 
+            <button id="newConversationButton" title="새 대화 시작" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" class="w-5 h-5"> <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /> </svg>
+            </button>
+        </header>
+
+        <div id="scenarioDescriptionArea" class="p-4 sm:p-5 border-b border-slate-200 bg-slate-50">
+            <h2 id="scenarioTitle" class="text-lg sm:text-xl font-semibold text-sky-700 mb-1.5">시나리오 제목</h2>
+            <p id="scenarioDescription" class="text-sm text-slate-600 mb-3 leading-relaxed">시나리오 설명</p>
+            <div id="starterPhrasesContainer" class="mt-2 mb-3 hidden">
+                <p class="text-xs font-semibold text-sky-600 mb-1.5">이렇게 시작해 보세요:</p>
+                <div id="starterPhrases" class="flex flex-wrap gap-2">
+                    </div>
+            </div>
+            <div id="focusTopicGroup">
+                 <input type="text" id="focusTopicInput" placeholder="집중 연습 주제 (선택 사항)" class="w-full p-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-shadow"/>
+            </div>
+            <div id="customScenarioGroup" class="hidden">
+                <textarea id="customScenarioInput" placeholder="연습하고 싶은 상황이나 대화 주제를 자세히 입력해주세요..." class="w-full p-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-shadow" rows="3"></textarea>
+            </div>
+        </div>
+
+        <div id="messagesContainer" class="flex-grow p-4 sm:p-5 overflow-y-auto chat-bg space-y-4 custom-scrollbar">
+            </div>
+        
+        <div class="p-3 sm:p-4 border-t border-slate-200 button-area-bg">
+            <div id="suggestedRepliesContainer" class="mb-2.5 p-2.5 bg-sky-50 rounded-lg hidden shadow">
+                <h4 class="text-xs font-semibold text-sky-700 mb-1.5">AI 응답 제안:</h4>
+                <ul id="suggestedRepliesList" class="space-y-1.5">
+                    </ul>
+            </div>
+            <div class="flex flex-wrap gap-2.5">
+                <button id="suggestRepliesButton" class="flex-1 text-sm bg-amber-400 hover:bg-amber-500 text-amber-900 font-semibold py-2 px-3 sm:py-2.5 sm:px-4 rounded-lg transition-all duration-150 ease-in-out disabled:opacity-60 flex items-center justify-center shadow-md hover:shadow-lg btn-secondary-glow focus:outline-none focus:ring-2 focus:ring-amber-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 mr-1.5"> <path fillRule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.39-3.423 3.352c-.772.753-.235 2.047.788 2.225l4.21.728 1.948 4.24c.322.772 1.416.772 1.737 0l1.947-4.24 4.21-.728c1.023-.178 1.56-1.472.788-2.225l-3.423-3.352-4.753-.39-1.83-4.401zM12.267 8.197L10 12.488l-2.267-4.291-4.573-.374 3.29-3.218-1.043-4.493 4.065 1.956L10 0l2.528 1.978 4.065-1.956-1.043 4.493 3.29 3.218-4.573.374z" clipRule="evenodd" /> </svg> 
+                    <span id="suggestRepliesButtonText">AI 응답 제안</span>
+                </button>
+                <button id="analyzeSentenceButton" class="flex-1 text-sm bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2 px-3 sm:py-2.5 sm:px-4 rounded-lg transition-all duration-150 ease-in-out disabled:opacity-60 flex items-center justify-center shadow-md hover:shadow-lg btn-tertiary-glow focus:outline-none focus:ring-2 focus:ring-teal-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 mr-1.5"> <path fillRule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.39-3.423 3.352c-.772.753-.235 2.047.788 2.225l4.21.728 1.948 4.24c.322.772 1.416.772 1.737 0l1.947-4.24 4.21-.728c1.023-.178 1.56-1.472.788-2.225l-3.423-3.352-4.753-.39-1.83-4.401zM12.267 8.197L10 12.488l-2.267-4.291-4.573-.374 3.29-3.218-1.043-4.493 4.065 1.956L10 0l2.528 1.978 4.065-1.956-1.043 4.493 3.29 3.218-4.573.374z" clipRule="evenodd" /> </svg> 
+                    <span id="analyzeSentenceButtonText">내 문장 분석</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="p-4 sm:p-5 border-t border-slate-200 input-area-bg">
+            <div class="flex items-center space-x-3">
+                <input type="text" id="userInput" placeholder="메시지를 입력하세요..." class="flex-grow p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-shadow text-base shadow-sm"/>
+                <button id="sendMessageButton" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold p-3 rounded-xl transition-all duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-md hover:shadow-lg btn-primary-glow focus:outline-none focus:ring-2 focus:ring-blue-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6"> <path d="M3.5 2.75a.75.75 0 00-1.061.645l1.906 11.438a.75.75 0 001.412-.001L7.25 9.086l5.438-4.078a.75.75 0 00-.816-1.299L4.06 7.354 3.5 2.75zM2.75 16.5a.75.75 0 001.061.645l12.626-7.575a.75.75 0 000-1.29l-12.626-7.575A.75.75 0 002.75 1.5v15z" /> </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="analysisModal" class="hidden fixed inset-0 modal-bg-overlay flex items-center justify-center p-4 z-50 fade-in">
+        <div id="analysisModalContent" class="bg-white p-6 sm:p-8 rounded-xl shadow-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto custom-scrollbar">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl sm:text-2xl font-semibold text-sky-700">✨ 내 문장 분석 결과</h3>
+                <button id="closeAnalysisModalButton" class="text-slate-400 hover:text-slate-600 text-3xl transition-colors">&times;</button>
+            </div>
+            <div id="englishAnalysisResult" class="mb-5">
+                <h4 class="text-lg font-medium text-slate-800 mb-1.5">📝 영어 피드백:</h4>
+                <div class="text-base text-slate-700 whitespace-pre-wrap leading-relaxed p-3 bg-slate-50 rounded-md border border-slate-200"></div>
+            </div>
+            <div id="koreanAnalysisResult">
+                <h4 class="text-lg font-medium text-slate-800 mb-1.5">🇰🇷 한국어 요약:</h4>
+                <div class="text-base text-slate-700 whitespace-pre-wrap leading-relaxed p-3 bg-sky-50 rounded-md border border-sky-200"></div>
+            </div>
+            <button id="confirmAnalysisModalButton" class="mt-6 w-full bg-sky-600 hover:bg-sky-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-sky-400">
+                확인했어요!
+            </button>
+        </div>
+    </div>
+
+    <script type="module">
+        // Firebase SDK 가져오기
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, orderBy, serverTimestamp, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- DOM 요소 가져오기 ---
+        const scenarioPickerButton = document.getElementById('scenarioPickerButton');
+        const currentScenarioDisplay = document.getElementById('currentScenarioDisplay');
+        const scenarioDropdown = document.getElementById('scenarioDropdown');
+        const headerTitle = document.getElementById('headerTitle'); // 이미 정의되어 있음
+        const newConversationButton = document.getElementById('newConversationButton');
+        
+        const scenarioDescriptionArea = document.getElementById('scenarioDescriptionArea');
+        const scenarioTitleElem = document.getElementById('scenarioTitle');
+        const scenarioDescriptionElem = document.getElementById('scenarioDescription');
+        const starterPhrasesContainer = document.getElementById('starterPhrasesContainer');
+        const starterPhrasesElem = document.getElementById('starterPhrases');
+        const focusTopicGroup = document.getElementById('focusTopicGroup');
+        const focusTopicInput = document.getElementById('focusTopicInput');
+        const customScenarioGroup = document.getElementById('customScenarioGroup');
+        const customScenarioInputElem = document.getElementById('customScenarioInput');
+
+        const messagesContainer = document.getElementById('messagesContainer');
+        const userInputElem = document.getElementById('userInput');
+        const sendMessageButton = document.getElementById('sendMessageButton');
+
+        const suggestedRepliesContainer = document.getElementById('suggestedRepliesContainer');
+        const suggestedRepliesList = document.getElementById('suggestedRepliesList');
+        const suggestRepliesButton = document.getElementById('suggestRepliesButton');
+        const suggestRepliesButtonText = document.getElementById('suggestRepliesButtonText');
+        
+        const analyzeSentenceButton = document.getElementById('analyzeSentenceButton');
+        const analyzeSentenceButtonText = document.getElementById('analyzeSentenceButtonText');
+        const analysisModal = document.getElementById('analysisModal');
+        const analysisModalContent = document.getElementById('analysisModalContent');
+        const englishAnalysisResultDiv = document.querySelector('#englishAnalysisResult div');
+        const koreanAnalysisResultDiv = document.querySelector('#koreanAnalysisResult div');
+        const closeAnalysisModalButton = document.getElementById('closeAnalysisModalButton');
+        const confirmAnalysisModalButton = document.getElementById('confirmAnalysisModalButton');
+
+        // --- 상태 변수 ---
+        let currentMessages = [];
+        let currentScenario; 
+        let currentFocusTopic = '';
+        let currentCustomScenarioInput = '';
+        let isLoading = false;
+        let isLoadingSuggestions = false;
+        let isLoadingAnalysis = false;
+        let showScenarioPicker = false;
+        let expandedCategories = {}; 
+        let db, auth, currentUserId, isAuthReady = false;
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'ai-tutor-html-default-v1';
+
+        // --- Firebase 설정 ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "YOUR_API_KEY", 
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        const GEMINI_API_KEY = ""; 
+
+        // --- 시나리오 데이터 ---
+        const scenarioTree = [ /* 이전과 동일 */ { category: "일상 생활 (Everyday Life)", items: [ { id: "cafe", title: "카페에서 주문하기 ☕", description: "바리스타에게 커피를 주문하고 간단한 요청을 해보세요.", baseContext: "You are a friendly barista. The user is ordering coffee and might ask for recommendations or make small talk. Help them practice their English for this situation.", starters: ["Hi, can I get a latte?", "Hello! What do you recommend?", "I'd like to order a coffee, please."] }, { id: "grocery_shopping", title: "식료품점에서 장보기 🛒", description: "점원에게 물건 위치를 묻거나 계산할 때 대화해보세요.", baseContext: "You are a helpful grocery store clerk. The user is shopping and might ask for item locations, prices, or help at checkout. Assist them with their English.", starters: ["Excuse me, where can I find the milk?", "How much is this?", "I'd like to pay for these items."] }, { id: "making_appointments", title: "예약하기 (미용실, 병원 등) 🗓️", description: "전화나 방문을 통해 예약하는 상황을 연습합니다.", baseContext: "You are a receptionist at a salon/clinic. The user wants to make an appointment. Guide them through scheduling, asking for preferences, and confirming details.", starters: ["I'd like to make an appointment for a haircut.", "Do you have any openings next Tuesday?", "Can I book a check-up for this week?"] }, { id: "daily_routine_talk", title: "일상 이야기하기 ☀️", description: "하루 일과나 주말 계획 등 일상적인 주제로 대화합니다.", baseContext: "You are a friend or acquaintance. The user wants to talk about their daily routine, weekend plans, or general everyday topics. Engage in a casual conversation.", starters: ["How was your day?", "What are you up to this weekend?", "I usually [activity] in the morning."] }, { id: "public_transportation", title: "대중교통 이용하기 🚌", description: "버스나 지하철 표를 사거나 길을 묻는 상황입니다.", baseContext: "You are a public transport staff or a helpful passenger. The user needs help with buying a ticket, finding the right bus/train, or understanding the route. Provide clear assistance.", starters: ["Which bus goes to downtown?", "How much is a single ride ticket?", "Is this the platform for the express train?"] } ] }, { category: "여행 (Travel)", items: [ { id: "airport_checkin", title: "공항 체크인 ✈️", description: "공항 체크인 카운터에서 탑승 수속을 진행합니다.", baseContext: "You are an airline check-in agent. The user is checking in for a flight. Ask for passport/ticket, discuss baggage, seat preferences.", starters: ["I'd like to check in for my flight to London.", "Here's my passport and ticket.", "Can I have a window seat, please?"] }, { id: "hotel_checkin", title: "호텔 체크인 🏨", description: "호텔 프론트에서 예약 확인 및 체크인을 합니다.", baseContext: "You are a hotel receptionist. The user is checking in. Confirm reservation, explain amenities, answer questions.", starters: ["I have a reservation under the name [Your Name].", "Could you tell me what time breakfast is served?", "Is there Wi-Fi in the room?"] }, { id: "asking_directions", title: "길 묻기 🗺️", description: "여행 중 모르는 곳에서 길을 묻는 상황입니다.", baseContext: "You are a local resident. The user is a tourist asking for directions. Provide clear instructions and be helpful.", starters: ["Excuse me, how can I get to the museum?", "Could you show me on the map?", "Is this the right way to the train station?"] }, { id: "ordering_at_restaurant_travel", title: "여행 중 식당 주문 🍽️", description: "여행지 식당에서 음식을 주문하고 현지 음식에 대해 질문합니다.", baseContext: "You are a waiter/waitress in a tourist-friendly restaurant. The user is ordering food and might ask about local specialties. Be patient and helpful.", starters: ["What's the local specialty here?", "I'd like to try something traditional.", "Can you recommend a dish?"] }, { id: "booking_tour", title: "여행 상품 예약하기 🏞️", description: "현지 투어나 액티비티를 예약하는 상황입니다.", baseContext: "You are a travel agent or tour operator. The user wants to book a tour or activity. Provide information about options, prices, and make the booking.", starters: ["I'm interested in booking a city tour.", "What kind of tours do you offer?", "How much does the [tour name] cost?"] }, { id: "at_immigration", title: "입국 심사대에서 🛂", description: "공항 입국 심사대에서 심사관의 질문에 답변합니다.", baseContext: "You are an immigration officer. The user is arriving in the country. Ask about the purpose of their visit, length of stay, and check their documents.", starters: ["Good morning. May I see your passport?", "What is the purpose of your visit?", "How long do you plan to stay?"] } ] }, { category: "직장 생활 (Work & Business)", items: [ { id: "job_interview", title: "면접 보기 💼", description: "구직 면접 상황을 연습합니다. 자기소개, 질문 답변 등", baseContext: "You are an interviewer for a job position. The user is a candidate. Ask common interview questions and evaluate their responses in English.", starters: ["Tell me about yourself.", "Why are you interested in this position?", "What are your strengths?"] }, { id: "meeting_colleagues", title: "동료와 회의하기 👥", description: "업무 관련 회의에서 의견을 제시하고 토론합니다.", baseContext: "You are a colleague in a business meeting. The user is participating in the meeting. Discuss agenda items, share opinions, and collaborate.", starters: ["I'd like to suggest an idea.", "What are your thoughts on this proposal?", "Let's discuss the next steps."] }, { id: "phone_call_business", title: "업무 전화 통화 📞", description: "비즈니스 목적으로 전화를 걸거나 받는 상황입니다.", baseContext: "You are a business professional on a phone call. The user is either initiating or receiving a business call. Handle inquiries, schedule meetings, or discuss projects professionally.", starters: ["Hello, this is [Your Name] from [Your Company].", "May I speak to Mr./Ms. [Name]?", "I'm calling to inquire about..."] }, { id: "presentation_qna", title: "발표 후 질의응답 🎤", description: "발표를 마친 후 청중의 질문에 답변하는 상황입니다.", baseContext: "You are an audience member after a presentation. The user is the presenter. Ask relevant questions about their presentation.", starters: ["Thank you for your presentation. I have a question about...", "Could you elaborate on [specific point]?", "What are the implications of your findings?"] }, { id: "networking_event", title: "네트워킹 행사 🤝", description: "업계 행사에서 새로운 사람들과 교류하며 대화합니다.", baseContext: "You are attending a networking event. The user is also an attendee. Initiate or respond to conversations to build professional connections.", starters: ["Hi, I'm [Your Name]. What brings you to this event?", "That's an interesting point. Could you tell me more?", "It was nice talking to you. Here's my card."] } ] }, { category: "취미 및 관심사 (Hobbies & Interests)", items: [ { id: "discussing_movie", title: "영화 이야기하기 🎬", description: "최근에 본 영화나 좋아하는 영화에 대해 친구와 이야기합니다.", baseContext: "You are a friend discussing movies with the user. Talk about recent movies, favorite genres, actors, etc. Encourage the user to express their opinions in English.", starters: ["Have you seen any good movies lately?", "What's your favorite type of movie?", "I recently watched [Movie Title]..."] }, { id: "talking_about_music", title: "음악 취향 공유하기 🎶", description: "좋아하는 음악 장르, 가수, 노래에 대해 이야기 나눕니다.", baseContext: "You are a friend talking about music. Discuss favorite genres, artists, songs, concerts, etc. Help the user share their musical tastes in English.", starters: ["What kind of music do you like?", "Who's your favorite singer?", "Have you heard the new song by [Artist]?"] }, { id: "discussing_books", title: "책에 대해 대화하기 📚", description: "읽은 책이나 좋아하는 작가, 장르에 대해 이야기합니다.", baseContext: "You are a fellow book lover. The user wants to discuss books they've read, favorite authors, or genres. Share your thoughts and ask them about theirs.", starters: ["What are you reading currently?", "Do you have a favorite author?", "I just finished a great book called..."] }, { id: "talking_about_sports", title: "스포츠 이야기하기 ⚽", description: "좋아하는 스포츠, 팀, 선수에 대해 이야기합니다.", baseContext: "You are a sports enthusiast. The user wants to talk about sports. Discuss favorite sports, teams, players, recent games, etc.", starters: ["Did you watch the game last night?", "Who's your favorite team?", "I love playing [sport]."] } ] }, { category: "사교 활동 (Socializing)", items: [ { id: "meeting_new_people", title: "새로운 사람과 스몰톡 👋", description: "파티나 모임에서 처음 만난 사람과 가벼운 대화를 나눕니다.", baseContext: "You are someone the user has just met at a social event. Engage in small talk, ask about their interests, job, etc., to help them practice initiating conversations with new people.", starters: ["Hi, I'm [Your Name]. Nice to meet you.", "So, what do you do for a living?", "Are you enjoying the event?"] }, { id: "inviting_friend", title: "친구 초대하기 (식사, 영화 등) 📧", description: "친구에게 식사나 영화 관람 등을 제안하고 약속을 잡습니다.", baseContext: "You are a friend of the user. The user wants to invite you out for a meal, movie, or another activity. Respond to their invitation, discuss plans, and confirm details.", starters: ["Are you free to grab dinner on Friday?", "I was wondering if you'd like to see a movie with me.", "Let's hang out sometime next week."]}, { id: "accepting_declining_invitation", title: "초대 수락/거절하기 ✅❌", description: "친구의 초대에 대해 수락하거나 정중히 거절하는 방법을 연습합니다.", baseContext: "You have invited the user to an event. The user will practice accepting or declining your invitation politely.", starters: ["Thanks for inviting me! I'd love to come.", "That sounds great, but I'm afraid I have other plans.", "I appreciate the invitation, but I don't think I can make it."] } ] }, { category: "문제 해결 및 요청 (Problem Solving & Requests)", items: [ { id: "returning_item", title: "물건 환불/교환하기 🛍️", description: "상점에서 구매한 물건을 환불하거나 교환 요청하는 상황입니다.", baseContext: "You are a store clerk. The user wants to return or exchange an item they purchased. Ask for the reason, receipt, and guide them through the store's policy.", starters: ["I'd like to return this item, please.", "Can I exchange this for a different size?", "There's a problem with this product I bought."]}, { id: "tech_support", title: "기술 지원 문의하기 💻", description: "제품 사용 중 문제가 발생하여 기술 지원팀에 문의합니다.", baseContext: "You are a technical support agent. The user is calling about an issue with a product or service. Help them troubleshoot the problem or escalate the issue.", starters: ["I'm having trouble with my [product/service].", "My internet isn't working.", "Could you help me fix this error?"] }, { id: "making_complaint", title: "불만 제기하기 (호텔, 식당 등) 😠", description: "서비스나 제품에 대한 불만을 정중하게 표현합니다.", baseContext: "You are a manager or customer service representative. The user has a complaint about a service or product. Listen to their concerns and try to resolve the issue.", starters: ["I'm afraid I have a complaint about...", "I'm not satisfied with the service I received.", "Could I speak to the manager, please?"] } ] }, { category: "특별한 상황 (Special Occasions)", items: [ { id: "birthday_party", title: "생일 파티 대화 🎉", description: "생일 축하 메시지를 전하고 파티에서 대화합니다.", baseContext: "You are a guest at a birthday party. The user is also a guest or the birthday person. Engage in light conversation, offer good wishes.", starters: ["Happy birthday!", "This is a great party!", "How are you enjoying your special day?"] }, { id: "doctors_visit", title: "병원 진료 🩺", description: "의사에게 증상을 설명하고 진료받는 상황입니다.", baseContext: "You are a doctor. The user is a patient explaining their symptoms. Ask clarifying questions and provide medical advice in simple English.", starters: ["I've been feeling unwell lately.", "I have a headache and a fever.", "What do you think is wrong with me?"] }, { id: "congratulating_someone", title: "축하 표현하기 🥳", description: "다른 사람의 좋은 일(승진, 졸업 등)을 축하합니다.", baseContext: "You are a friend or colleague of the user. The user wants to congratulate you or someone else on an achievement. Respond appropriately.", starters: ["Congratulations on your promotion!", "That's fantastic news! Well done.", "I'm so happy for you!"] } ] }, { category: "사용자 설정", isCustomCategory: true, items: [ { id: "custom", title: "직접 입력 ✨", description: "연습하고 싶은 상황이나 주제를 아래에 자세히 입력해주세요.", baseContext: "", starters: ["Let's talk about [your topic].", "I want to practice discussing [your situation].", "Can we simulate a conversation about [your scenario]?"] } ] } ];
+        const findScenarioById = (id) => { for (const category of scenarioTree) { const found = category.items.find(item => item.id === id); if (found) return { ...found, categoryTitle: category.category }; } return null; };
+        
+        // --- 함수 정의 ---
+        function initializeAppLogic() { /* 이전과 동일 */ const firebaseApp = initializeApp(firebaseConfig); auth = getAuth(firebaseApp); db = getFirestore(firebaseApp); onAuthStateChanged(auth, async (user) => { let finalUserId = null; if (user) { finalUserId = user.uid; } else { try { if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) { const userCredential = await signInWithCustomToken(auth, __initial_auth_token); finalUserId = userCredential.user.uid; } else { const userCredential = await signInAnonymously(auth); finalUserId = userCredential.user.uid; } } catch (error) { console.error("로그인 실패:", error); } } if (finalUserId) { currentUserId = finalUserId; const userProfileRef = doc(db, `artifacts/${appId}/users/${currentUserId}/profile`, 'info'); try { const docSnap = await getDoc(userProfileRef); let loadedScenarioData = findScenarioById("cafe"); let loadedFocusTopic = ''; let loadedCustomInput = ''; if (docSnap.exists()) { const profileData = docSnap.data(); const lastScenarioId = profileData.lastScenarioId; const foundScenarioFromDB = findScenarioById(lastScenarioId); if (foundScenarioFromDB) { loadedScenarioData = foundScenarioFromDB; if (foundScenarioFromDB.id === "custom" && profileData.lastCustomScenarioDetails) { loadedCustomInput = profileData.lastCustomScenarioDetails.description || ""; loadedScenarioData = { ...loadedScenarioData, title: profileData.lastCustomScenarioDetails.title || "사용자 설정 연습" }; } else if (foundScenarioFromDB.id !== "custom") { loadedFocusTopic = profileData.lastFocusTopic || ''; } } } currentScenario = loadedScenarioData; currentFocusTopic = loadedFocusTopic; currentCustomScenarioInput = loadedCustomInput; updateScenarioDisplay(); focusTopicInput.value = currentFocusTopic; customScenarioInputElem.value = currentCustomScenarioInput; await setDoc(userProfileRef, { lastLogin: serverTimestamp(), lastScenarioId: currentScenario.id, ...(currentScenario.id === "custom" && currentCustomScenarioInput ? { lastCustomScenarioDetails: { title: currentScenario.title, description: currentCustomScenarioInput } } : {}), ...(currentScenario.id !== "custom" ? { lastFocusTopic: currentFocusTopic } : {}) }, { merge: true }); } catch (error) { console.error("사용자 프로필 처리 오류:", error); currentScenario = findScenarioById("cafe"); updateScenarioDisplay(); } } isAuthReady = true; /*console.log("인증 상태 준비 완료, 사용자 ID:", currentUserId);*/ }); }
+        
+        function getDynamicContext() { /* 이전과 동일 */ if (!currentScenario) return "You are a general English language tutor. No scenario selected."; if (currentScenario.id === "custom") { if (!currentCustomScenarioInput.trim()) return "You are a general English language tutor. The user hasn't specified a topic yet. Ask what they'd like to talk about."; return `You are a friendly and helpful English language tutor. The user wants to practice a conversation based on: "${currentCustomScenarioInput}". Act as a partner for this topic, ask relevant questions, and help with their English. Keep responses natural for an English learner.`; } return `${currentScenario.baseContext}${currentFocusTopic ? `\n\nThe user specifically wants to practice or talk about: "${currentFocusTopic}". Incorporate this into the conversation naturally.` : ''}`; }
+        async function callGeminiAPI(prompt, conversationHistory = [], outputSchema = null) { /* 이전과 동일 */ const fullContext = getDynamicContext(); const structuredHistory = conversationHistory.map(msg => ({ role: msg.sender === 'user' ? 'user' : 'model', parts: [{ text: msg.text }] })); const historyWithSystemContext = [{ role: 'user', parts: [{text: `System Instruction: ${fullContext}`}] }, ...structuredHistory]; const payloadContents = [...historyWithSystemContext, { role: "user", parts: [{ text: prompt }] }]; const payload = { contents: payloadContents, generationConfig: { ...(outputSchema && { responseMimeType: "application/json", responseSchema: outputSchema }) }, safetySettings: [{ category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },{ category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },{ category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },{ category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }]}; const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`; const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) { const errorData = await response.json(); throw new Error(`API 요청 실패: ${response.status}. ${errorData.error?.message || ''}`); } const result = await response.json(); if (result.candidates?.[0]?.content?.parts?.[0]?.text) { if (outputSchema) { try { return JSON.parse(result.candidates[0].content.parts[0].text); } catch (e) { console.error("JSON 파싱 오류:", e, result.candidates[0].content.parts[0].text); throw new Error("AI 응답 JSON 파싱에 실패했습니다."); } } return result.candidates[0].content.parts[0].text; } else if (result.promptFeedback?.blockReason) { throw new Error(`콘텐츠 차단: ${result.promptFeedback.blockReason}.`); } else { throw new Error("AI로부터 유효한 응답을 받지 못했습니다."); } }
+        function updateScenarioDisplay() { /* 이전과 동일 */ if (!currentScenario) return; const displayTitle = currentScenario.id === 'custom' ? (currentCustomScenarioInput ? `사용자 설정: ${currentCustomScenarioInput.substring(0,10)}...` : "사용자 설정") : (currentScenario.categoryTitle ? `${currentScenario.title.split(" ")[0]}` : currentScenario.title.split(" ")[0]); currentScenarioDisplay.textContent = displayTitle; /* headerTitle.textContent = `${displayTitle} 연습`; -> 앱 이름으로 고정 */ headerTitle.title = currentScenario.title; scenarioTitleElem.textContent = currentScenario.id === "custom" ? (currentCustomScenarioInput ? `주제: ${currentCustomScenarioInput.substring(0,40)}...` : "사용자 설정 시나리오") : currentScenario.title; scenarioDescriptionElem.textContent = currentScenario.id === "custom" ? scenarioTree.find(c=>c.isCustomCategory).items[0].description : currentScenario.description; starterPhrasesElem.innerHTML = ''; if (currentScenario.starters && currentScenario.starters.length > 0) { starterPhrasesContainer.classList.remove('hidden'); currentScenario.starters.forEach(starter => { const button = document.createElement('button'); button.className = "text-xs bg-sky-100 hover:bg-sky-200 text-sky-700 px-2 py-1 rounded-md shadow-sm transition-colors"; button.textContent = `"${starter}"`; button.onclick = () => { userInputElem.value = starter; }; starterPhrasesElem.appendChild(button); }); } else { starterPhrasesContainer.classList.add('hidden'); } if (currentScenario.id === "custom") { customScenarioGroup.classList.remove('hidden'); focusTopicGroup.classList.add('hidden'); } else { customScenarioGroup.classList.add('hidden'); focusTopicGroup.classList.remove('hidden'); } scenarioDescriptionArea.classList.remove('hidden'); }
+        
+        function renderScenarioPicker() {
+            scenarioDropdown.innerHTML = ''; 
+            scenarioTree.forEach(category => {
+                const categoryDiv = document.createElement('div');
+                
+                const categoryHeader = document.createElement('div');
+                categoryHeader.className = `flex justify-between items-center p-1.5 sm:p-2 hover:bg-sky-100 cursor-pointer text-slate-800 font-medium text-xs sm:text-sm category-header`; // hover 스타일 클래스 추가
+                if (category.isCustomCategory && currentScenario && currentScenario.id === category.items[0].id) { 
+                    categoryHeader.classList.add('scenario-picker-item-selected'); // 선택된 스타일 클래스 추가
+                }
+                
+                const categoryTitleSpan = document.createElement('span');
+                categoryTitleSpan.textContent = category.category;
+                categoryHeader.appendChild(categoryTitleSpan);
+                
+                if (!category.isCustomCategory) {
+                    const chevron = document.createElement('span');
+                    const svgNS = "http://www.w3.org/2000/svg";
+                    const svgEl = document.createElementNS(svgNS, "svg");
+                    svgEl.setAttribute("viewBox", "0 0 20 20");
+                    svgEl.setAttribute("fill", "currentColor");
+                    svgEl.classList.add("w-5", "h-5", "transform", "transition-transform");
+                    if (expandedCategories[category.category]) {
+                        svgEl.classList.add("rotate-90");
+                    } else {
+                        svgEl.classList.remove("rotate-90");
+                    }
+                    const pathEl = document.createElementNS(svgNS, "path");
+                    pathEl.setAttribute("fill-rule", "evenodd");
+                    pathEl.setAttribute("d", "M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z");
+                    pathEl.setAttribute("clip-rule", "evenodd");
+                    svgEl.appendChild(pathEl);
+                    chevron.appendChild(svgEl);
+                    categoryHeader.appendChild(chevron);
+                }
+                
+                categoryHeader.onclick = (event) => {
+                    event.stopPropagation(); 
+                    if (category.isCustomCategory) {
+                        handleScenarioSelect(category.items[0]);
+                    } else {
+                        expandedCategories[category.category] = !expandedCategories[category.category];
+                        renderScenarioPicker(); 
+                    }
+                };
+                categoryDiv.appendChild(categoryHeader);
+
+                if (expandedCategories[category.category] && !category.isCustomCategory) {
+                    const itemsDiv = document.createElement('div');
+                    itemsDiv.className = "pl-3 border-l border-sky-200"; 
+                    category.items.forEach(item => {
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = `py-1 px-1.5 sm:py-1.5 sm:px-2 text-xs hover:bg-sky-50 cursor-pointer text-slate-600 scenario-picker-item`; // hover 스타일 클래스 추가
+                        if (currentScenario && currentScenario.id === item.id) { 
+                            itemDiv.classList.add('scenario-picker-item-selected'); // 선택된 스타일 클래스 추가
+                        }
+                        itemDiv.textContent = item.title;
+                        itemDiv.onclick = (event) => {
+                            event.stopPropagation(); 
+                            handleScenarioSelect(item);
+                        };
+                        itemsDiv.appendChild(itemDiv);
+                    });
+                    categoryDiv.appendChild(itemsDiv);
+                }
+                scenarioDropdown.appendChild(categoryDiv);
+            });
+        }
+
+        function toggleScenarioPicker() { /* 이전과 동일 */ showScenarioPicker = !showScenarioPicker; if (showScenarioPicker) { renderScenarioPicker(); scenarioDropdown.classList.remove('hidden'); scenarioDropdown.classList.add('fade-in'); } else { scenarioDropdown.classList.add('hidden'); expandedCategories = {}; } }
+        function handleScenarioSelect(scenarioItem) { /* 이전과 동일 */ if (isLoading) { alert("AI가 응답 중일 때는 시나리오를 변경할 수 없습니다."); return; } const fullScenarioDetails = findScenarioById(scenarioItem.id); currentScenario = fullScenarioDetails; currentMessages = []; userInputElem.value = ''; suggestedRepliesList.innerHTML = ''; suggestedRepliesContainer.classList.add('hidden'); closeAnalysisModal(); if (scenarioItem.id !== "custom") { currentCustomScenarioInput = ''; customScenarioInputElem.value = ''; } else { currentFocusTopic = ''; focusTopicInput.value = ''; } updateScenarioDisplay(); renderMessages(); toggleScenarioPicker(); scenarioDescriptionArea.classList.remove('hidden'); }
+        function handleNewConversation() { /* 이전과 동일 */ if (isLoading) { alert("AI가 응답 중일 때는 새 대화를 시작할 수 없습니다."); return; } currentMessages = []; userInputElem.value = ''; suggestedRepliesList.innerHTML = ''; suggestedRepliesContainer.classList.add('hidden'); closeAnalysisModal(); scenarioDescriptionArea.classList.remove('hidden'); renderMessages(); const scenarioTitleForAlert = currentScenario.id === 'custom' ? (currentCustomScenarioInput || '사용자 설정') : currentScenario.title; alert(`"${scenarioTitleForAlert}" 시나리오로 새 대화를 시작합니다.`); }
+        function renderMessages() { /* 이전과 동일 */ messagesContainer.innerHTML = ''; currentMessages.forEach(msg => { const messageWrapper = document.createElement('div'); messageWrapper.className = `flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`; const messageBubble = document.createElement('div'); messageBubble.className = `max-w-3/4 sm:max-w-md lg:max-w-lg px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl shadow ${ msg.sender === 'user' ? 'user-bubble text-white rounded-br-none' : 'ai-bubble text-slate-800 rounded-bl-none' }`; const messageText = document.createElement('p'); messageText.className = "text-sm sm:text-base whitespace-pre-wrap"; messageText.textContent = msg.text; messageBubble.appendChild(messageText); messageWrapper.appendChild(messageBubble); messagesContainer.appendChild(messageWrapper); }); messagesContainer.scrollTop = messagesContainer.scrollHeight; }
+        function setLoadingState(buttonId, textWhileLoading, isLoadingFlag) { /* 이전과 동일 */ const button = document.getElementById(buttonId); const buttonTextSpan = document.getElementById(`${buttonId}Text`); if (button && buttonTextSpan) { button.disabled = isLoadingFlag; buttonTextSpan.textContent = isLoadingFlag ? textWhileLoading : (buttonId === 'suggestRepliesButton' ? 'AI 응답 제안' : '내 문장 분석'); } }
+        async function handleSendMessage() { /* 이전과 동일 (Firestore 경로 수정 부분은 유지) */ if (userInputElem.value.trim() === '' || isLoading) return; if (currentScenario.id === "custom" && currentCustomScenarioInput.trim() === '' && currentMessages.length === 0) { alert("사용자 정의 시나리오 내용을 먼저 입력해주세요."); return; } const newUserMessage = { sender: 'user', text: userInputElem.value.trim(), timestamp: new Date() }; currentMessages.push(newUserMessage); renderMessages(); const currentInputForAPI = userInputElem.value; userInputElem.value = ''; isLoading = true; sendMessageButton.disabled = true; sendMessageButton.innerHTML = `<svg class="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle> <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path> </svg>`; scenarioDescriptionArea.classList.add('hidden'); suggestedRepliesList.innerHTML = ''; suggestedRepliesContainer.classList.add('hidden'); closeAnalysisModal(); if (db && currentUserId) { try { await addDoc(collection(db, `artifacts/${appId}/users/${currentUserId}/conversations/${currentScenario.id === "custom" ? `custom_${currentCustomScenarioInput.substring(0,10).replace(/\s/g, '_')}` : currentScenario.id}/messages`), { ...newUserMessage, timestamp: serverTimestamp() }); } catch (error) { console.error("사용자 메시지 저장 오류:", error); } } try { const aiResponseText = await callGeminiAPI(currentInputForAPI, currentMessages.slice(0, -1)); const newAiMessage = { sender: 'ai', text: aiResponseText, timestamp: new Date() }; currentMessages.push(newAiMessage); renderMessages(); if (db && currentUserId) { try { await addDoc(collection(db, `artifacts/${appId}/users/${currentUserId}/conversations/${currentScenario.id === "custom" ? `custom_${currentCustomScenarioInput.substring(0,10).replace(/\s/g, '_')}` : currentScenario.id}/messages`), { ...newAiMessage, timestamp: serverTimestamp() }); } catch (error) { console.error("AI 메시지 저장 오류:", error); } } } catch (error) { currentMessages.push({ sender: 'ai', text: `AI 응답 오류: ${error.message}`, timestamp: new Date() }); renderMessages(); } finally { isLoading = false; sendMessageButton.disabled = false; sendMessageButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6"> <path d="M3.5 2.75a.75.75 0 00-1.061.645l1.906 11.438a.75.75 0 001.412-.001L7.25 9.086l5.438-4.078a.75.75 0 00-.816-1.299L4.06 7.354 3.5 2.75zM2.75 16.5a.75.75 0 001.061.645l12.626-7.575a.75.75 0 000-1.29l-12.626-7.575A.75.75 0 002.75 1.5v15z" /> </svg>`; } }
+        async function handleSuggestRepliesLogic() { /* 이전과 동일 */ if (isLoadingSuggestions || currentMessages.length === 0) return; isLoadingSuggestions = true; setLoadingState('suggestRepliesButton', '로딩중...', true); closeAnalysisModal(); try { const lastMessage = currentMessages[currentMessages.length - 1]; if (lastMessage.sender !== 'ai') { alert("AI의 응답 후에만 제안을 요청할 수 있습니다."); isLoadingSuggestions = false; setLoadingState('suggestRepliesButton', '', false); return; } const scenarioTitleForPrompt = currentScenario.id === "custom" ? (currentCustomScenarioInput || "사용자 정의 주제") : currentScenario.title; const focusTopicForPrompt = currentScenario.id === "custom" ? "" : (currentFocusTopic ? `The user is also focusing on "${currentFocusTopic}".` : ''); const prompt = `Based on the AI Tutor's last message: "${lastMessage.text}", suggest 3 diverse, natural-sounding replies (short to medium length) a user learning English could say next in the "${scenarioTitleForPrompt}" scenario. ${focusTopicForPrompt} Format as a numbered list (e.g., 1. Suggestion one.).`; const suggestionsText = await callGeminiAPI(prompt, currentMessages); const parsedSuggestions = suggestionsText.split('\n').map(s => s.replace(/^\d+\.\s*/, '').trim()).filter(s => s.length > 0); suggestedRepliesList.innerHTML = ''; parsedSuggestions.slice(0,3).forEach(reply => { const li = document.createElement('li'); li.className = "text-xs sm:text-sm text-sky-700 hover:text-sky-800 cursor-pointer p-1.5 bg-white rounded-md shadow-sm hover:shadow-md transition-shadow"; li.textContent = `"${reply}"`; li.onclick = () => { userInputElem.value = reply; suggestedRepliesList.innerHTML = ''; suggestedRepliesContainer.classList.add('hidden'); }; suggestedRepliesList.appendChild(li); }); suggestedRepliesContainer.classList.remove('hidden'); suggestedRepliesContainer.classList.add('fade-in'); } catch (error) { suggestedRepliesList.innerHTML = `<li class="text-red-500">제안 생성 오류: ${error.message}</li>`; suggestedRepliesContainer.classList.remove('hidden'); } finally { isLoadingSuggestions = false; setLoadingState('suggestRepliesButton', '', false); } }
+        async function handleAnalyzeSentenceLogic() { /* 이전과 동일 (한국어 번역 로직 포함) */ if (isLoadingAnalysis) return; const userMessages = currentMessages.filter(msg => msg.sender === 'user'); if (userMessages.length === 0) { alert("분석할 사용자 메시지가 없습니다."); return; } isLoadingAnalysis = true; setLoadingState('analyzeSentenceButton', '분석중...', true); suggestedRepliesList.innerHTML = ''; suggestedRepliesContainer.classList.add('hidden'); closeAnalysisModal(); try { const lastUserMessage = userMessages[userMessages.length - 1]; const scenarioTitleForPrompt = currentScenario.id === "custom" ? (currentCustomScenarioInput || "사용자 정의 주제") : currentScenario.title; const focusTopicForPrompt = currentScenario.id === "custom" ? "" : (currentFocusTopic ? `They are focusing on "${currentFocusTopic}".` : ''); const analysisPrompt = `The user (learning English) said: "${lastUserMessage.text}" in the context of "${scenarioTitleForPrompt}" scenario. ${focusTopicForPrompt} Provide a structured analysis in English: **⭐ Overall Impression:** (Brief positive comment or general feel) **👍 Strengths:** (What was good about the sentence) **💡 Areas for Improvement:** **Grammar:** (Specific errors & corrections. If none, say "Grammar is good.") **Vocabulary:** (Word choice suggestions, better alternatives. If good, say "Vocabulary is appropriate.") **Naturalness/Fluency:** (Tips to sound more natural. If good, say "Sounds natural.") **✨ Suggested Revision (if any):** (Offer a revised version of the sentence if significant improvements can be made) Keep feedback constructive and easy for an English learner. After the English analysis, provide a concise summary of the feedback in Korean, under a heading "🇰🇷 한국어 요약:". This summary should highlight the main points of the feedback for a beginner to understand easily.`; const combinedAnalysisText = await callGeminiAPI(analysisPrompt, currentMessages.slice(0, currentMessages.lastIndexOf(lastUserMessage) + 1)); const koreanSummaryMarker = "🇰🇷 한국어 요약:"; const koreanSummaryIndex = combinedAnalysisText.indexOf(koreanSummaryMarker); if (koreanSummaryIndex !== -1) { englishAnalysisResultDiv.innerHTML = combinedAnalysisText.substring(0, koreanSummaryIndex).trim().replace(/\n/g, '<br />').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>'); koreanAnalysisResultDiv.innerHTML = combinedAnalysisText.substring(koreanSummaryIndex + koreanSummaryMarker.length).trim().replace(/\n/g, '<br />').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>'); } else { englishAnalysisResultDiv.innerHTML = combinedAnalysisText.replace(/\n/g, '<br />').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>'); koreanAnalysisResultDiv.textContent = "한국어 요약을 생성하지 못했습니다."; } analysisModal.classList.remove('hidden'); analysisModal.classList.add('fade-in'); } catch (error) { englishAnalysisResultDiv.textContent = `분석 오류: ${error.message}`; koreanAnalysisResultDiv.textContent = ""; analysisModal.classList.remove('hidden'); analysisModal.classList.add('fade-in'); } finally { isLoadingAnalysis = false; setLoadingState('analyzeSentenceButton', '', false); } }
+        
+        function closeAnalysisModal() {
+            analysisModal.classList.add('hidden');
+            englishAnalysisResultDiv.innerHTML = '';
+            koreanAnalysisResultDiv.innerHTML = '';
+        }
+
+        // --- 이벤트 리스너 설정 ---
+        scenarioPickerButton.addEventListener('click', toggleScenarioPicker);
+        newConversationButton.addEventListener('click', handleNewConversation);
+        sendMessageButton.addEventListener('click', handleSendMessage);
+        userInputElem.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !isLoading) handleSendMessage(); });
+        suggestRepliesButton.addEventListener('click', handleSuggestRepliesLogic);
+        analyzeSentenceButton.addEventListener('click', handleAnalyzeSentenceLogic);
+        closeAnalysisModalButton.addEventListener('click', closeAnalysisModal);
+        confirmAnalysisModalButton.addEventListener('click', closeAnalysisModal);
+        
+        focusTopicInput.addEventListener('change', (e) => { currentFocusTopic = e.target.value; });
+        customScenarioInputElem.addEventListener('change', (e) => { currentCustomScenarioInput = e.target.value; updateScenarioDisplay(); /* 사용자 정의 입력 시 헤더 제목 즉시 업데이트 */ });
+
+        document.addEventListener('click', (event) => { // 드롭다운 외부 클릭 시 닫기
+            if (scenarioPickerButton && !scenarioPickerButton.contains(event.target) && scenarioDropdown && !scenarioDropdown.contains(event.target) && showScenarioPicker) {
+                toggleScenarioPicker();
+            }
+            if (analysisModalContent && !analysisModalContent.contains(event.target) && analysisModal && !analysisModal.classList.contains('hidden') && analyzeSentenceButton && !analyzeSentenceButton.contains(event.target)) {
+                if (suggestRepliesButton && !suggestRepliesButton.contains(event.target)) { 
+                     closeAnalysisModal();
+                }
+            }
+        });
+
+        // --- 초기화 ---
+        initializeAppLogic();
+
+    </script>
+</body>
+</html>
