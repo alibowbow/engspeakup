@@ -27,9 +27,21 @@ export const UI_TEXT = {
     analysisConfirmButton: "확인했어요!",
     guideModalTitle: "SpeakUp AI 사용 가이드 🚀",
     guideModalConfirmButton: "알겠습니다!",
+    appTitle: "SpeakUp AI",
+    roleSwapButtonText: "역할 변경",
+
+    // 가이드 모달 상세 텍스트 추가 (이전에는 P태그 내부의 텍스트를 파싱했음)
+    guideText1: "화면 좌측 상단의 현재 시나리오 버튼 (예: 카페에서)을 클릭하세요. 다양한 카테고리별 대화 상황을 선택하거나, '✨ 사용자 설정'을 통해 직접 원하는 주제를 입력하여 연습할 수 있습니다.",
+    guideText2: "시나리오 설명 아래에 있는 입력창에 특별히 연습하고 싶은 어휘나 표현 등을 입력하면 AI가 대화에 더 잘 반영해줍니다. (사용자 설정 시나리오에서는 이 입력창이 없습니다.)",
+    guideText3: "화면 상단에 현재 시나리오에 맞는 \"이렇게 시작해 보세요:\" 예시 문장들이 제공됩니다. 클릭하면 바로 입력창에 적용돼요！ 또는 직접 영어로 메시지를 작성하고 전송 (종이비행기 아이콘) 버튼을 눌러 AI 튜터와 대화를 시작하세요.",
+    guideText4_header: "AI 기능 활용하기 (입력창 하단 버튼):",
+    guideText4_item1: "대화 중 어떤 말을 해야 할지 막막할 때 누르면, AI가 3가지 응답 예시를 추천해줍니다.",
+    guideText4_item2: "방금 내가 보낸 영어 문장에 대해 AI가 문법, 어휘, 자연스러움 등을 분석하고, 한국어 요약도 함께 제공합니다.",
+    guideText4_item3: "현재 시나리오에서 사용자와 AI의 역할을 서로 바꿉니다. (예: 손님 ↔ 점원) 역할이 바뀌면 새로운 시작 표현도 제공됩니다.",
+    guideText5: "화면 우측 상단의 새로고침 아이콘 버튼을 누르면, 현재 선택된 시나리오 (또는 사용자 설정 주제) 및 역할로 대화 내용을 초기화하고 처음부터 다시 연습할 수 있습니다.",
 };
 
-// 시나리오 데이터
+// 시나리오 데이터 (기존과 동일)
 export const SCENARIO_DATA = [
     { category: "일상 생활 (Everyday Life)", items: [
         { id: "cafe", title: "카페에서 주문하기 ☕", description: "바리스타에게 커피를 주문하고 간단한 요청을 해보세요. AI는 친절한 바리스타 역할을 합니다.",
@@ -81,7 +93,7 @@ export const SCENARIO_DATA = [
     ]},
     { category: "사교 활동 (Socializing)", items: [
         { id: "meeting_new_people", title: "새로운 사람과 스몰톡 👋", description: "파티나 모임에서 처음 만난 사람과 가벼운 대화를 나눕니다.", baseContext: "You are someone the user has just met at a social event. Engage in small talk, ask about their interests, job, etc., to help them practice initiating conversations with new people. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You have just met someone (the user) at a social event. Engage in small talk, share your interests, or ask about theirs concisely.", starters_userAsPrimary: ["Hi, I'm [Your Name]. Nice to meet you.", "So, what do you do for a living?", "Are you enjoying the event?"], starters_userAsOther: ["Hello! I don't think we've met. I'm [Your Name].", "Great event, isn't it?", "Hi there, mind if I join you?"] },
-        { id: "inviting_friend", title: "친구 초대하기 (식사, 영화 등) 📧", description: "친구에게 식사나 영화 관람 등을 제안하고 약속을 잡습니다.", baseContext: "You are a friend of the user. The user wants to invite you out for a meal, movie, or another activity. Respond to their invitation, discuss plans, and confirm details. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You want to invite your friend (the user) for an activity. Make an invitation, suggest plans, and confirm details concisely.", starters_userAsPrimary: ["Are you free to grab dinner on Friday?", "I was wondering if you'd like to see a movie with me.", "Let's hang out sometime next week."], starters_userAsOther: ["Hey, what are you up to later?", "I was thinking of [activity], want to join?", "We should get together soon."] },
+        { id: "inviting_friend", title: "친구 초대하기 (식사, 영화 등) 📧", description: "친구에게 식사나 영화 관람 등을 제안하고 약속을 잡습니다.", baseContext: "You are a friend of the user. The user wants to invite you out for a meal, movie, or another activity. Respond to their invitation, discuss plans, and confirm details. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You want to invite your friend (the user). Make an invitation, suggest plans, and confirm details concisely.", starters_userAsPrimary: ["Are you free to grab dinner on Friday?", "I was wondering if you'd like to see a movie with me.", "Let's hang out sometime next week."], starters_userAsOther: ["Hey, what are you up to later?", "I was thinking of [activity], want to join?", "We should get together soon."] },
         { id: "accepting_declining_invitation", title: "초대 수락/거절하기 ✅❌", description: "친구의 초대에 대해 수락하거나 정중히 거절하는 방법을 연습합니다.", baseContext: "You have invited the user to an event. The user will practice accepting or declining your invitation politely. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You have been invited to an event by the user. Practice accepting or declining the invitation politely and concisely.", starters_userAsPrimary: ["Thanks for inviting me! I'd love to come.", "That sounds great, but I'm afraid I have other plans.", "I appreciate the invitation, but I don't think I can make it."], starters_userAsOther: ["I'm having a get-together on Saturday, would you like to come?", "Want to catch a movie this weekend?", "I'm planning a [event], hope you can make it!"] }
     ]},
     { category: "문제 해결 및 요청 (Problem Solving & Requests)", items: [
