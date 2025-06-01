@@ -1,7 +1,7 @@
 // public/lang/ja.js
 
-// UI 관련 텍스트 (일본어 번역)
 export const UI_TEXT = {
+    // ... (기존 UI_TEXT 내용, 특히 로딩, 제안, 분석 등은 그대로 유지)
     loading: "読み込み中...",
     suggestReplies: "返信の提案",
     analyzeSentence: "文章分析",
@@ -23,13 +23,25 @@ export const UI_TEXT = {
     aiReplySuggestionsPrefix: "AI応答提案:",
     analysisResultTitle: "✨ あなたの文章分析結果",
     englishFeedbackTitle: "📝 英語フィードバック:",
-    koreanSummaryTitle: "🇰🇷 韓国語要約:", // 요약 언어는 한국어로 유지 (사용자 요청에 따라)
+    koreanSummaryTitle: "🇰🇷 韓国語要約:",
     analysisConfirmButton: "確認しました！",
     guideModalTitle: "SpeakUp AI 利用ガイド 🚀",
     guideModalConfirmButton: "分かりました！",
     appTitle: "SpeakUp AI",
     roleSwapButtonText: "役割変更",
+
+    // 가이드 모달 상세 텍스트 (HTML 포함) - 이 부분을 반드시 HTML 파일의 p 태그 내용에 맞게 수정해야 합니다.
+    guideP1_html: `<strong>1. 🤖 シナリオ選択:</strong><br/> 画面左上隅の現在のシナリオボタン（例：カフェで）をクリックします。さまざまなカテゴリ別の会話状況を選択したり、「✨ ユーザー設定」を通じてご希望のテーマを直接入力して練習できます。`,
+    guideP2_html: `<strong>2. 🎯 集中テーマ（任意）:</strong><br/> シナリオ説明の下にある入力欄に、特に練習したい語彙や表現などを入力すると、AIが会話により良く反映してくれます。（ユーザー設定シナリオではこの入力欄はありません。）`,
+    guideP3_html: `<strong>3. 🗣️ 会話開始:</strong><br/> 画面上部に、現在のシナリオに合った<span class="text-sky-600 font-medium">「このように始めてみましょう：」</span>という例文が提供されます。クリックすると直接入力欄に適用されます！または、直接日本語でメッセージを作成し、送信（紙飛行機アイコン）ボタンを押してAIチューターと会話を開始します。`,
+    guideP4_header_html: `<strong>4. ✨ AI機能の活用（入力欄下部のボタン）：</strong>`,
+    guideP4_item1_html: `<strong>返信の提案:</strong> 会話中に何を言えばいいか分からなくなったときに押すと、AIが3つの返信例を提案してくれます。`,
+    guideP4_item2_html: `<strong>文章分析:</strong> 先ほどあなたが送信した日本語の文章について、AIが文法、語彙、自然さなどを分析し、<span class="text-sky-600">韓国語の要約</span>も一緒に提供します。`,
+    guideP4_item3_html: `<strong>役割変更:</strong> 現在のシナリオでユーザーとAIの役割を入れ替えます。（例：客 ↔ 店員）役割が入れ替わると、新しい開始表現も提供されます。`,
+    guideP5_html: `<strong>5. 🔄 新しい会話を開始:</strong><br/> 画面右上隅の更新アイコンボタンを押すと、現在選択されているシナリオ（またはユーザー設定テーマ）と役割で会話内容を初期化し、最初から練習し直すことができます。`,
 };
+
+// ... (SCENARIO_DATA는 기존과 동일, 모든 필드 일본어로 번역된 상태)
 
 // 시나리오 데이터 (모든 필드를 일본어로 번역)
 export const SCENARIO_DATA = [
