@@ -3,8 +3,16 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
 import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, collection, addDoc, query, onSnapshot, orderBy, serverTimestamp, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-// 언어별 데이터 import (현재는 한국어만)
-import { SCENARIO_DATA, UI_TEXT } from './lang/ko.js';
+// 언어별 데이터 임포트
+import { SCENARIO_DATA as ko_SCENARIO_DATA, UI_TEXT as ko_UI_TEXT } from './lang/ko.js';
+import { SCENARIO_DATA as ja_SCENARIO_DATA, UI_TEXT as ja_UI_TEXT } from './lang/ja.js';
+
+// 언어 팩 정의 (새로운 언어 추가 시 여기에 추가)
+const langPacks = {
+    'ko': { scenarios: ko_SCENARIO_DATA, ui: ko_UI_TEXT, displayName: "한국어" },
+    'ja': { scenarios: ja_SCENARIO_DATA, ui: ja_UI_TEXT, displayName: "日本語" },
+    // 'en': { scenarios: en_SCENARIO_DATA, ui: en_UI_TEXT, displayName: "English" }, // 예시
+};
 
 // --- 앱 설정 (하드코딩된 값은 실제 사용 시 환경 변수 등으로 대체하는 것이 좋습니다) ---
 const APP_ID = 'ai-tutor-html-default-v1';
@@ -33,6 +41,10 @@ const appState = {
     userIsPlayingPrimaryRole: true, // 사용자가 시나리오의 주도적인 역할(예: 손님)을 맡고 있는지 여부
     auth: null, // Firebase Auth 인스턴스
     db: null, // Firestore DB 인스턴스
+    currentLangCode: 'ko', // 현재 활성화된 언어 코드 (기본값 'ko')
+    SCENARIO_DATA: ko_SCENARIO_DATA, // 현재 언어의 시나리오 데이터 (초기값)
+    UI_TEXT: ko_UI_TEXT, // 현재 언어의 UI 텍스트 (초기값)
+    showLanguagePicker: false, // 언어 선택 드롭다운 표시 여부
 };
 
 // --- DOM 요소 캐싱 (초기화 시 한 번만 수행하여 성능 최적화) ---
@@ -45,6 +57,12 @@ function initDOMElements() {
     elements.headerTitle = document.getElementById('headerTitle');
     elements.newConversationButton = document.getElementById('newConversationButton');
     elements.helpButton = document.getElementById('helpButton');
+
+    // 언어 선택 관련 요소 추가
+    elements.languagePickerContainer = document.getElementById('languagePickerContainer');
+    elements.languagePickerButton = document.getElementById('languagePickerButton');
+    elements.currentLanguageDisplay = document.getElementById('currentLanguageDisplay');
+    elements.languageDropdown = document.getElementById('languageDropdown');
 
     elements.scenarioDescriptionArea = document.getElementById('scenarioDescriptionArea');
     elements.scenarioTitleElem = document.getElementById('scenarioTitle');
@@ -69,6 +87,7 @@ function initDOMElements() {
     elements.analyzeSentenceButtonText = document.getElementById('analyzeSentenceButtonText');
 
     elements.roleSwapButton = document.getElementById('roleSwapButton');
+    elements.roleSwapButtonText = document.getElementById('roleSwapButtonText'); // 역할 변경 버튼 텍스트 요소 추가
 
     elements.guideModal = document.getElementById('guideModal');
     elements.guideModalContent = document.getElementById('guideModalContent');
@@ -81,6 +100,12 @@ function initDOMElements() {
     elements.koreanAnalysisResultDiv = document.querySelector('#koreanAnalysisResult div');
     elements.closeAnalysisModalButtonFromAnalysis = document.getElementById('closeAnalysisModalButtonFromAnalysis');
     elements.confirmAnalysisModalButtonFromAnalysis = document.getElementById('confirmAnalysisModalButtonFromAnalysis');
+
+    // 모달 내 UI 텍스트 요소
+    elements.guideModalTitle = elements.guideModal.querySelector('h2');
+    elements.analysisModalTitle = elements.analysisModal.querySelector('h3');
+    elements.englishFeedbackTitle = elements.analysisModal.querySelector('#englishAnalysisResult h4');
+    elements.koreanSummaryTitle = elements.analysisModal.querySelector('#koreanAnalysisResult h4');
 }
 
 // --- 유틸리티 함수 ---
@@ -124,7 +149,7 @@ function simpleMarkdownToHtml(text) {
  * @returns {object|null} 해당 시나리오 객체 또는 null
  */
 function findScenarioById(id) {
-    for (const category of SCENARIO_DATA) {
+    for (const category of appState.SCENARIO_DATA) { // 현재 언어의 시나리오 데이터 사용
         const found = category.items.find(item => item.id === id);
         if (found) return { ...found, categoryTitle: category.category };
     }
@@ -150,25 +175,27 @@ function getStarterPhrases(scenario, userIsPlayingPrimaryRole) {
  * @returns {string} AI 컨텍스트 문자열
  */
 function getDynamicContext(scenario, customInput, focusTopic, userIsPlayingPrimaryRole) {
-    if (!scenario) return "You are a general English language tutor. No scenario selected.";
+    if (!scenario) return "You are a general English language tutor. No scenario selected."; // 이 부분도 다국어 고려 필요
 
     let scenarioSpecificContext = "";
     if (scenario.id === "custom") {
-        if (!customInput.trim()) return "You are a general English language tutor. The user hasn't specified a topic yet. Ask what they'd like to talk about. Keep responses concise and ask one question at a time.";
+        // AI가 대화해야 할 언어에 맞춰 AI 역할 설명을 제공해야 합니다.
+        if (!customInput.trim()) return `あなたは親切で役立つAIチューターです。ユーザーはまだテーマを指定していません。何について話したいか尋ねてください。返信は簡潔に（1〜2文で）し、一度に1つの質問のみをしてください。`; // 일본어
         if (!userIsPlayingPrimaryRole) {
-            scenarioSpecificContext = `ROLE SWAP: You are now the conversation partner based on the user's custom scenario: "${customInput}". The human user will act as your AI tutor or guide. Please respond naturally based on the scenario, keeping your responses concise (1-2 sentences) and asking only one question at a time if needed. Do not ask questions you've already received answers for.`;
+            scenarioSpecificContext = `ROLE SWAP: あなたはユーザーのカスタムシナリオ「${customInput}」に基づいて会話パートナーになりました。人間ユーザーはあなたのAIチューターまたはガイドとして行動します。シナリオに基づいて自然に返信し、返信は簡潔に（1〜2文で）し、必要に応じて一度に1つの質問のみをしてください。すでに回答を得た質問はしないでください。`; // 일본어
         } else {
-            scenarioSpecificContext = `You are a friendly and helpful English language tutor. The user wants to practice a conversation based on their custom scenario: "${customInput}". Act as a partner for this topic, ask relevant questions, and help with their English. Keep responses concise (1-2 sentences) and ask only one question at a time if needed. Do not ask questions you've already received answers for.`;
+            scenarioSpecificContext = `あなたは親切で役立つAIチューターです。ユーザーはカスタムシナリオ「${customInput}」に基づいて会話を練習したいと考えています。このテーマのパートナーとして行動し、関連する質問をし、ユーザーの英語学習を手伝ってください。返信は簡潔に（1〜2文で）し、必要に応じて一度に1つの質問のみをしてください。すでに回答を得た質問はしないでください。`; // 일본어
         }
     } else {
+        // SCENARIO_DATA에 정의된 baseContext/baseContext_swapped는 AI가 응답할 언어(이 경우 일본어)로 되어 있어야 함
         if (userIsPlayingPrimaryRole) {
             scenarioSpecificContext = scenario.baseContext;
         } else {
-            scenarioSpecificContext = scenario.baseContext_swapped || `ROLE SWAP! You are now taking on the role typically played by the AI in the "${scenario.title}" scenario. For example, if the user was the customer at a cafe, you are now the customer. The human user is playing the other part (e.g., barista). Please initiate or respond accordingly, keeping your responses concise (1-2 sentences) and asking only one question at a time if needed. Do not ask questions you've already received answers for.`;
+            scenarioSpecificContext = scenario.baseContext_swapped || `役割交代！あなたは今、「${scenario.title}」シナリオでAIが通常演じる役割を担っています。たとえば、ユーザーがカフェのお客さんだった場合、あなたは今お客さんです。人間ユーザーは相手の役割（例：バリスタ）を演じます。それに合わせて開始または返信し、返信は簡潔に（1〜2文で）し、必要に応じて一度に1つの質問のみをしてください。すでに回答を得た質問はしないでください。`; // 일본어
         }
     }
 
-    const focusTopicInstruction = (userIsPlayingPrimaryRole && focusTopic && scenario.id !== "custom") ? `\n\nThe user also wants to focus on: "${focusTopic}". Try to incorporate this into the conversation.` : '';
+    const focusTopicInstruction = (userIsPlayingPrimaryRole && focusTopic && scenario.id !== "custom") ? `\n\nユーザーはさらに「${focusTopic}」に焦点を当てたいと考えています。会話にこれを取り入れてみてください。` : ''; // 일본어
 
     return `${scenarioSpecificContext}${focusTopicInstruction}`;
 }
@@ -204,7 +231,7 @@ function updateScenarioDisplay(isConversationStarting = false) {
 
     // 헤더 시나리오 이름 업데이트 (축약형)
     const displayTitle = appState.currentScenario.id === 'custom'
-        ? (appState.currentCustomScenarioInput ? `${UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput).split(':')[0]}: ${appState.currentCustomScenarioInput.substring(0, 10)}...` : UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput))
+        ? (appState.currentCustomScenarioInput ? `${appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput).split(':')[0]}: ${appState.currentCustomScenarioInput.substring(0, 10)}...` : appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput))
         : (appState.currentScenario.categoryTitle ? `${appState.currentScenario.title.split(" ")[0]}` : appState.currentScenario.title.split(" ")[0]);
 
     elements.currentScenarioDisplay.textContent = displayTitle;
@@ -220,10 +247,10 @@ function updateScenarioDisplay(isConversationStarting = false) {
     } else {
         elementsToHide.forEach(el => el.classList.remove('hidden'));
         elements.scenarioTitleElem.textContent = appState.currentScenario.id === "custom"
-            ? UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput)
+            ? appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput)
             : appState.currentScenario.title;
         elements.scenarioDescriptionElem.textContent = appState.currentScenario.id === "custom"
-            ? UI_TEXT.customScenarioDescription
+            ? appState.UI_TEXT.customScenarioDescription
             : appState.currentScenario.description;
 
         // "이렇게 시작해 보세요:" 섹션의 모든 콘텐츠를 먼저 비웁니다. (누적 방지)
@@ -236,7 +263,7 @@ function updateScenarioDisplay(isConversationStarting = false) {
             // "이렇게 시작해 보세요:" 텍스트를 위한 p 태그를 새로 생성하여 추가합니다.
             const starterPrefix = document.createElement('p');
             starterPrefix.className = "text-xs font-semibold text-sky-600 mb-1.5";
-            starterPrefix.textContent = UI_TEXT.starterPhrasePrefix;
+            starterPrefix.textContent = appState.UI_TEXT.starterPhrasePrefix;
             elements.starterPhrasesContainer.appendChild(starterPrefix);
 
             // 시작 문장 버튼들을 담을 div를 새로 생성하여 추가합니다.
@@ -264,12 +291,12 @@ function updateScenarioDisplay(isConversationStarting = false) {
             elements.customScenarioGroup.classList.remove('hidden');
             elements.focusTopicGroup.classList.add('hidden');
             elements.customScenarioInputElem.value = appState.currentCustomScenarioInput;
-            elements.customScenarioInputElem.placeholder = UI_TEXT.customScenarioPlaceholder;
+            elements.customScenarioInputElem.placeholder = appState.UI_TEXT.customScenarioPlaceholder;
         } else {
             elements.customScenarioGroup.classList.add('hidden');
             elements.focusTopicGroup.classList.remove('hidden');
             elements.focusTopicInput.value = appState.currentFocusTopic;
-            elements.focusTopicInput.placeholder = UI_TEXT.focusTopicPlaceholder;
+            elements.focusTopicInput.placeholder = appState.UI_TEXT.focusTopicPlaceholder;
         }
 
         // 시나리오 설명 영역의 하단 여백 및 제목 스타일 복구
@@ -279,6 +306,52 @@ function updateScenarioDisplay(isConversationStarting = false) {
         elements.scenarioTitleElem.classList.remove('mb-0');
     }
 }
+
+/**
+ * 앱의 모든 정적 버튼 및 UI 텍스트를 현재 언어에 맞춰 업데이트합니다.
+ */
+function updateAllButtonTexts() {
+    elements.headerTitle.textContent = appState.UI_TEXT.appTitle; // 앱 제목
+    elements.helpButton.title = appState.UI_TEXT.guideModalTitle.split(' ')[0]; // '도움말 보기' 대신 '사용 가이드'의 첫 단어
+    elements.newConversationButton.title = appState.UI_TEXT.newConversationAlert("").split(" ")[0]; // '새 대화 시작'
+    elements.suggestRepliesButtonText.textContent = appState.UI_TEXT.suggestReplies;
+    elements.analyzeSentenceButtonText.textContent = appState.UI_TEXT.analyzeSentence;
+    elements.roleSwapButtonText.textContent = appState.UI_TEXT.roleSwapButtonText; // 역할 변경
+    elements.userInputElem.placeholder = appState.UI_TEXT.customScenarioPlaceholder; // input 메시지 입력 부분
+
+    // 모달 내 텍스트 업데이트
+    elements.guideModalTitle.textContent = appState.UI_TEXT.guideModalTitle;
+    elements.guideModal.querySelector('p:nth-of-type(1)').innerHTML = `<strong>1. 🤖 ${appState.UI_TEXT.guideModalTitle.split(' ')[0]} :</strong><br/> ${appState.UI_TEXT.guideModalConfirmButton.split(' ')[0]} ...`; // 예시, 실제 텍스트는 UI_TEXT에 상세히 정의해야 함
+    elements.guideModal.querySelector('p:nth-of-type(2)').innerHTML = `<strong>2. 🎯 ${appState.UI_TEXT.focusTopicPlaceholder.split(' ')[0]} :</strong><br/> ${appState.UI_TEXT.guideModalConfirmButton.split(' ')[0]} ...`;
+    elements.guideModal.querySelector('p:nth-of-type(3)').innerHTML = `<strong>3. 🗣️ ${appState.UI_TEXT.newConversationAlert("").split(' ')[0]} :</strong><br/> ${appState.UI_TEXT.guideModalConfirmButton.split(' ')[0]} ...`;
+    elements.guideModal.querySelector('p:nth-of-type(4)').innerHTML = `<strong>4. ✨ ${appState.UI_TEXT.suggestReplies.split(' ')[0]} :</strong><br/> ${appState.UI_TEXT.guideModalConfirmButton.split(' ')[0]} ...`;
+    elements.guideModal.querySelector('p:nth-of-type(5)').innerHTML = `<strong>5. 🔄 ${appState.UI_TEXT.newConversationAlert("").split(' ')[0]} :</strong><br/> ${appState.UI_TEXT.guideModalConfirmButton.split(' ')[0]} ...`;
+
+    elements.guideModal.querySelector('ul strong:nth-of-type(1)').textContent = appState.UI_TEXT.suggestReplies;
+    elements.guideModal.querySelector('ul strong:nth-of-type(2)').textContent = appState.UI_TEXT.analyzeSentence;
+    elements.guideModal.querySelector('ul strong:nth-of-type(3)').textContent = appState.UI_TEXT.roleSwapButtonText;
+    elements.guideModal.querySelector('ul strong:nth-of-type(2) + span').textContent = ` (${appState.UI_TEXT.koreanSummaryTitle.split(' ')[0]}も提供)`;
+
+    elements.confirmGuideModalButton.textContent = appState.UI_TEXT.guideModalConfirmButton;
+
+    elements.analysisModalTitle.textContent = appState.UI_TEXT.analysisResultTitle;
+    elements.englishFeedbackTitle.textContent = appState.UI_TEXT.englishFeedbackTitle;
+    elements.koreanSummaryTitle.textContent = appState.UI_TEXT.koreanSummaryTitle;
+    elements.confirmAnalysisModalButtonFromAnalysis.textContent = appState.UI_TEXT.analysisConfirmButton;
+
+    // 언어 선택 드롭다운 텍스트 업데이트
+    const langLinks = elements.languageDropdown.querySelectorAll('a');
+    langLinks.forEach(link => {
+        const langCode = link.dataset.lang;
+        if (langPacks[langCode]) {
+            link.textContent = langPacks[langCode].displayName;
+        }
+    });
+
+    // 현재 언어 표시 업데이트
+    elements.currentLanguageDisplay.textContent = langPacks[appState.currentLangCode].displayName;
+}
+
 
 /**
  * 버튼의 로딩 상태를 설정하고 텍스트를 업데이트합니다.
@@ -291,7 +364,7 @@ function setLoadingState(buttonId, textWhileLoading, isLoadingFlag) {
     const buttonTextSpan = elements[`${buttonId}Text`];
     if (button && buttonTextSpan) {
         button.disabled = isLoadingFlag;
-        buttonTextSpan.textContent = isLoadingFlag ? textWhileLoading : (buttonId === 'suggestRepliesButton' ? UI_TEXT.suggestReplies : UI_TEXT.analyzeSentence);
+        buttonTextSpan.textContent = isLoadingFlag ? textWhileLoading : (buttonId === 'suggestRepliesButton' ? appState.UI_TEXT.suggestReplies : appState.UI_TEXT.analyzeSentence);
     }
 }
 
@@ -331,7 +404,7 @@ function hideSuggestedReplies() {
  */
 function renderScenarioPicker() {
     elements.scenarioDropdown.innerHTML = ''; // 기존 드롭다운 내용 초기화
-    SCENARIO_DATA.forEach(category => {
+    appState.SCENARIO_DATA.forEach(category => { // 현재 언어의 시나리오 데이터 사용
         const categoryDiv = document.createElement('div');
         const categoryHeader = document.createElement('div');
         // 카테고리 헤더 스타일 및 이벤트 리스너 설정
@@ -412,11 +485,33 @@ function toggleScenarioPicker() {
         renderScenarioPicker(); // 드롭다운 내용 렌더링
         elements.scenarioDropdown.classList.remove('hidden');
         elements.scenarioDropdown.classList.add('fade-in');
+        // 시나리오 피커가 열리면 언어 피커는 닫기
+        if (appState.showLanguagePicker) {
+            toggleLanguagePicker();
+        }
     } else {
         elements.scenarioDropdown.classList.add('hidden');
         appState.expandedCategories = {}; // 드롭다운 숨길 때 확장 상태 초기화
     }
 }
+
+/**
+ * 언어 선택 드롭다운을 토글합니다.
+ */
+function toggleLanguagePicker() {
+    appState.showLanguagePicker = !appState.showLanguagePicker;
+    if (appState.showLanguagePicker) {
+        elements.languageDropdown.classList.remove('hidden');
+        elements.languageDropdown.classList.add('fade-in');
+        // 언어 피커가 열리면 시나리오 피커는 닫기
+        if (appState.showScenarioPicker) {
+            toggleScenarioPicker();
+        }
+    } else {
+        elements.languageDropdown.classList.add('hidden');
+    }
+}
+
 
 // --- 모달 관련 함수 ---
 
@@ -441,7 +536,7 @@ function closeGuideModal() {
  * @param {string} combinedAnalysisText - 영어 분석 결과와 한국어 요약이 포함된 텍스트
  */
 function showAnalysisModal(combinedAnalysisText) {
-    const koreanSummaryMarker = UI_TEXT.koreanSummaryTitle; // "🇰🇷 한국어 요약:"
+    const koreanSummaryMarker = appState.UI_TEXT.koreanSummaryTitle; // "🇰🇷 한국어 요약:"
     const koreanSummaryIndex = combinedAnalysisText.indexOf(koreanSummaryMarker);
 
     let engAnalysis = "";
@@ -557,7 +652,7 @@ async function updateUserProfile(userId, appId, lastScenarioId, lastRoleIsUserPr
     // 사용자 정의 시나리오일 경우 관련 정보 저장
     if (lastScenarioId === "custom" && lastCustomScenarioDetails) {
         updateData.lastCustomScenarioDetails = {
-            title: UI_TEXT.scenarioTitleCustom(lastCustomScenarioDetails),
+            title: appState.UI_TEXT.scenarioTitleCustom(lastCustomScenarioDetails), // UI_TEXT에서 제목 생성 함수 사용
             description: lastCustomScenarioDetails
         };
         // 커스텀 시나리오일 경우 focusTopic은 저장하지 않음
@@ -570,7 +665,7 @@ async function updateUserProfile(userId, appId, lastScenarioId, lastRoleIsUserPr
     }
 
     try {
-        await setDoc(userProfileRef, updateData, { merge: true }); // merge: true로 기존 필드는 유지하고 지정된 필드만 업데이트
+        await setDoc(userProfileRef, updateData, { merge: true }); // merge: true로 기존 필드 유지하고 지정된 필드만 업데이트
     } catch (error) {
         console.error("사용자 프로필 업데이트 오류:", error);
         throw error;
@@ -608,24 +703,24 @@ async function callGeminiAPI(prompt) {
         });
 
         if (!response.ok) {
-            let errorDetails = `서버 응답: ${response.statusText || '알 수 없는 오류'}`;
+            let errorDetails = `サーバー応答: ${response.statusText || '不明なエラー'}`; // 일본어 에러 메시지
             try {
                 const errorData = await response.json();
                 errorDetails = errorData.error || errorData.message || (typeof errorData === 'object' ? JSON.stringify(errorData) : String(errorData));
                 if (!errorDetails || errorDetails === '{}' || errorDetails.trim() === "") {
-                    errorDetails = `서버 응답: ${response.statusText || '오류 내용 없음'}`;
+                    errorDetails = `サーバー応答: ${response.statusText || 'エラー内容なし'}`; // 일본어 에러 메시지
                 }
             } catch (jsonError) {
-                console.warn("API 오류 응답이 JSON이 아니므로 텍스트로 읽기를 시도합니다.", jsonError);
+                console.warn("APIエラー応答がJSONではないため、テキストとして読み込もうとします。", jsonError); // 일본어 콘솔 메시지
                 try {
                     const errorText = await response.text();
-                    errorDetails = errorText.trim() || `서버 응답: ${response.statusText || '오류 내용 없음'}`;
+                    errorDetails = errorText.trim() || `サーバー応答: ${response.statusText || 'エラー内容なし'}`; // 일본어 에러 메시지
                 } catch (textError) {
-                    console.error("API 오류 응답을 텍스트로 읽는 데 실패했습니다.", textError);
-                    errorDetails = `서버 응답: ${response.statusText || '알 수 없는 오류'}, 응답 본문 읽기 실패`;
+                    console.error("APIエラー応答をテキストとして読み込むのに失敗しました。", textError); // 일본어 콘솔 메시지
+                    errorDetails = `サーバー応答: ${response.statusText || '不明なエラー'}、応答本文の読み込み失敗`; // 일본어 에러 메시지
                 }
             }
-            const errorMsg = `API 요청 실패 (${response.status}): ${errorDetails}`;
+            const errorMsg = `APIリクエスト失敗 (${response.status}): ${errorDetails}`; // 일본어 에러 메시지
             console.error("API Error Details:", errorDetails);
             throw new Error(errorMsg);
         }
@@ -641,14 +736,14 @@ async function callGeminiAPI(prompt) {
         } else if (typeof result === 'string') {
             return result;
         } else if (result.candidates && result.candidates[0]?.content?.parts[0]?.text) {
-            console.warn("Gemini API 형식의 응답을 받았습니다. Glitch 엔드포인트가 이 형식을 지원하는지 확인하세요.");
-            return result.candidates[0].content.parts[0].text;
+            console.warn("Gemini API形式の応答を受け取りました。Glitchエンドポイントがこの形式をサポートしているか確認してください。"); // 일본어 콘솔 메시지
+            return result.candidates[0].content?.parts[0]?.text || '';
         } else {
-            console.error("API 응답에서 텍스트를 추출할 수 없거나, 예상치 못한 구조입니다:", result);
-            throw new Error('AI로부터 유효한 텍스트 응답을 받지 못했습니다.');
+            console.error("API応答からテキストを抽出できませんでした、または予期しない構造です:", result); // 일본어 콘솔 메시지
+            throw new Error('AIから有効なテキスト応答を受け取っていません。'); // 일본어 에러 메시지
         }
     } catch (error) {
-        console.error("API 호출 중 예외 발생:", error);
+        console.error("API呼び出し中に例外が発生しました:", error); // 일본어 콘솔 메시지
         throw error;
     }
 }
@@ -664,7 +759,7 @@ async function handleSendMessage() {
 
     // 사용자 정의 시나리오이고 내용이 비어있으며 첫 메시지일 경우 경고
     if (appState.currentScenario.id === "custom" && elements.customScenarioInputElem.value.trim() === '' && appState.currentMessages.length === 0) {
-        alert(UI_TEXT.customScenarioInputRequired);
+        alert(appState.UI_TEXT.customScenarioInputRequired);
         return;
     }
 
@@ -701,12 +796,13 @@ async function handleSendMessage() {
         appState.userIsPlayingPrimaryRole
     );
 
-    let conversationHistoryForAPI = "Previous conversation:\n";
+    let conversationHistoryForAPI = "Previous conversation:\n"; // AI 프롬프트에 전달할 이력 (영어로 유지)
     // 최근 3턴 (사용자 메시지 3개 + AI 메시지 3개)의 대화 이력을 포함
     appState.currentMessages.slice(Math.max(0, appState.currentMessages.length - 7), -1).forEach(msg => {
         conversationHistoryForAPI += `${msg.sender === 'user' ? 'User' : 'AI'}: ${msg.text}\n`;
     });
 
+    // AI에게 보낼 최종 프롬프트 (System Instruction, Previous conversation, User Input)
     const promptForAI = `System Instruction: ${contextForAI}\n\n${appState.currentMessages.length > 1 ? conversationHistoryForAPI : ''}User: ${currentInputForAPI}`;
 
     try {
@@ -722,7 +818,7 @@ async function handleSendMessage() {
         }
     } catch (error) {
         // API 오류 발생 시 오류 메시지 표시
-        appState.currentMessages.push({ sender: 'ai', text: `${UI_TEXT.aiResponseError} ${error.message}`, timestamp: new Date() });
+        appState.currentMessages.push({ sender: 'ai', text: `${appState.UI_TEXT.aiResponseError} ${error.message}`, timestamp: new Date() });
         renderMessages();
     } finally {
         appState.isLoading = false; // 로딩 상태 비활성화
@@ -739,20 +835,20 @@ async function handleSuggestReplies() {
     const lastMessage = appState.currentMessages[appState.currentMessages.length - 1];
     // 마지막 메시지가 AI의 응답이 아닐 경우 경고
     if (lastMessage.sender !== 'ai') {
-        alert(UI_TEXT.suggestionsAfterAiResponse);
+        alert(appState.UI_TEXT.suggestionsAfterAiResponse);
         return;
     }
 
     appState.isLoadingSuggestions = true; // 로딩 상태 활성화
-    setLoadingState('suggestRepliesButton', UI_TEXT.loading, true); // 버튼 로딩 UI 표시
+    setLoadingState('suggestRepliesButton', appState.UI_TEXT.loading, true); // 버튼 로딩 UI 표시
     closeAnalysisModal(); // 분석 모달 닫기
 
     try {
-        const scenarioTitleForPrompt = appState.currentScenario.id === "custom" ? (appState.currentCustomScenarioInput || UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput)) : appState.currentScenario.title;
-        const focusTopicForPrompt = appState.currentScenario.id === "custom" ? "" : (appState.currentFocusTopic ? `The user also wants to focus on: "${appState.currentFocusTopic}".` : '');
-        
-        // AI 응답 제안을 위한 프롬프트 구성
-        const prompt = `Based on the AI Tutor's last message: "${lastMessage.text}", provide ONLY 3 diverse and natural-sounding replies (short to medium length) that the user (who is learning English) could say next in the "${scenarioTitleForPrompt}" scenario. ${focusTopicForPrompt} Format them strictly as a numbered list, starting each item with a number and a period (e.g., 1. Suggestion one.). Do not include any introductory or explanatory text before or after the list. Consider the current role of the user: ${appState.userIsPlayingPrimaryRole ? 'they are the primary actor in the scenario (e.g., customer, patient)' : 'they are playing the AI tutor/staff role'}.`;
+        const scenarioTitleForPrompt = appState.currentScenario.id === "custom" ? (appState.currentCustomScenarioInput || appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput)) : appState.currentScenario.title;
+        const focusTopicForPrompt = appState.currentScenario.id === "custom" ? "" : (appState.currentFocusTopic ? `ユーザーはさらに「${appState.currentFocusTopic}」に焦点を当てたいと考えています。` : ''); // 일본어
+
+        // AI 응답 제안을 위한 프롬프트 구성 (AI가 응답할 언어, 즉 일본어)
+        const prompt = `AIチューターの最後のメッセージ「${lastMessage.text}」に基づき、ユーザー（日本語学習者）が次に言うことができる、多様で自然な響きの返信を3つだけ（短〜中程度の長さで）、「${scenarioTitleForPrompt}」シナリオで提供してください。${focusTopicForPrompt} 厳密に番号付きリスト形式で、各項目を数字とピリオドで始めてください（例：1. 提案1）。リストの前後に導入文や説明文を含めないでください。ユーザーの現在の役割を考慮してください：${appState.userIsPlayingPrimaryRole ? '彼らはシナリオの主要な登場人物です（例：客、患者）' : '彼らはAIチューター/スタッフの役割を演じています'}。`; // 일본어
         const suggestionsText = await callGeminiAPI(prompt); // AI API 호출
 
         // AI 응답에서 제안 목록 파싱
@@ -778,11 +874,11 @@ async function handleSuggestReplies() {
             elements.suggestedRepliesContainer.classList.remove('hidden');
             elements.suggestedRepliesContainer.classList.add('fade-in');
         } else {
-            elements.suggestedRepliesList.innerHTML = `<li class="text-slate-500">${UI_TEXT.errorMessageSuggestions}</li>`;
+            elements.suggestedRepliesList.innerHTML = `<li class="text-slate-500">${appState.UI_TEXT.errorMessageSuggestions}</li>`;
             elements.suggestedRepliesContainer.classList.remove('hidden');
         }
     } catch (error) {
-        elements.suggestedRepliesList.innerHTML = `<li class="text-red-500">${UI_TEXT.errorMessageSuggestions} ${error.message}</li>`;
+        elements.suggestedRepliesList.innerHTML = `<li class="text-red-500">${appState.UI_TEXT.errorMessageSuggestions} ${error.message}</li>`;
         elements.suggestedRepliesContainer.classList.remove('hidden');
     } finally {
         appState.isLoadingSuggestions = false; // 로딩 상태 비활성화
@@ -798,26 +894,26 @@ async function handleAnalyzeSentence() {
     if (appState.isLoadingAnalysis) return;
     const userMessages = appState.currentMessages.filter(msg => msg.sender === 'user');
     if (userMessages.length === 0) {
-        alert(UI_TEXT.noUserMessageForAnalysis);
+        alert(appState.UI_TEXT.noUserMessageForAnalysis);
         return;
     }
 
     appState.isLoadingAnalysis = true; // 로딩 상태 활성화
-    setLoadingState('analyzeSentenceButton', UI_TEXT.loading, true); // 버튼 로딩 UI 표시
+    setLoadingState('analyzeSentenceButton', appState.UI_TEXT.loading, true); // 버튼 로딩 UI 표시
     hideSuggestedReplies(); // 응답 제안 숨김
     closeAnalysisModal(); // 기존 분석 모달 닫기
 
     try {
         const lastUserMessage = userMessages[userMessages.length - 1]; // 가장 최근 사용자 메시지
-        const scenarioTitleForPrompt = appState.currentScenario.id === "custom" ? (appState.currentCustomScenarioInput || UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput)) : appState.currentScenario.title;
-        const focusTopicForPrompt = appState.currentScenario.id === "custom" ? "" : (appState.currentFocusTopic ? `They are focusing on "${appState.currentFocusTopic}".` : '');
+        const scenarioTitleForPrompt = appState.currentScenario.id === "custom" ? (appState.currentCustomScenarioInput || appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput)) : appState.currentScenario.title;
+        const focusTopicForPrompt = appState.currentScenario.id === "custom" ? "" : (appState.currentFocusTopic ? `ユーザーはさらに「${appState.currentFocusTopic}」に焦点を当てたいと考えています。` : ''); // 일본어
 
-        // 문장 분석을 위한 프롬프트 구성
-        const analysisPrompt = `The user (learning English) said: "${lastUserMessage.text}" in the context of "${scenarioTitleForPrompt}" scenario. ${focusTopicForPrompt} Provide a structured analysis in English: **⭐ Overall Impression:** (Brief positive comment or general feel) **👍 Strengths:** (What was good about the sentence) **💡 Areas for Improvement:** **Grammar:** (Specific errors & corrections. If none, say "Grammar is good.") **Vocabulary:** (Word choice suggestions, better alternatives. If good, say "Vocabulary is appropriate.") **Naturalness/Fluency:** (Tips to sound more natural. If good, say "Sounds natural.") **✨ Suggested Revision (if any):** (Offer a revised version of the sentence if significant improvements can be made) Keep feedback constructive and easy for an English learner. After the English analysis, provide a concise summary of the feedback in Korean, under a heading "${UI_TEXT.koreanSummaryTitle}". This summary should highlight the main points of the feedback for a beginner to understand easily.`;
+        // 문장 분석을 위한 프롬프트 구성 (영어 피드백, 한국어 요약 요청)
+        const analysisPrompt = `The user (learning Japanese) said: "${lastUserMessage.text}" in the context of "${scenarioTitleForPrompt}" scenario. ${focusTopicForPrompt} Provide a structured analysis in English: **⭐ Overall Impression:** (Brief positive comment or general feel) **👍 Strengths:** (What was good about the sentence) **💡 Areas for Improvement:** **Grammar:** (Specific errors & corrections. If none, say "Grammar is good.") **Vocabulary:** (Word choice suggestions, better alternatives. If good, say "Vocabulary is appropriate.") **Naturalness/Fluency:** (Tips to sound more natural. If good, say "Sounds natural.") **✨ Suggested Revision (if any):** (Offer a revised version of the sentence if significant improvements can be made) Keep feedback constructive and easy for a Japanese learner. After the English analysis, provide a concise summary of the feedback in Korean, under a heading "${appState.UI_TEXT.koreanSummaryTitle}". This summary should highlight the main points of the feedback for a beginner to understand easily.`; // AI 프롬프트 (영어 피드백 요청, 한국어 요약은 유지)
         const combinedAnalysisText = await callGeminiAPI(analysisPrompt); // AI API 호출
         showAnalysisModal(combinedAnalysisText); // 분석 결과 모달에 표시
     } catch (error) {
-        elements.englishAnalysisResultDiv.textContent = `${UI_TEXT.errorMessageAnalysis} ${error.message}`;
+        elements.englishAnalysisResultDiv.textContent = `${appState.UI_TEXT.errorMessageAnalysis} ${error.message}`;
         elements.koreanAnalysisResultDiv.textContent = "";
         elements.analysisModal.classList.remove('hidden');
         elements.analysisModal.classList.add('fade-in');
@@ -832,7 +928,7 @@ async function handleAnalyzeSentence() {
  */
 function handleRoleSwap() {
     if (appState.isLoading) {
-        alert(UI_TEXT.scenarioChangeLoadingAlert); // AI 응답 중에는 역할 변경 불가
+        alert(appState.UI_TEXT.scenarioChangeLoadingAlert); // AI 응답 중에는 역할 변경 불가
         return;
     }
     appState.userIsPlayingPrimaryRole = !appState.userIsPlayingPrimaryRole; // 역할 상태 토글
@@ -845,14 +941,14 @@ function handleRoleSwap() {
 
     // 역할 변경 알림 메시지 생성
     const currentRoleDescription = appState.userIsPlayingPrimaryRole ?
-        (appState.currentScenario.id === 'custom' ? '직접 입력한 상황의 주도적인 역할' : `"${appState.currentScenario.title}" 상황의 주도적인 역할 (예: 손님, 환자)`) :
-        (appState.currentScenario.id === 'custom' ? '직접 입력한 상황의 AI 역할' : `"${appState.currentScenario.title}" 상황의 AI 역할 (예: 직원, 의사)`);
+        (appState.currentScenario.id === 'custom' ? '直接入力した状況の主要な役割' : `「${appState.currentScenario.title}」状況の主要な役割（例：お客さん、患者）`) : // 일본어
+        (appState.currentScenario.id === 'custom' ? '直接入力した状況のAIの役割' : `「${appState.currentScenario.title}」状況のAIの役割（例：店員、医者）`); // 일본어
 
-    alert(UI_TEXT.roleChangeAlert(currentRoleDescription));
+    alert(appState.UI_TEXT.roleChangeAlert(currentRoleDescription));
 
     // 역할 변경 후 AI가 먼저 말을 걸도록 하는 선택적 로직
     // if (!appState.userIsPlayingPrimaryRole && appState.currentMessages.length === 0 && appState.currentScenario.id !== 'custom') {
-    //     const aiGreeting = getStarterPhrases(appState.currentScenario, false)[0] || "Hello! How can I assist you?";
+    //     const aiGreeting = getStarterPhrases(appState.currentScenario, false)[0] || "こんにちは！何かお手伝いできますか？"; // 일본어
     //     appState.currentMessages.push({ sender: 'ai', text: aiGreeting, timestamp: new Date() });
     //     renderMessages();
     // }
@@ -863,7 +959,7 @@ function handleRoleSwap() {
  */
 function handleNewConversation() {
     if (appState.isLoading) {
-        alert(UI_TEXT.newConversationLoadingAlert); // AI 응답 중에는 새 대화 시작 불가
+        alert(appState.UI_TEXT.newConversationLoadingAlert); // AI 응답 중에는 새 대화 시작 불가
         return;
     }
     appState.currentMessages = []; // 대화 기록 초기화
@@ -875,8 +971,8 @@ function handleNewConversation() {
     updateScenarioDisplay(false); // 시나리오 설명 영역 다시 보이게
 
     // 새 대화 시작 알림 메시지
-    const scenarioTitleForAlert = appState.currentScenario.id === 'custom' ? (appState.currentCustomScenarioInput || UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput)) : appState.currentScenario.title;
-    alert(UI_TEXT.newConversationAlert(scenarioTitleForAlert));
+    const scenarioTitleForAlert = appState.currentScenario.id === 'custom' ? (appState.currentCustomScenarioInput || appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput)) : appState.currentScenario.title;
+    alert(appState.UI_TEXT.newConversationAlert(scenarioTitleForAlert));
 }
 
 /**
@@ -885,7 +981,7 @@ function handleNewConversation() {
  */
 function handleScenarioSelect(scenarioItem) {
     if (appState.isLoading) {
-        alert(UI_TEXT.scenarioChangeLoadingAlert); // AI 응답 중에는 시나리오 변경 불가
+        alert(appState.UI_TEXT.scenarioChangeLoadingAlert); // AI 응답 중에는 시나리오 변경 불가
         return;
     }
     const fullScenarioDetails = findScenarioById(scenarioItem.id);
@@ -907,6 +1003,32 @@ function handleScenarioSelect(scenarioItem) {
     updateScenarioDisplay(false); // 시나리오 설명 영역 업데이트 (새 시나리오에 맞춰)
     renderMessages(); // 메시지 화면 초기화
     toggleScenarioPicker(); // 드롭다운 닫기
+}
+
+/**
+ * 언어를 변경하는 함수입니다.
+ * @param {string} langCode - 변경할 언어 코드 ('ko', 'ja' 등)
+ */
+function setLanguage(langCode) {
+    if (!langPacks[langCode]) {
+        console.error(`Unsupported language code: ${langCode}`);
+        return;
+    }
+
+    appState.currentLangCode = langCode;
+    appState.SCENARIO_DATA = langPacks[langCode].scenarios;
+    appState.UI_TEXT = langPacks[langCode].ui;
+
+    localStorage.setItem('speakup_ai_lang', langCode); // 로컬 스토리지에 언어 설정 저장
+
+    // UI 텍스트 업데이트
+    updateAllButtonTexts();
+    // 시나리오 관련 UI 업데이트 (현재 시나리오 유지하면서 언어만 변경)
+    // 현재 시나리오 객체의 description, title 등이 바뀔 수 있으므로 다시 할당하여 UI를 업데이트
+    appState.currentScenario = findScenarioById(appState.currentScenario.id); // 현재 시나리오를 새 언어 데이터로 다시 로드
+    updateScenarioDisplay(false); // 시나리오 UI 텍스트 업데이트
+    renderScenarioPicker(); // 시나리오 드롭다운 텍스트 업데이트
+    elements.currentLanguageDisplay.textContent = langPacks[langCode].displayName; // 언어 선택 버튼 텍스트 업데이트
 }
 
 // --- 모든 이벤트 리스너 설정 함수 ---
@@ -942,12 +1064,30 @@ function attachEventListeners() {
         updateScenarioDisplay(); // 사용자 정의 시나리오 설명 업데이트를 위해 호출
     });
 
+    // 언어 선택 드롭다운 토글
+    elements.languagePickerButton.addEventListener('click', toggleLanguagePicker);
+    // 언어 선택 링크 클릭
+    elements.languageDropdown.addEventListener('click', (event) => {
+        event.preventDefault(); // 기본 링크 동작 방지
+        const langCode = event.target.dataset.lang;
+        if (langCode) {
+            setLanguage(langCode);
+            toggleLanguagePicker(); // 드롭다운 닫기
+        }
+    });
+
+
     // 문서 전체 클릭 시 드롭다운/모달 닫기 로직
     document.addEventListener('click', (event) => {
         // 시나리오 드롭다운 외부 클릭 시 닫기
         if (elements.scenarioPickerButton && !elements.scenarioPickerButton.contains(event.target) &&
             elements.scenarioDropdown && !elements.scenarioDropdown.contains(event.target) && appState.showScenarioPicker) {
             toggleScenarioPicker();
+        }
+        // 언어 드롭다운 외부 클릭 시 닫기
+        if (elements.languagePickerContainer && !elements.languagePickerContainer.contains(event.target) &&
+            elements.languageDropdown && !elements.languageDropdown.classList.contains('hidden') && appState.showLanguagePicker) {
+            toggleLanguagePicker();
         }
         // 분석 모달 외부 클릭 시 닫기
         // (모달 컨텐츠 영역을 클릭하지 않았고 모달이 열려 있을 때)
@@ -969,24 +1109,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     initDOMElements(); // 1. DOM 요소 캐싱
     attachEventListeners(); // 2. 모든 이벤트 리스너 연결
 
-    await initFirebase(); // 3. Firebase 초기화 및 사용자 인증
+    // 3. 언어 설정 로드 및 적용
+    const savedLang = localStorage.getItem('speakup_ai_lang') || 'ko'; // 기본값 한국어
+    setLanguage(savedLang);
 
-    // 4. 사용자 프로필 로드 및 앱 상태 초기화
+    await initFirebase(); // 4. Firebase 초기화 및 사용자 인증
+
+    // 5. 사용자 프로필 로드 및 앱 상태 초기화
     if (appState.currentUserId) {
         try {
             const userProfile = await getUserProfile(appState.currentUserId, APP_ID);
-            let loadedScenarioData = findScenarioById("cafe"); // 기본값 '카페에서'
+            let loadedScenarioData = findScenarioById("cafe"); // 기본값 '카페에서' (SCENARIO_DATA는 이미 로드된 상태)
 
             if (userProfile) {
                 const lastScenarioId = userProfile.lastScenarioId;
-                const foundScenarioFromDB = findScenarioById(lastScenarioId);
+                const foundScenarioFromDB = findScenarioById(lastScenarioId); // 현재 언어의 시나리오 데이터에서 찾음
 
                 if (foundScenarioFromDB) {
                     loadedScenarioData = foundScenarioFromDB;
                     if (foundScenarioFromDB.id === "custom" && userProfile.lastCustomScenarioDetails) {
                         appState.currentCustomScenarioInput = userProfile.lastCustomScenarioDetails.description || "";
-                        // UI 표시용 제목은 언어 데이터에서 생성
-                        loadedScenarioData = { ...loadedScenarioData, title: UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput) };
+                        loadedScenarioData = { ...loadedScenarioData, title: appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput) };
                     } else if (foundScenarioFromDB.id !== "custom") {
                         appState.currentFocusTopic = userProfile.lastFocusTopic || '';
                     }
@@ -996,7 +1139,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             appState.currentScenario = loadedScenarioData;
 
             // 사용자 프로필 업데이트 (마지막 로그인 시간, 현재 시나리오 등)
-            // 사용자 정의 시나리오일 경우 description도 함께 전달
             await updateUserProfile(
                 appState.currentUserId,
                 APP_ID,
@@ -1010,15 +1152,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             appState.currentScenario = findScenarioById("cafe"); // 오류 발생 시 기본 시나리오로 설정
         }
     } else {
-        // 인증 실패 시 기본 시나리오로 설정
-        appState.currentScenario = findScenarioById("cafe");
+        appState.currentScenario = findScenarioById("cafe"); // 인증 실패 시 기본 시나리오로 설정
     }
 
-    // 5. 초기 UI 렌더링
+    // 6. 초기 UI 렌더링 (언어 로드 후 시나리오 로드 후)
     updateScenarioDisplay(false); // 대화 시작 전이므로 설명 영역 표시
     renderMessages(); // 빈 메시지 컨테이너 렌더링
 
-    // 6. 가이드 모달 표시 여부 확인 (로컬 스토리지 사용)
+    // 7. 가이드 모달 표시 여부 확인 (로컬 스토리지 사용)
     if (!localStorage.getItem(`guideShown_${APP_ID}`)) {
         showGuideModal();
     }
