@@ -41,9 +41,9 @@ const appState = {
     userIsPlayingPrimaryRole: true, // 사용자가 시나리오의 주도적인 역할(예: 손님)을 맡고 있는지 여부
     auth: null, // Firebase Auth 인스턴스
     db: null, // Firestore DB 인스턴스
-    currentLangCode: 'ko', // 현재 활성화된 언어 코드 (기본값 'ko')
-    SCENARIO_DATA: ko_SCENARIO_DATA, // 현재 언어의 시나리오 데이터 (초기값)
-    UI_TEXT: ko_UI_TEXT, // 현재 언어의 UI 텍스트 (초기값)
+    currentLangCode: '', // 현재 활성화된 언어 코드 (ko, ja 등)
+    SCENARIO_DATA: null, // 현재 언어의 시나리오 데이터
+    UI_TEXT: null, // 현재 언어의 UI 텍스트
     showLanguagePicker: false, // 언어 선택 드롭다운 표시 여부
 };
 
@@ -68,7 +68,7 @@ function initDOMElements() {
     elements.scenarioTitleElem = document.getElementById('scenarioTitle');
     elements.scenarioDescriptionElem = document.getElementById('scenarioDescription');
     elements.starterPhrasesContainer = document.getElementById('starterPhrasesContainer');
-    elements.starterPhrasesElem = document.getElementById('starterPhrases'); // 중요: 이 요소는 동적으로 재할당될 수 있음
+    // elements.starterPhrasesElem = document.getElementById('starterPhrases'); // 동적으로 재생성되므로 여기서 캐시하지 않음
     elements.focusTopicGroup = document.getElementById('focusTopicGroup');
     elements.focusTopicInput = document.getElementById('focusTopicInput');
     elements.customScenarioGroup = document.getElementById('customScenarioGroup');
@@ -101,11 +101,24 @@ function initDOMElements() {
     elements.closeAnalysisModalButtonFromAnalysis = document.getElementById('closeAnalysisModalButtonFromAnalysis');
     elements.confirmAnalysisModalButtonFromAnalysis = document.getElementById('confirmAnalysisModalButtonFromAnalysis');
 
-    // 모달 내 UI 텍스트 요소
+    // 모달 내 UI 텍스트 요소 (querySelector를 통해 찾음)
     elements.guideModalTitle = elements.guideModal.querySelector('h2');
     elements.analysisModalTitle = elements.analysisModal.querySelector('h3');
     elements.englishFeedbackTitle = elements.analysisModal.querySelector('#englishAnalysisResult h4');
     elements.koreanSummaryTitle = elements.analysisModal.querySelector('#koreanAnalysisResult h4');
+
+    // 가이드 모달 p태그들 (텍스트 업데이트를 위해 캐시)
+    elements.guideP1 = elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(1)');
+    elements.guideP2 = elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(2)');
+    elements.guideP3 = elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(3)');
+    elements.guideP4_header = elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(4) strong');
+    elements.guideUl_item1_strong = elements.guideModalContent.querySelector('ul strong:nth-of-type(1)');
+    elements.guideUl_item1_text = elements.guideModalContent.querySelector('ul strong:nth-of-type(1)').nextSibling;
+    elements.guideUl_item2_strong = elements.guideModalContent.querySelector('ul strong:nth-of-type(2)');
+    elements.guideUl_item2_text = elements.guideModalContent.querySelector('ul strong:nth-of-type(2)').nextSibling;
+    elements.guideUl_item3_strong = elements.guideModalContent.querySelector('ul strong:nth-of-type(3)');
+    elements.guideUl_item3_text = elements.guideModalContent.querySelector('ul strong:nth-of-type(3)').nextSibling;
+    elements.guideP5 = elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(5)');
 }
 
 // --- 유틸리티 함수 ---
@@ -175,21 +188,22 @@ function getStarterPhrases(scenario, userIsPlayingPrimaryRole) {
  * @returns {string} AI 컨텍스트 문자열
  */
 function getDynamicContext(scenario, customInput, focusTopic, userIsPlayingPrimaryRole) {
-    if (!scenario) return "You are a general English language tutor. No scenario selected."; // 이 부분도 다국어 고려 필요
+    // AI의 역할 설명 및 대화 지침은 해당 언어로 제공되어야 함
+    // (예: 일본어 회화 앱이라면 이 부분이 일본어)
+    if (!scenario) return "あなたは一般的な日本語チューターです。シナリオは選択されていません。"; // 일본어
 
     let scenarioSpecificContext = "";
     if (scenario.id === "custom") {
-        // AI가 대화해야 할 언어에 맞춰 AI 역할 설명을 제공해야 합니다.
         if (!customInput.trim()) return `あなたは親切で役立つAIチューターです。ユーザーはまだテーマを指定していません。何について話したいか尋ねてください。返信は簡潔に（1〜2文で）し、一度に1つの質問のみをしてください。`; // 일본어
         if (!userIsPlayingPrimaryRole) {
             scenarioSpecificContext = `ROLE SWAP: あなたはユーザーのカスタムシナリオ「${customInput}」に基づいて会話パートナーになりました。人間ユーザーはあなたのAIチューターまたはガイドとして行動します。シナリオに基づいて自然に返信し、返信は簡潔に（1〜2文で）し、必要に応じて一度に1つの質問のみをしてください。すでに回答を得た質問はしないでください。`; // 일본어
         } else {
-            scenarioSpecificContext = `あなたは親切で役立つAIチューターです。ユーザーはカスタムシナリオ「${customInput}」に基づいて会話を練習したいと考えています。このテーマのパートナーとして行動し、関連する質問をし、ユーザーの英語学習を手伝ってください。返信は簡潔に（1〜2文で）し、必要に応じて一度に1つの質問のみをしてください。すでに回答を得た質問はしないでください。`; // 일본어
+            scenarioSpecificContext = `あなたは親切で役立つAIチューターです。ユーザーはカスタムシナリオ「${customInput}」に基づいて会話を練習したいと考えています。このテーマのパートナーとして行動し、関連する質問をし、ユーザーの日本語学習を手伝ってください。返信は簡潔に（1〜2文で）し、必要に応じて一度に1つの質問のみをしてください。すでに回答を得た質問はしないでください。`; // 일본어
         }
     } else {
         // SCENARIO_DATA에 정의된 baseContext/baseContext_swapped는 AI가 응답할 언어(이 경우 일본어)로 되어 있어야 함
         if (userIsPlayingPrimaryRole) {
-            scenarioSpecificContext = scenario.baseContext;
+            scenarioSpecificContext = scenario.baseContext; // SCENARIO_DATA.ja.js에서 일본어로 정의됨
         } else {
             scenarioSpecificContext = scenario.baseContext_swapped || `役割交代！あなたは今、「${scenario.title}」シナリオでAIが通常演じる役割を担っています。たとえば、ユーザーがカフェのお客さんだった場合、あなたは今お客さんです。人間ユーザーは相手の役割（例：バリスタ）を演じます。それに合わせて開始または返信し、返信は簡潔に（1〜2文で）し、必要に応じて一度に1つの質問のみをしてください。すでに回答を得た質問はしないでください。`; // 일본어
         }
@@ -267,20 +281,23 @@ function updateScenarioDisplay(isConversationStarting = false) {
             elements.starterPhrasesContainer.appendChild(starterPrefix);
 
             // 시작 문장 버튼들을 담을 div를 새로 생성하여 추가합니다.
-            // 기존 elements.starterPhrasesElem에 다시 할당하여 참조를 업데이트합니다.
+            // HTML 구조에 따라 이 부분은 `starterPhrasesElem`이 캐시되어 있다면 해당 요소에 추가합니다.
+            // 여기서는 `initDOMElements`에서 `elements.starterPhrasesElem`을 캐시하지 않으므로,
+            // 새로운 div를 만들고 그 div를 `elements.starterPhrasesContainer`에 추가합니다.
             const newStarterPhrasesDiv = document.createElement('div');
             newStarterPhrasesDiv.id = 'starterPhrases'; // HTML에 정의된 ID와 동일하게 유지
             newStarterPhrasesDiv.className = 'flex flex-wrap gap-2';
             elements.starterPhrasesContainer.appendChild(newStarterPhrasesDiv);
-            elements.starterPhrasesElem = newStarterPhrasesDiv; // 캐시된 DOM 요소 참조 업데이트
+            // elements.starterPhrasesElem = newStarterPhrasesDiv; // 이 참조는 더 이상 사용하지 않아도 됩니다.
 
-            // 이제 새로운 div에 버튼들을 추가합니다.
+            // 이제 새로 생성된 div에 버튼들을 추가합니다.
             starters.forEach(starter => {
                 const button = document.createElement('button');
                 button.className = "text-xs bg-sky-100 hover:bg-sky-200 text-sky-700 px-2 py-1 rounded-md shadow-sm transition-colors";
                 button.textContent = `"${starter}"`;
+                // 동적으로 생성된 버튼에 직접 이벤트 리스너 연결
                 button.onclick = () => { elements.userInputElem.value = starter; };
-                elements.starterPhrasesElem.appendChild(button);
+                newStarterPhrasesDiv.appendChild(button); // 새로 생성된 div에 추가
             });
         } else {
             elements.starterPhrasesContainer.classList.add('hidden');
@@ -312,28 +329,32 @@ function updateScenarioDisplay(isConversationStarting = false) {
  */
 function updateAllButtonTexts() {
     elements.headerTitle.textContent = appState.UI_TEXT.appTitle; // 앱 제목
-    elements.helpButton.title = appState.UI_TEXT.guideModalTitle.split(' ')[0]; // '도움말 보기' 대신 '사용 가이드'의 첫 단어
-    elements.newConversationButton.title = appState.UI_TEXT.newConversationAlert("").split(" ")[0]; // '새 대화 시작'
+    elements.helpButton.title = appState.UI_TEXT.guideModalTitle.split(' ')[0]; // '도움말 보기' 대신 '사용 가이드'의 첫 단어 (임시)
+    elements.newConversationButton.title = appState.UI_TEXT.newConversationAlert("").split(" ")[0]; // '새 대화 시작' (임시)
     elements.suggestRepliesButtonText.textContent = appState.UI_TEXT.suggestReplies;
     elements.analyzeSentenceButtonText.textContent = appState.UI_TEXT.analyzeSentence;
     elements.roleSwapButtonText.textContent = appState.UI_TEXT.roleSwapButtonText; // 역할 변경
-    elements.userInputElem.placeholder = appState.UI_TEXT.customScenarioPlaceholder; // input 메시지 입력 부분
+    elements.userInputElem.placeholder = appState.UI_TEXT.customScenarioPlaceholder; // input 메시지 입력 부분 (임시)
 
-    // 모달 내 텍스트 업데이트
+    // 가이드 모달 텍스트 업데이트 (UI_TEXT의 상세 텍스트 사용)
     elements.guideModalTitle.textContent = appState.UI_TEXT.guideModalTitle;
-    elements.guideModal.querySelector('p:nth-of-type(1)').innerHTML = `<strong>1. 🤖 ${appState.UI_TEXT.guideModalTitle.split(' ')[0]} :</strong><br/> ${appState.UI_TEXT.guideModalConfirmButton.split(' ')[0]} ...`; // 예시, 실제 텍스트는 UI_TEXT에 상세히 정의해야 함
-    elements.guideModal.querySelector('p:nth-of-type(2)').innerHTML = `<strong>2. 🎯 ${appState.UI_TEXT.focusTopicPlaceholder.split(' ')[0]} :</strong><br/> ${appState.UI_TEXT.guideModalConfirmButton.split(' ')[0]} ...`;
-    elements.guideModal.querySelector('p:nth-of-type(3)').innerHTML = `<strong>3. 🗣️ ${appState.UI_TEXT.newConversationAlert("").split(' ')[0]} :</strong><br/> ${appState.UI_TEXT.guideModalConfirmButton.split(' ')[0]} ...`;
-    elements.guideModal.querySelector('p:nth-of-type(4)').innerHTML = `<strong>4. ✨ ${appState.UI_TEXT.suggestReplies.split(' ')[0]} :</strong><br/> ${appState.UI_TEXT.guideModalConfirmButton.split(' ')[0]} ...`;
-    elements.guideModal.querySelector('p:nth-of-type(5)').innerHTML = `<strong>5. 🔄 ${appState.UI_TEXT.newConversationAlert("").split(' ')[0]} :</strong><br/> ${appState.UI_TEXT.guideModalConfirmButton.split(' ')[0]} ...`;
+    elements.guideP1.innerHTML = `<strong>1. 🤖 シナリオ選択:</strong><br/> ${appState.UI_TEXT.guideText1}`; // 일본어
+    elements.guideP2.innerHTML = `<strong>2. 🎯 集中テーマ (任意):</strong><br/> ${appState.UI_TEXT.guideText2}`; // 일본어
+    elements.guideP3.innerHTML = `<strong>3. 🗣️ 会話開始:</strong><br/> ${appState.UI_TEXT.guideText3}`; // 일본어
 
-    elements.guideModal.querySelector('ul strong:nth-of-type(1)').textContent = appState.UI_TEXT.suggestReplies;
-    elements.guideModal.querySelector('ul strong:nth-of-type(2)').textContent = appState.UI_TEXT.analyzeSentence;
-    elements.guideModal.querySelector('ul strong:nth-of-type(3)').textContent = appState.UI_TEXT.roleSwapButtonText;
-    elements.guideModal.querySelector('ul strong:nth-of-type(2) + span').textContent = ` (${appState.UI_TEXT.koreanSummaryTitle.split(' ')[0]}も提供)`;
+    elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(4) strong').textContent = appState.UI_TEXT.guideText4_header; // "AI 기능 활용하기"
+    elements.guideUl_item1_strong.textContent = appState.UI_TEXT.suggestReplies;
+    elements.guideUl_item1_text.textContent = `: ${appState.UI_TEXT.guideText4_item1}`; // 앞의 `<strong>` 태그 뒤에 공백이 있을 수 있으므로 `nextSibling` 사용
+    elements.guideUl_item2_strong.textContent = appState.UI_TEXT.analyzeSentence;
+    elements.guideUl_item2_text.textContent = `: ${appState.UI_TEXT.guideText4_item2}`;
+    elements.guideUl_item3_strong.textContent = appState.UI_TEXT.roleSwapButtonText;
+    elements.guideUl_item3_text.textContent = `: ${appState.UI_TEXT.guideText4_item3}`;
+
+    elements.guideP5.innerHTML = `<strong>5. 🔄 新しい会話を開始:</strong><br/> ${appState.UI_TEXT.guideText5}`; // 일본어
 
     elements.confirmGuideModalButton.textContent = appState.UI_TEXT.guideModalConfirmButton;
 
+    // 분석 모달 텍스트 업데이트
     elements.analysisModalTitle.textContent = appState.UI_TEXT.analysisResultTitle;
     elements.englishFeedbackTitle.textContent = appState.UI_TEXT.englishFeedbackTitle;
     elements.koreanSummaryTitle.textContent = appState.UI_TEXT.koreanSummaryTitle;
@@ -909,7 +930,8 @@ async function handleAnalyzeSentence() {
         const focusTopicForPrompt = appState.currentScenario.id === "custom" ? "" : (appState.currentFocusTopic ? `ユーザーはさらに「${appState.currentFocusTopic}」に焦点を当てたいと考えています。` : ''); // 일본어
 
         // 문장 분석을 위한 프롬프트 구성 (영어 피드백, 한국어 요약 요청)
-        const analysisPrompt = `The user (learning Japanese) said: "${lastUserMessage.text}" in the context of "${scenarioTitleForPrompt}" scenario. ${focusTopicForPrompt} Provide a structured analysis in English: **⭐ Overall Impression:** (Brief positive comment or general feel) **👍 Strengths:** (What was good about the sentence) **💡 Areas for Improvement:** **Grammar:** (Specific errors & corrections. If none, say "Grammar is good.") **Vocabulary:** (Word choice suggestions, better alternatives. If good, say "Vocabulary is appropriate.") **Naturalness/Fluency:** (Tips to sound more natural. If good, say "Sounds natural.") **✨ Suggested Revision (if any):** (Offer a revised version of the sentence if significant improvements can be made) Keep feedback constructive and easy for a Japanese learner. After the English analysis, provide a concise summary of the feedback in Korean, under a heading "${appState.UI_TEXT.koreanSummaryTitle}". This summary should highlight the main points of the feedback for a beginner to understand easily.`; // AI 프롬프트 (영어 피드백 요청, 한국어 요약은 유지)
+        // 사용자가 일본어를 입력했으므로, AI는 입력된 일본어에 대한 피드백을 영어로, 요약을 한국어로 제공해야 합니다.
+        const analysisPrompt = `The user (learning Japanese) said: "${lastUserMessage.text}" in the context of "${scenarioTitleForPrompt}" scenario. ${focusTopicForPrompt} Provide a structured analysis in English: **⭐ Overall Impression:** (Brief positive comment or general feel) **👍 Strengths:** (What was good about the sentence) **💡 Areas for Improvement:** **Grammar:** (Specific errors & corrections. If none, say "Grammar is good.") **Vocabulary:** (Word choice suggestions, better alternatives. If good, say "Vocabulary is appropriate.") **Naturalness/Fluency:** (Tips to sound more natural. If good, say "Sounds natural.") **✨ Suggested Revision (if any):** (Offer a revised version of the sentence if significant improvements can be made) Keep feedback constructive and easy for a Japanese learner. After the English analysis, provide a concise summary of the feedback in Korean, under a heading "${appState.UI_TEXT.koreanSummaryTitle}". This summary should highlight the main points of the feedback for a beginner to understand easily.`; // AI 프롬프트
         const combinedAnalysisText = await callGeminiAPI(analysisPrompt); // AI API 호출
         showAnalysisModal(combinedAnalysisText); // 분석 결과 모달에 표시
     } catch (error) {
@@ -941,8 +963,8 @@ function handleRoleSwap() {
 
     // 역할 변경 알림 메시지 생성
     const currentRoleDescription = appState.userIsPlayingPrimaryRole ?
-        (appState.currentScenario.id === 'custom' ? '直接入力した状況の主要な役割' : `「${appState.currentScenario.title}」状況の主要な役割（例：お客さん、患者）`) : // 일본어
-        (appState.currentScenario.id === 'custom' ? '直接入力した状況のAIの役割' : `「${appState.currentScenario.title}」状況のAIの役割（例：店員、医者）`); // 일본어
+        (appState.currentScenario.id === "custom" ? '直接入力した状況の主要な役割' : `「${appState.currentScenario.title}」状況の主要な役割（例：お客さん、患者）`) : // 일본어
+        (appState.currentScenario.id === "custom" ? '直接入力した状況のAIの役割' : `「${appState.currentScenario.title}」状況のAIの役割（例：店員、医者）`); // 일본어
 
     alert(appState.UI_TEXT.roleChangeAlert(currentRoleDescription));
 
@@ -984,7 +1006,7 @@ function handleScenarioSelect(scenarioItem) {
         alert(appState.UI_TEXT.scenarioChangeLoadingAlert); // AI 응답 중에는 시나리오 변경 불가
         return;
     }
-    const fullScenarioDetails = findScenarioById(scenarioItem.id);
+    const fullScenarioDetails = findScenarioById(scenarioItem.id); // 현재 언어의 시나리오 데이터에서 찾음
     appState.currentScenario = fullScenarioDetails; // 현재 시나리오 업데이트
     appState.currentMessages = []; // 대화 기록 초기화
     clearInput('userInputElem'); // 입력창 비우기
@@ -1016,8 +1038,8 @@ function setLanguage(langCode) {
     }
 
     appState.currentLangCode = langCode;
-    appState.SCENARIO_DATA = langPacks[langCode].scenarios;
-    appState.UI_TEXT = langPacks[langCode].ui;
+    appState.SCENARIO_DATA = langPacks[langCode].scenarios; // 시나리오 데이터 변경
+    appState.UI_TEXT = langPacks[langCode].ui; // UI 텍스트 변경
 
     localStorage.setItem('speakup_ai_lang', langCode); // 로컬 스토리지에 언어 설정 저장
 
@@ -1025,7 +1047,11 @@ function setLanguage(langCode) {
     updateAllButtonTexts();
     // 시나리오 관련 UI 업데이트 (현재 시나리오 유지하면서 언어만 변경)
     // 현재 시나리오 객체의 description, title 등이 바뀔 수 있으므로 다시 할당하여 UI를 업데이트
-    appState.currentScenario = findScenarioById(appState.currentScenario.id); // 현재 시나리오를 새 언어 데이터로 다시 로드
+    // 이전에 로드된 currentScenario.id를 사용하여 새 언어 팩에서 해당 시나리오를 다시 찾습니다.
+    appState.currentScenario = findScenarioById(appState.currentScenario?.id || "cafe"); // currentScenario가 null일 경우 'cafe'로 대체
+    if (!appState.currentScenario) { // 혹시 로드된 시나리오가 없다면 기본값으로 설정
+         appState.currentScenario = findScenarioById("cafe");
+    }
     updateScenarioDisplay(false); // 시나리오 UI 텍스트 업데이트
     renderScenarioPicker(); // 시나리오 드롭다운 텍스트 업데이트
     elements.currentLanguageDisplay.textContent = langPacks[langCode].displayName; // 언어 선택 버튼 텍스트 업데이트
@@ -1066,37 +1092,33 @@ function attachEventListeners() {
 
     // 언어 선택 드롭다운 토글
     elements.languagePickerButton.addEventListener('click', toggleLanguagePicker);
-    // 언어 선택 링크 클릭
+    // 언어 선택 링크 클릭 (이벤트 위임)
     elements.languageDropdown.addEventListener('click', (event) => {
         event.preventDefault(); // 기본 링크 동작 방지
-        const langCode = event.target.dataset.lang;
-        if (langCode) {
+        const target = event.target.closest('a'); // 클릭된 요소 또는 가장 가까운 <a> 태그 찾기
+        if (target && target.dataset.lang) {
+            const langCode = target.dataset.lang;
             setLanguage(langCode);
             toggleLanguagePicker(); // 드롭다운 닫기
         }
     });
 
-
     // 문서 전체 클릭 시 드롭다운/모달 닫기 로직
     document.addEventListener('click', (event) => {
         // 시나리오 드롭다운 외부 클릭 시 닫기
-        if (elements.scenarioPickerButton && !elements.scenarioPickerButton.contains(event.target) &&
-            elements.scenarioDropdown && !elements.scenarioDropdown.contains(event.target) && appState.showScenarioPicker) {
+        if (elements.scenarioPickerContainer && !elements.scenarioPickerContainer.contains(event.target) && appState.showScenarioPicker) {
             toggleScenarioPicker();
         }
         // 언어 드롭다운 외부 클릭 시 닫기
-        if (elements.languagePickerContainer && !elements.languagePickerContainer.contains(event.target) &&
-            elements.languageDropdown && !elements.languageDropdown.classList.contains('hidden') && appState.showLanguagePicker) {
+        if (elements.languagePickerContainer && !elements.languagePickerContainer.contains(event.target) && appState.showLanguagePicker) {
             toggleLanguagePicker();
         }
         // 분석 모달 외부 클릭 시 닫기
-        // (모달 컨텐츠 영역을 클릭하지 않았고 모달이 열려 있을 때)
         if (elements.analysisModalContent && !elements.analysisModalContent.contains(event.target) &&
             elements.analysisModal && !elements.analysisModal.classList.contains('hidden')) {
             closeAnalysisModal();
         }
         // 가이드 모달 외부 클릭 시 닫기
-        // (모달 컨텐츠 영역을 클릭하지 않았고 모달이 열려 있을 때)
         if (elements.guideModalContent && !elements.guideModalContent.contains(event.target) &&
             elements.guideModal && !elements.guideModal.classList.contains('hidden')) {
             closeGuideModal();
@@ -1111,7 +1133,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 3. 언어 설정 로드 및 적용
     const savedLang = localStorage.getItem('speakup_ai_lang') || 'ko'; // 기본값 한국어
-    setLanguage(savedLang);
+    setLanguage(savedLang); // 이 시점에서 appState.SCENARIO_DATA 및 UI_TEXT가 설정됨
 
     await initFirebase(); // 4. Firebase 초기화 및 사용자 인증
 
@@ -1119,11 +1141,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (appState.currentUserId) {
         try {
             const userProfile = await getUserProfile(appState.currentUserId, APP_ID);
-            let loadedScenarioData = findScenarioById("cafe"); // 기본값 '카페에서' (SCENARIO_DATA는 이미 로드된 상태)
+            let loadedScenarioData = findScenarioById("cafe"); // 기본값 '카페에서' (현재 로드된 언어의 SCENARIO_DATA 사용)
 
             if (userProfile) {
                 const lastScenarioId = userProfile.lastScenarioId;
-                const foundScenarioFromDB = findScenarioById(lastScenarioId); // 현재 언어의 시나리오 데이터에서 찾음
+                const foundScenarioFromDB = findScenarioById(lastScenarioId); // 현재 언어의 SCENARIO_DATA에서 찾음
 
                 if (foundScenarioFromDB) {
                     loadedScenarioData = foundScenarioFromDB;
