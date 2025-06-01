@@ -7,14 +7,13 @@ import { getFirestore, collection, addDoc, query, onSnapshot, orderBy, serverTim
 import { SCENARIO_DATA as ko_SCENARIO_DATA, UI_TEXT as ko_UI_TEXT } from './lang/ko.js';
 import { SCENARIO_DATA as ja_SCENARIO_DATA, UI_TEXT as ja_UI_TEXT } from './lang/ja.js';
 
-// 언어 팩 정의 (새로운 언어 추가 시 여기에 추가)
+// 언어 팩 정의
 const langPacks = {
     'ko': { scenarios: ko_SCENARIO_DATA, ui: ko_UI_TEXT, displayName: "한국어" },
     'ja': { scenarios: ja_SCENARIO_DATA, ui: ja_UI_TEXT, displayName: "日本語" },
-    // 'en': { scenarios: en_SCENARIO_DATA, ui: en_UI_TEXT, displayName: "English" }, // 예시
 };
 
-// --- 앱 설정 (하드코딩된 값은 실제 사용 시 환경 변수 등으로 대체하는 것이 좋습니다) ---
+// --- 앱 설정 (실제 사용 시 환경 변수 등으로 대체하는 것이 좋습니다) ---
 const APP_ID = 'ai-tutor-html-default-v1';
 const FIREBASE_CONFIG = {
     apiKey: "YOUR_API_KEY", // 실제 API 키로 대체하세요
@@ -29,28 +28,31 @@ const API_ENDPOINT = "https://magenta-morning-find.glitch.me/generate"; // AI �
 // --- 앱의 전역 상태 관리 ---
 const appState = {
     currentMessages: [],
-    currentScenario: null, // 현재 선택된 시나리오 객체
-    currentFocusTopic: '', // 집중 연습 주제 (선택 사항)
-    currentCustomScenarioInput: '', // 사용자 정의 시나리오 입력 내용
-    isLoading: false, // AI 응답 대기 중 여부
-    isLoadingSuggestions: false, // 응답 제안 대기 중 여부
-    isLoadingAnalysis: false, // 문장 분석 대기 중 여부
-    showScenarioPicker: false, // 시나리오 선택 드롭다운 표시 여부
-    expandedCategories: {}, // 시나리오 드롭다운에서 카테고리 확장 상태
-    currentUserId: null, // Firebase 사용자 ID
-    userIsPlayingPrimaryRole: true, // 사용자가 시나리오의 주도적인 역할(예: 손님)을 맡고 있는지 여부
-    auth: null, // Firebase Auth 인스턴스
-    db: null, // Firestore DB 인스턴스
-    currentLangCode: '', // 현재 활성화된 언어 코드 (ko, ja 등)
-    SCENARIO_DATA: null, // 현재 언어의 시나리오 데이터
-    UI_TEXT: null, // 현재 언어의 UI 텍스트
-    showLanguagePicker: false, // 언어 선택 드롭다운 표시 여부
+    currentScenario: null,
+    currentFocusTopic: '',
+    currentCustomScenarioInput: '',
+    isLoading: false,
+    isLoadingSuggestions: false,
+    isLoadingAnalysis: false,
+    showScenarioPicker: false,
+    expandedCategories: {},
+    currentUserId: null,
+    userIsPlayingPrimaryRole: true,
+    auth: null,
+    db: null,
+    currentLangCode: '',
+    SCENARIO_DATA: null,
+    UI_TEXT: null,
+    showLanguagePicker: false,
 };
 
 // --- DOM 요소 캐싱 (초기화 시 한 번만 수행하여 성능 최적화) ---
 const elements = {};
 
 function initDOMElements() {
+    console.log("initDOMElements: DOM 요소 캐싱 시작"); // 디버깅 로그
+    // 모든 요소를 찾을 때 null 여부를 확인하여, 존재하지 않으면 null로 할당합니다.
+    // 이렇게 하면 이후 코드에서 null 체크만으로 안전하게 접근할 수 있습니다.
     elements.scenarioPickerButton = document.getElementById('scenarioPickerButton');
     elements.currentScenarioDisplay = document.getElementById('currentScenarioDisplay');
     elements.scenarioDropdown = document.getElementById('scenarioDropdown');
@@ -58,7 +60,7 @@ function initDOMElements() {
     elements.newConversationButton = document.getElementById('newConversationButton');
     elements.helpButton = document.getElementById('helpButton');
 
-    // 언어 선택 관련 요소 추가
+    // 언어 선택 관련 요소
     elements.languagePickerContainer = document.getElementById('languagePickerContainer');
     elements.languagePickerButton = document.getElementById('languagePickerButton');
     elements.currentLanguageDisplay = document.getElementById('currentLanguageDisplay');
@@ -68,7 +70,7 @@ function initDOMElements() {
     elements.scenarioTitleElem = document.getElementById('scenarioTitle');
     elements.scenarioDescriptionElem = document.getElementById('scenarioDescription');
     elements.starterPhrasesContainer = document.getElementById('starterPhrasesContainer');
-    // elements.starterPhrasesElem = document.getElementById('starterPhrases'); // 동적으로 재생성되므로 여기서 캐시하지 않음
+    // elements.starterPhrasesElem은 동적으로 재생성되므로 여기서 캐시하지 않습니다.
     elements.focusTopicGroup = document.getElementById('focusTopicGroup');
     elements.focusTopicInput = document.getElementById('focusTopicInput');
     elements.customScenarioGroup = document.getElementById('customScenarioGroup');
@@ -87,7 +89,7 @@ function initDOMElements() {
     elements.analyzeSentenceButtonText = document.getElementById('analyzeSentenceButtonText');
 
     elements.roleSwapButton = document.getElementById('roleSwapButton');
-    elements.roleSwapButtonText = document.getElementById('roleSwapButtonText'); // 역할 변경 버튼 텍스트 요소 추가
+    elements.roleSwapButtonText = document.getElementById('roleSwapButtonText');
 
     elements.guideModal = document.getElementById('guideModal');
     elements.guideModalContent = document.getElementById('guideModalContent');
@@ -101,24 +103,24 @@ function initDOMElements() {
     elements.closeAnalysisModalButtonFromAnalysis = document.getElementById('closeAnalysisModalButtonFromAnalysis');
     elements.confirmAnalysisModalButtonFromAnalysis = document.getElementById('confirmAnalysisModalButtonFromAnalysis');
 
-    // 모달 내 UI 텍스트 요소 (querySelector를 통해 찾음)
-    elements.guideModalTitle = elements.guideModal.querySelector('h2');
-    elements.analysisModalTitle = elements.analysisModal.querySelector('h3');
-    elements.englishFeedbackTitle = elements.analysisModal.querySelector('#englishAnalysisResult h4');
-    elements.koreanSummaryTitle = elements.analysisModal.querySelector('#koreanAnalysisResult h4');
+    // 모달 내 UI 텍스트 요소들: 부모 요소가 존재해야 쿼리합니다.
+    elements.guideModalTitle = elements.guideModal ? elements.guideModal.querySelector('h2') : null;
+    elements.analysisModalTitle = elements.analysisModal ? elements.analysisModal.querySelector('h3') : null;
+    elements.englishFeedbackTitle = elements.analysisModal ? elements.analysisModal.querySelector('#englishAnalysisResult h4') : null;
+    elements.koreanSummaryTitle = elements.analysisModal ? elements.analysisModal.querySelector('#koreanAnalysisResult h4') : null;
 
-    // 가이드 모달 p태그들 (텍스트 업데이트를 위해 캐시)
-    elements.guideP1 = elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(1)');
-    elements.guideP2 = elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(2)');
-    elements.guideP3 = elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(3)');
-    elements.guideP4_header = elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(4) strong');
-    elements.guideUl_item1_strong = elements.guideModalContent.querySelector('ul strong:nth-of-type(1)');
-    elements.guideUl_item1_text = elements.guideModalContent.querySelector('ul strong:nth-of-type(1)').nextSibling;
-    elements.guideUl_item2_strong = elements.guideModalContent.querySelector('ul strong:nth-of-type(2)');
-    elements.guideUl_item2_text = elements.guideModalContent.querySelector('ul strong:nth-of-type(2)').nextSibling;
-    elements.guideUl_item3_strong = elements.guideModalContent.querySelector('ul strong:nth-of-type(3)');
-    elements.guideUl_item3_text = elements.guideModalContent.querySelector('ul strong:nth-of-type(3)').nextSibling;
-    elements.guideP5 = elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(5)');
+    // 가이드 모달 내부 텍스트 요소들: `guideModalContent`가 존재해야 쿼리합니다.
+    elements.guideP1 = elements.guideModalContent ? elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(1)') : null;
+    elements.guideP2 = elements.guideModalContent ? elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(2)') : null;
+    elements.guideP3 = elements.guideModalContent ? elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(3)') : null;
+    elements.guideP4_header = elements.guideModalContent ? elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(4) strong') : null;
+    elements.guideUl = elements.guideModalContent ? elements.guideModalContent.querySelector('ul') : null;
+    // li 요소는 strong 태그를 포함하므로, innerHTML로 업데이트하기 위해 li 자체를 가져옵니다.
+    elements.guideUl_item1_li = elements.guideUl ? elements.guideUl.querySelector('li:nth-of-type(1)') : null;
+    elements.guideUl_item2_li = elements.guideUl ? elements.guideUl.querySelector('li:nth-of-type(2)') : null;
+    elements.guideUl_item3_li = elements.guideUl ? elements.guideUl.querySelector('li:nth-of-type(3)') : null;
+    elements.guideP5 = elements.guideModalContent ? elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(5)') : null;
+    console.log("initDOMElements: DOM 요소 캐싱 완료", elements); // 디버깅 로그
 }
 
 // --- 유틸리티 함수 ---
@@ -189,27 +191,25 @@ function getStarterPhrases(scenario, userIsPlayingPrimaryRole) {
  */
 function getDynamicContext(scenario, customInput, focusTopic, userIsPlayingPrimaryRole) {
     // AI의 역할 설명 및 대화 지침은 해당 언어로 제공되어야 함
-    // (예: 일본어 회화 앱이라면 이 부분이 일본어)
     if (!scenario) return "あなたは一般的な日本語チューターです。シナリオは選択されていません。"; // 일본어
 
     let scenarioSpecificContext = "";
     if (scenario.id === "custom") {
-        if (!customInput.trim()) return `あなたは親切で役立つAIチューターです。ユーザーはまだテーマを指定していません。何について話したいか尋ねてください。返信は簡潔に（1〜2文で）し、一度に1つの質問のみをしてください。`; // 일본어
+        if (!customInput.trim()) return `あなたは親切で役立つAIチューターです。ユーザーはまだテーマを指定していません。何について話したいか尋ねてください。返信は簡潔に（1〜2文で）し、一度に1つの質問のみをしてください。`; // 日本語
         if (!userIsPlayingPrimaryRole) {
-            scenarioSpecificContext = `ROLE SWAP: あなたはユーザーのカスタムシナリオ「${customInput}」に基づいて会話パートナーになりました。人間ユーザーはあなたのAIチューターまたはガイドとして行動します。シナリオに基づいて自然に返信し、返信は簡潔に（1〜2文で）し、必要に応じて一度に1つの質問のみをしてください。すでに回答を得た質問はしないでください。`; // 일본어
+            scenarioSpecificContext = `ROLE SWAP: あなたはユーザーのカスタムシナリオ「${customInput}」に基づいて会話パートナーになりました。人間ユーザーはあなたのAIチューターまたはガイドとして行動します。シナリオに基づいて自然に返信し、返信は簡潔に（1〜2文で）し、必要に応じて一度に1つの質問のみをしてください。すでに回答を得た質問はしないでください。`; // 日本語
         } else {
-            scenarioSpecificContext = `あなたは親切で役立つAIチューターです。ユーザーはカスタムシナリオ「${customInput}」に基づいて会話を練習したいと考えています。このテーマのパートナーとして行動し、関連する質問をし、ユーザーの日本語学習を手伝ってください。返信は簡潔に（1〜2文で）し、必要に応じて一度に1つの質問のみをしてください。すでに回答を得た質問はしないでください。`; // 일본어
+            scenarioSpecificContext = `あなたは親切で役立つAIチューターです。ユーザーはカスタムシナリオ「${customInput}」に基づいて会話を練習したいと考えています。このテーマのパートナーとして行動し、関連する質問をし、ユーザーの日本語学習を手伝ってください。返信は簡潔に（1〜2文で）し、必要に応じて一度に1つの質問のみをしてください。すでに回答を得た質問はしないでください。`; // 日本語
         }
     } else {
-        // SCENARIO_DATA에 정의된 baseContext/baseContext_swapped는 AI가 응답할 언어(이 경우 일본어)로 되어 있어야 함
         if (userIsPlayingPrimaryRole) {
             scenarioSpecificContext = scenario.baseContext; // SCENARIO_DATA.ja.js에서 일본어로 정의됨
         } else {
-            scenarioSpecificContext = scenario.baseContext_swapped || `役割交代！あなたは今、「${scenario.title}」シナリオでAIが通常演じる役割を担っています。たとえば、ユーザーがカフェのお客さんだった場合、あなたは今お客さんです。人間ユーザーは相手の役割（例：バリスタ）を演じます。それに合わせて開始または返信し、返信は簡潔に（1〜2文で）し、必要に応じて一度に1つの質問のみをしてください。すでに回答を得た質問はしないでください。`; // 일본어
+            scenarioSpecificContext = scenario.baseContext_swapped || `役割交代！あなたは今、「${scenario.title}」シナリオでAIが通常演じる役割を担っています。たとえば、ユーザーがカフェのお客さんだった場合、あなたは今お客さんです。人間ユーザーは相手の役割（例：バリスタ）を演じます。それに合わせて開始または返信し、返信は簡潔に（1〜2文で）し、必要に応じて一度に1つの質問のみをしてください。すでに回答を得た質問はしないでください。`; // 日本語
         }
     }
 
-    const focusTopicInstruction = (userIsPlayingPrimaryRole && focusTopic && scenario.id !== "custom") ? `\n\nユーザーはさらに「${focusTopic}」に焦点を当てたいと考えています。会話にこれを取り入れてみてください。` : ''; // 일본어
+    const focusTopicInstruction = (userIsPlayingPrimaryRole && focusTopic && scenario.id !== "custom") ? `\n\nユーザーはさらに「${focusTopic}」に焦点を当てたいと考えています。会話にこれを取り入れてみてください。` : ''; // 日本語
 
     return `${scenarioSpecificContext}${focusTopicInstruction}`;
 }
@@ -220,6 +220,7 @@ function getDynamicContext(scenario, customInput, focusTopic, userIsPlayingPrima
  * 메시지 컨테이너에 현재 메시지들을 렌더링합니다.
  */
 function renderMessages() {
+    if (!elements.messagesContainer) return; // 요소 없으면 종료
     elements.messagesContainer.innerHTML = ''; // 기존 메시지 삭제
     appState.currentMessages.forEach(msg => {
         const messageWrapper = document.createElement('div');
@@ -232,7 +233,7 @@ function renderMessages() {
         messageWrapper.appendChild(messageBubble);
         elements.messagesContainer.appendChild(messageWrapper);
     });
-    // 스크롤을 최신 메시지로 이동
+    // スクロールを最新メッセージに移動
     elements.messagesContainer.scrollTop = elements.messagesContainer.scrollHeight;
 }
 
@@ -248,120 +249,138 @@ function updateScenarioDisplay(isConversationStarting = false) {
         ? (appState.currentCustomScenarioInput ? `${appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput).split(':')[0]}: ${appState.currentCustomScenarioInput.substring(0, 10)}...` : appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput))
         : (appState.currentScenario.categoryTitle ? `${appState.currentScenario.title.split(" ")[0]}` : appState.currentScenario.title.split(" ")[0]);
 
-    elements.currentScenarioDisplay.textContent = displayTitle;
-    elements.headerTitle.title = appState.currentScenario.title; // 전체 제목은 툴팁으로
+    if (elements.currentScenarioDisplay) elements.currentScenarioDisplay.textContent = displayTitle;
+    if (elements.headerTitle) elements.headerTitle.title = appState.currentScenario.title; // 전체 제목은 툴팁으로
 
     // 대화 시작 여부에 따라 시나리오 설명 영역 숨김/표시
     const elementsToHide = document.querySelectorAll('.hide-after-conversation-start');
     if (isConversationStarting) {
         elementsToHide.forEach(el => el.classList.add('hidden'));
-        elements.scenarioDescriptionArea.classList.remove('pb-4', 'sm:pb-5');
-        elements.scenarioTitleElem.classList.remove('mb-1.5');
-        elements.scenarioTitleElem.classList.add('mb-0');
+        if (elements.scenarioDescriptionArea) {
+            elements.scenarioDescriptionArea.classList.remove('pb-4', 'sm:pb-5');
+        }
+        if (elements.scenarioTitleElem) {
+            elements.scenarioTitleElem.classList.remove('mb-1.5');
+            elements.scenarioTitleElem.classList.add('mb-0');
+        }
     } else {
         elementsToHide.forEach(el => el.classList.remove('hidden'));
-        elements.scenarioTitleElem.textContent = appState.currentScenario.id === "custom"
-            ? appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput)
-            : appState.currentScenario.title;
-        elements.scenarioDescriptionElem.textContent = appState.currentScenario.id === "custom"
-            ? appState.UI_TEXT.customScenarioDescription
-            : appState.currentScenario.description;
+        if (elements.scenarioTitleElem) {
+            elements.scenarioTitleElem.textContent = appState.currentScenario.id === "custom"
+                ? appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput)
+                : appState.currentScenario.title;
+        }
+        if (elements.scenarioDescriptionElem) {
+            elements.scenarioDescriptionElem.textContent = appState.currentScenario.id === "custom"
+                ? appState.UI_TEXT.customScenarioDescription
+                : appState.currentScenario.description;
+        }
 
         // "이렇게 시작해 보세요:" 섹션의 모든 콘텐츠를 먼저 비웁니다. (누적 방지)
-        elements.starterPhrasesContainer.innerHTML = '';
+        if (elements.starterPhrasesContainer) {
+            elements.starterPhrasesContainer.innerHTML = '';
+        }
+
 
         const starters = getStarterPhrases(appState.currentScenario, appState.userIsPlayingPrimaryRole);
         if (starters && starters.length > 0) {
-            elements.starterPhrasesContainer.classList.remove('hidden');
+            if (elements.starterPhrasesContainer) {
+                elements.starterPhrasesContainer.classList.remove('hidden');
 
-            // "이렇게 시작해 보세요:" 텍스트를 위한 p 태그를 새로 생성하여 추가합니다.
-            const starterPrefix = document.createElement('p');
-            starterPrefix.className = "text-xs font-semibold text-sky-600 mb-1.5";
-            starterPrefix.textContent = appState.UI_TEXT.starterPhrasePrefix;
-            elements.starterPhrasesContainer.appendChild(starterPrefix);
+                // "이렇게 시작해 보세요:" 텍스트를 위한 p 태그를 새로 생성하여 추가합니다.
+                const starterPrefix = document.createElement('p');
+                starterPrefix.className = "text-xs font-semibold text-sky-600 mb-1.5";
+                starterPrefix.textContent = appState.UI_TEXT.starterPhrasePrefix;
+                elements.starterPhrasesContainer.appendChild(starterPrefix);
 
-            // 시작 문장 버튼들을 담을 div를 새로 생성하여 추가합니다.
-            // HTML 구조에 따라 이 부분은 `starterPhrasesElem`이 캐시되어 있다면 해당 요소에 추가합니다.
-            // 여기서는 `initDOMElements`에서 `elements.starterPhrasesElem`을 캐시하지 않으므로,
-            // 새로운 div를 만들고 그 div를 `elements.starterPhrasesContainer`에 추가합니다.
-            const newStarterPhrasesDiv = document.createElement('div');
-            newStarterPhrasesDiv.id = 'starterPhrases'; // HTML에 정의된 ID와 동일하게 유지
-            newStarterPhrasesDiv.className = 'flex flex-wrap gap-2';
-            elements.starterPhrasesContainer.appendChild(newStarterPhrasesDiv);
-            // elements.starterPhrasesElem = newStarterPhrasesDiv; // 이 참조는 더 이상 사용하지 않아도 됩니다.
+                // 시작 문장 버튼들을 담을 div를 새로 생성하여 추가합니다.
+                const newStarterPhrasesDiv = document.createElement('div');
+                newStarterPhrasesDiv.id = 'starterPhrases'; // HTML에 정의된 ID와 동일하게 유지
+                newStarterPhrasesDiv.className = 'flex flex-wrap gap-2';
+                elements.starterPhrasesContainer.appendChild(newStarterPhrasesDiv);
 
-            // 이제 새로 생성된 div에 버튼들을 추가합니다.
-            starters.forEach(starter => {
-                const button = document.createElement('button');
-                button.className = "text-xs bg-sky-100 hover:bg-sky-200 text-sky-700 px-2 py-1 rounded-md shadow-sm transition-colors";
-                button.textContent = `"${starter}"`;
-                // 동적으로 생성된 버튼에 직접 이벤트 리스너 연결
-                button.onclick = () => { elements.userInputElem.value = starter; };
-                newStarterPhrasesDiv.appendChild(button); // 새로 생성된 div에 추가
-            });
+                // 이제 새로 생성된 div에 버튼들을 추가합니다.
+                starters.forEach(starter => {
+                    const button = document.createElement('button');
+                    button.className = "text-xs bg-sky-100 hover:bg-sky-200 text-sky-700 px-2 py-1 rounded-md shadow-sm transition-colors";
+                    button.textContent = `"${starter}"`;
+                    // 동적으로 생성된 버튼에 직접 이벤트 리스너 연결
+                    button.onclick = () => { if (elements.userInputElem) elements.userInputElem.value = starter; };
+                    newStarterPhrasesDiv.appendChild(button); // 새로 생성된 div에 추가
+                });
+            }
         } else {
-            elements.starterPhrasesContainer.classList.add('hidden');
+            if (elements.starterPhrasesContainer) {
+                elements.starterPhrasesContainer.classList.add('hidden');
+            }
         }
 
         // 사용자 설정 시나리오와 집중 연습 주제 입력 필드 표시/숨김 처리
         if (appState.currentScenario.id === "custom") {
-            elements.customScenarioGroup.classList.remove('hidden');
-            elements.focusTopicGroup.classList.add('hidden');
-            elements.customScenarioInputElem.value = appState.currentCustomScenarioInput;
-            elements.customScenarioInputElem.placeholder = appState.UI_TEXT.customScenarioPlaceholder;
+            if (elements.customScenarioGroup) elements.customScenarioGroup.classList.remove('hidden');
+            if (elements.focusTopicGroup) elements.focusTopicGroup.classList.add('hidden');
+            if (elements.customScenarioInputElem) {
+                elements.customScenarioInputElem.value = appState.currentCustomScenarioInput;
+                elements.customScenarioInputElem.placeholder = appState.UI_TEXT.customScenarioPlaceholder;
+            }
         } else {
-            elements.customScenarioGroup.classList.add('hidden');
-            elements.focusTopicGroup.classList.remove('hidden');
-            elements.focusTopicInput.value = appState.currentFocusTopic;
-            elements.focusTopicInput.placeholder = appState.UI_TEXT.focusTopicPlaceholder;
+            if (elements.customScenarioGroup) elements.customScenarioGroup.classList.add('hidden');
+            if (elements.focusTopicGroup) elements.focusTopicGroup.classList.remove('hidden');
+            if (elements.focusTopicInput) {
+                elements.focusTopicInput.value = appState.currentFocusTopic;
+                elements.focusTopicInput.placeholder = appState.UI_TEXT.focusTopicPlaceholder;
+            }
         }
 
         // 시나리오 설명 영역의 하단 여백 및 제목 스타일 복구
-        elements.scenarioDescriptionArea.classList.remove('hidden');
-        elements.scenarioDescriptionArea.classList.add('pb-4', 'sm:pb-5');
-        elements.scenarioTitleElem.classList.add('mb-1.5');
-        elements.scenarioTitleElem.classList.remove('mb-0');
+        if (elements.scenarioDescriptionArea) {
+            elements.scenarioDescriptionArea.classList.remove('hidden');
+            elements.scenarioDescriptionArea.classList.add('pb-4', 'sm:pb-5');
+        }
+        if (elements.scenarioTitleElem) {
+            elements.scenarioTitleElem.classList.add('mb-1.5');
+            elements.scenarioTitleElem.classList.remove('mb-0');
+        }
     }
 }
 
 /**
  * 앱의 모든 정적 버튼 및 UI 텍스트를 현재 언어에 맞춰 업데이트합니다.
+ * 이 함수는 `lang/ko.js` 및 `lang/ja.js`의 UI_TEXT 객체에
+ * HTML 문자열 형태의 상세 가이드 텍스트가 정의되어 있음을 가정합니다.
  */
 function updateAllButtonTexts() {
-    elements.headerTitle.textContent = appState.UI_TEXT.appTitle; // 앱 제목
-    elements.helpButton.title = appState.UI_TEXT.guideModalTitle.split(' ')[0]; // '도움말 보기' 대신 '사용 가이드'의 첫 단어 (임시)
-    elements.newConversationButton.title = appState.UI_TEXT.newConversationAlert("").split(" ")[0]; // '새 대화 시작' (임시)
-    elements.suggestRepliesButtonText.textContent = appState.UI_TEXT.suggestReplies;
-    elements.analyzeSentenceButtonText.textContent = appState.UI_TEXT.analyzeSentence;
-    elements.roleSwapButtonText.textContent = appState.UI_TEXT.roleSwapButtonText; // 역할 변경
-    elements.userInputElem.placeholder = appState.UI_TEXT.customScenarioPlaceholder; // input 메시지 입력 부분 (임시)
+    if (elements.headerTitle) elements.headerTitle.textContent = appState.UI_TEXT.appTitle;
+    if (elements.helpButton) elements.helpButton.title = appState.UI_TEXT.guideModalTitle.split(' ')[0]; // 툴팁
+    if (elements.newConversationButton) elements.newConversationButton.title = appState.UI_TEXT.newConversationAlert("").split(" ")[0]; // 툴팁
 
-    // 가이드 모달 텍스트 업데이트 (UI_TEXT의 상세 텍스트 사용)
-    elements.guideModalTitle.textContent = appState.UI_TEXT.guideModalTitle;
-    elements.guideP1.innerHTML = `<strong>1. 🤖 シナリオ選択:</strong><br/> ${appState.UI_TEXT.guideText1}`; // 일본어
-    elements.guideP2.innerHTML = `<strong>2. 🎯 集中テーマ (任意):</strong><br/> ${appState.UI_TEXT.guideText2}`; // 일본어
-    elements.guideP3.innerHTML = `<strong>3. 🗣️ 会話開始:</strong><br/> ${appState.UI_TEXT.guideText3}`; // 일본어
+    if (elements.suggestRepliesButtonText) elements.suggestRepliesButtonText.textContent = appState.UI_TEXT.suggestReplies;
+    if (elements.analyzeSentenceButtonText) elements.analyzeSentenceButtonText.textContent = appState.UI_TEXT.analyzeSentence;
+    if (elements.roleSwapButtonText) elements.roleSwapButtonText.textContent = appState.UI_TEXT.roleSwapButtonText;
+    if (elements.userInputElem) elements.userInputElem.placeholder = appState.UI_TEXT.customScenarioPlaceholder;
 
-    elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(4) strong').textContent = appState.UI_TEXT.guideText4_header; // "AI 기능 활용하기"
-    elements.guideUl_item1_strong.textContent = appState.UI_TEXT.suggestReplies;
-    elements.guideUl_item1_text.textContent = `: ${appState.UI_TEXT.guideText4_item1}`; // 앞의 `<strong>` 태그 뒤에 공백이 있을 수 있으므로 `nextSibling` 사용
-    elements.guideUl_item2_strong.textContent = appState.UI_TEXT.analyzeSentence;
-    elements.guideUl_item2_text.textContent = `: ${appState.UI_TEXT.guideText4_item2}`;
-    elements.guideUl_item3_strong.textContent = appState.UI_TEXT.roleSwapButtonText;
-    elements.guideUl_item3_text.textContent = `: ${appState.UI_TEXT.guideText4_item3}`;
+    // 가이드 모달 텍스트 업데이트 (UI_TEXT의 상세 HTML 텍스트 사용)
+    if (elements.guideModalTitle) elements.guideModalTitle.textContent = appState.UI_TEXT.guideModalTitle;
+    if (elements.guideP1) elements.guideP1.innerHTML = appState.UI_TEXT.guideP1_html;
+    if (elements.guideP2) elements.guideP2.innerHTML = appState.UI_TEXT.guideP2_html;
+    if (elements.guideP3) elements.guideP3.innerHTML = appState.UI_TEXT.guideP3_html;
 
-    elements.guideP5.innerHTML = `<strong>5. 🔄 新しい会話を開始:</strong><br/> ${appState.UI_TEXT.guideText5}`; // 일본어
+    if (elements.guideP4_header) elements.guideP4_header.innerHTML = appState.UI_TEXT.guideP4_header_html;
+    if (elements.guideUl_item1_li) elements.guideUl_item1_li.innerHTML = appState.UI_TEXT.guideP4_item1_html;
+    if (elements.guideUl_item2_li) elements.guideUl_item2_li.innerHTML = appState.UI_TEXT.guideP4_item2_html;
+    if (elements.guideUl_item3_li) elements.guideUl_item3_li.innerHTML = appState.UI_TEXT.guideP4_item3_html;
 
-    elements.confirmGuideModalButton.textContent = appState.UI_TEXT.guideModalConfirmButton;
+    if (elements.guideP5) elements.guideP5.innerHTML = appState.UI_TEXT.guideP5_html;
+    if (elements.confirmGuideModalButton) elements.confirmGuideModalButton.textContent = appState.UI_TEXT.guideModalConfirmButton;
 
     // 분석 모달 텍스트 업데이트
-    elements.analysisModalTitle.textContent = appState.UI_TEXT.analysisResultTitle;
-    elements.englishFeedbackTitle.textContent = appState.UI_TEXT.englishFeedbackTitle;
-    elements.koreanSummaryTitle.textContent = appState.UI_TEXT.koreanSummaryTitle;
-    elements.confirmAnalysisModalButtonFromAnalysis.textContent = appState.UI_TEXT.analysisConfirmButton;
+    if (elements.analysisModalTitle) elements.analysisModalTitle.textContent = appState.UI_TEXT.analysisResultTitle;
+    if (elements.englishFeedbackTitle) elements.englishFeedbackTitle.textContent = appState.UI_TEXT.englishFeedbackTitle;
+    if (elements.koreanSummaryTitle) elements.koreanSummaryTitle.textContent = appState.UI_TEXT.koreanSummaryTitle;
+    if (elements.confirmAnalysisModalButtonFromAnalysis) elements.confirmAnalysisModalButtonFromAnalysis.textContent = appState.UI_TEXT.analysisConfirmButton;
 
     // 언어 선택 드롭다운 텍스트 업데이트
-    const langLinks = elements.languageDropdown.querySelectorAll('a');
+    const langLinks = elements.languageDropdown ? elements.languageDropdown.querySelectorAll('a') : [];
     langLinks.forEach(link => {
         const langCode = link.dataset.lang;
         if (langPacks[langCode]) {
@@ -370,7 +389,9 @@ function updateAllButtonTexts() {
     });
 
     // 현재 언어 표시 업데이트
-    elements.currentLanguageDisplay.textContent = langPacks[appState.currentLangCode].displayName;
+    if (elements.currentLanguageDisplay && langPacks[appState.currentLangCode]) {
+        elements.currentLanguageDisplay.textContent = langPacks[appState.currentLangCode].displayName;
+    }
 }
 
 
@@ -394,6 +415,7 @@ function setLoadingState(buttonId, textWhileLoading, isLoadingFlag) {
  * @param {boolean} isLoadingFlag - 로딩 중인지 여부
  */
 function setSendMessageLoadingState(isLoadingFlag) {
+    if (!elements.sendMessageButton) return;
     elements.sendMessageButton.disabled = isLoadingFlag;
     if (isLoadingFlag) {
         elements.sendMessageButton.innerHTML = `<svg class="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle> <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path> </svg>`;
@@ -416,14 +438,15 @@ function clearInput(elementId) {
  * AI 응답 제안 목록을 숨기고 내용을 지웁니다.
  */
 function hideSuggestedReplies() {
-    elements.suggestedRepliesList.innerHTML = '';
-    elements.suggestedRepliesContainer.classList.add('hidden');
+    if (elements.suggestedRepliesList) elements.suggestedRepliesList.innerHTML = '';
+    if (elements.suggestedRepliesContainer) elements.suggestedRepliesContainer.classList.add('hidden');
 }
 
 /**
  * 시나리오 선택 드롭다운을 렌더링합니다.
  */
 function renderScenarioPicker() {
+    if (!elements.scenarioDropdown) return;
     elements.scenarioDropdown.innerHTML = ''; // 기존 드롭다운 내용 초기화
     appState.SCENARIO_DATA.forEach(category => { // 현재 언어의 시나리오 데이터 사용
         const categoryDiv = document.createElement('div');
@@ -481,10 +504,10 @@ function renderScenarioPicker() {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = `py-1 px-1.5 sm:py-1.5 sm:px-2 text-xs hover:bg-sky-50 cursor-pointer text-slate-600 scenario-picker-item`;
                 if (appState.currentScenario && appState.currentScenario.id === item.id) {
-                    itemDiv.classList.add('scenario-picker-item-selected'); // 현재 선택된 아이템 스타일 적용
+                    itemDiv.classList.add('scenario-picker-item-selected'); // 現在選択されているアイテムのスタイルを適用
                 }
                 itemDiv.textContent = item.title;
-                // 시나리오 아이템 클릭 이벤트
+                // シナリオアイテムクリックイベント
                 itemDiv.onclick = (event) => {
                     event.stopPropagation();
                     handleScenarioSelect(item);
@@ -503,16 +526,20 @@ function renderScenarioPicker() {
 function toggleScenarioPicker() {
     appState.showScenarioPicker = !appState.showScenarioPicker;
     if (appState.showScenarioPicker) {
-        renderScenarioPicker(); // 드롭다운 내용 렌더링
-        elements.scenarioDropdown.classList.remove('hidden');
-        elements.scenarioDropdown.classList.add('fade-in');
-        // 시나리오 피커가 열리면 언어 피커는 닫기
+        renderScenarioPicker(); // ドロップダウン内容をレンダリング
+        if (elements.scenarioDropdown) {
+            elements.scenarioDropdown.classList.remove('hidden');
+            elements.scenarioDropdown.classList.add('fade-in');
+        }
+        // シナリオピッカーが開いたら、言語ピッカーは閉じる
         if (appState.showLanguagePicker) {
             toggleLanguagePicker();
         }
     } else {
-        elements.scenarioDropdown.classList.add('hidden');
-        appState.expandedCategories = {}; // 드롭다운 숨길 때 확장 상태 초기화
+        if (elements.scenarioDropdown) {
+            elements.scenarioDropdown.classList.add('hidden');
+        }
+        appState.expandedCategories = {}; // ドロップダウンを非表示にする際に拡張状態を初期化
     }
 }
 
@@ -522,14 +549,18 @@ function toggleScenarioPicker() {
 function toggleLanguagePicker() {
     appState.showLanguagePicker = !appState.showLanguagePicker;
     if (appState.showLanguagePicker) {
-        elements.languageDropdown.classList.remove('hidden');
-        elements.languageDropdown.classList.add('fade-in');
-        // 언어 피커가 열리면 시나리오 피커는 닫기
+        if (elements.languageDropdown) {
+            elements.languageDropdown.classList.remove('hidden');
+            elements.languageDropdown.classList.add('fade-in');
+        }
+        // 言語ピッカーが開いたら、シナリオピッカーは閉じる
         if (appState.showScenarioPicker) {
             toggleScenarioPicker();
         }
     } else {
-        elements.languageDropdown.classList.add('hidden');
+        if (elements.languageDropdown) {
+            elements.languageDropdown.classList.add('hidden');
+        }
     }
 }
 
@@ -540,6 +571,7 @@ function toggleLanguagePicker() {
  * 사용 가이드 모달을 표시합니다.
  */
 function showGuideModal() {
+    if (!elements.guideModal) return;
     elements.guideModal.classList.remove('hidden');
     elements.guideModal.classList.add('fade-in');
 }
@@ -548,6 +580,7 @@ function showGuideModal() {
  * 사용 가이드 모달을 닫고, 다시 표시하지 않도록 로컬 스토리지에 저장합니다.
  */
 function closeGuideModal() {
+    if (!elements.guideModal) return;
     elements.guideModal.classList.add('hidden');
     localStorage.setItem(`guideShown_${APP_ID}`, 'true');
 }
@@ -557,36 +590,36 @@ function closeGuideModal() {
  * @param {string} combinedAnalysisText - 영어 분석 결과와 한국어 요약이 포함된 텍스트
  */
 function showAnalysisModal(combinedAnalysisText) {
-    const koreanSummaryMarker = appState.UI_TEXT.koreanSummaryTitle; // "🇰🇷 한국어 요약:"
+    const koreanSummaryMarker = appState.UI_TEXT.koreanSummaryTitle;
     const koreanSummaryIndex = combinedAnalysisText.indexOf(koreanSummaryMarker);
 
     let engAnalysis = "";
     let korSummary = "";
 
     if (koreanSummaryIndex !== -1) {
-        // 한국어 요약 마커 기준으로 영어 분석과 한국어 요약 분리
         engAnalysis = combinedAnalysisText.substring(0, koreanSummaryIndex).trim();
         korSummary = combinedAnalysisText.substring(koreanSummaryIndex + koreanSummaryMarker.length).trim();
     } else {
-        // 마커가 없을 경우 전체를 영어 분석으로 간주
         engAnalysis = combinedAnalysisText.trim();
-        korSummary = "한국어 요약을 생성하지 못했습니다."; // 또는 다른 기본 메시지
+        korSummary = "한국어 요약을 생성할 수 없습니다."; // 기본 메시지 (번역 필요)
     }
 
-    elements.englishAnalysisResultDiv.innerHTML = simpleMarkdownToHtml(engAnalysis);
-    elements.koreanAnalysisResultDiv.innerHTML = simpleMarkdownToHtml(korSummary);
+    if (elements.englishAnalysisResultDiv) elements.englishAnalysisResultDiv.innerHTML = simpleMarkdownToHtml(engAnalysis);
+    if (elements.koreanAnalysisResultDiv) elements.koreanAnalysisResultDiv.innerHTML = simpleMarkdownToHtml(korSummary);
 
-    elements.analysisModal.classList.remove('hidden');
-    elements.analysisModal.classList.add('fade-in');
+    if (elements.analysisModal) {
+        elements.analysisModal.classList.remove('hidden');
+        elements.analysisModal.classList.add('fade-in');
+    }
 }
 
 /**
  * 문장 분석 결과 모달을 닫고 내용을 초기화합니다.
  */
 function closeAnalysisModal() {
-    elements.analysisModal.classList.add('hidden');
-    elements.englishAnalysisResultDiv.innerHTML = '';
-    elements.koreanAnalysisResultDiv.innerHTML = '';
+    if (elements.analysisModal) elements.analysisModal.classList.add('hidden');
+    if (elements.englishAnalysisResultDiv) elements.englishAnalysisResultDiv.innerHTML = '';
+    if (elements.koreanAnalysisResultDiv) elements.koreanAnalysisResultDiv.innerHTML = '';
 }
 
 // --- Firebase 서비스 함수 ---
@@ -596,36 +629,40 @@ function closeAnalysisModal() {
  * @returns {Promise<void>} 인증 완료 시 resolve
  */
 async function initFirebase() {
-    const firebaseApp = initializeApp(FIREBASE_CONFIG);
-    appState.auth = getAuth(firebaseApp);
-    appState.db = getFirestore(firebaseApp);
+    try {
+        const firebaseApp = initializeApp(FIREBASE_CONFIG);
+        appState.auth = getAuth(firebaseApp);
+        appState.db = getFirestore(firebaseApp);
 
-    return new Promise((resolve, reject) => {
-        // Firebase 인증 상태 변경 감지
-        onAuthStateChanged(appState.auth, async (user) => {
-            if (user) {
-                // 이미 로그인된 사용자
-                appState.currentUserId = user.uid;
-                resolve();
-            } else {
-                try {
-                    // 커스텀 토큰이 제공되면 사용
-                    if (typeof window.__initial_auth_token !== 'undefined' && window.__initial_auth_token) {
-                        const userCredential = await signInWithCustomToken(appState.auth, window.__initial_auth_token);
-                        appState.currentUserId = userCredential.user.uid;
-                    } else {
-                        // 익명 로그인 시도
-                        const userCredential = await signInAnonymously(appState.auth);
-                        appState.currentUserId = userCredential.user.uid;
-                    }
+        return new Promise((resolve, reject) => {
+            onAuthStateChanged(appState.auth, async (user) => {
+                if (user) {
+                    appState.currentUserId = user.uid;
+                    console.log("Firebase: User logged in:", user.uid); // 디버깅 로그
                     resolve();
-                } catch (error) {
-                    console.error("Firebase 인증 실패:", error);
-                    reject(error);
+                } else {
+                    try {
+                        if (typeof window.__initial_auth_token !== 'undefined' && window.__initial_auth_token) {
+                            const userCredential = await signInWithCustomToken(appState.auth, window.__initial_auth_token);
+                            appState.currentUserId = userCredential.user.uid;
+                            console.log("Firebase: Custom token login successful:", userCredential.user.uid); // 디버깅 로그
+                        } else {
+                            const userCredential = await signInAnonymously(appState.auth);
+                            appState.currentUserId = userCredential.user.uid;
+                            console.log("Firebase: Anonymous login successful:", userCredential.user.uid); // 디버깅 로그
+                        }
+                        resolve();
+                    } catch (error) {
+                        console.error("Firebase 인증 실패 (signInAnonymously/CustomToken):", error); // 디버깅 로그
+                        reject(error);
+                    }
                 }
-            }
+            });
         });
-    });
+    } catch (error) {
+        console.error("Firebase 초기화 실패 (initializeApp):", error); // 디버깅 로그
+        throw error;
+    }
 }
 
 /**
@@ -636,8 +673,8 @@ async function initFirebase() {
  */
 async function getUserProfile(userId, appId) {
     if (!appState.db) {
-        console.error("Firestore가 초기화되지 않았습니다.");
-        return null; // DB 미초기화 시 null 반환 또는 에러 throw
+        console.error("Firestore가 초기화되지 않았습니다. getUserProfile 불가.");
+        return null;
     }
     const userProfileRef = doc(appState.db, `artifacts/${appId}/users/${userId}/profile`, 'info');
     try {
@@ -660,59 +697,59 @@ async function getUserProfile(userId, appId) {
  */
 async function updateUserProfile(userId, appId, lastScenarioId, lastRoleIsUserPrimary, lastFocusTopic, lastCustomScenarioDetails) {
     if (!appState.db) {
-        console.error("Firestore가 초기화되지 않았습니다.");
-        return; // DB 미초기화 시 함수 종료
+        console.error("Firestore가 초기화되지 않았습니다. updateUserProfile 불가.");
+        return;
     }
     const userProfileRef = doc(appState.db, `artifacts/${appId}/users/${userId}/profile`, 'info');
     const updateData = {
-        lastLogin: serverTimestamp(), // 서버 타임스탬프 (마지막 로그인 시간)
+        lastLogin: serverTimestamp(), // サーバータイムスタンプ（最終ログイン時間）
         lastScenarioId: lastScenarioId,
         lastRoleIsUserPrimary: lastRoleIsUserPrimary,
     };
 
-    // 사용자 정의 시나리오일 경우 관련 정보 저장
+    // ユーザー定義シナリオの場合、関連情報を保存
     if (lastScenarioId === "custom" && lastCustomScenarioDetails) {
         updateData.lastCustomScenarioDetails = {
-            title: appState.UI_TEXT.scenarioTitleCustom(lastCustomScenarioDetails), // UI_TEXT에서 제목 생성 함수 사용
+            title: appState.UI_TEXT.scenarioTitleCustom(lastCustomScenarioDetails), // UI_TEXTからタイトル生成関数を使用
             description: lastCustomScenarioDetails
         };
-        // 커스텀 시나리오일 경우 focusTopic은 저장하지 않음
-        if (updateData.lastFocusTopic !== undefined) delete updateData.lastFocusTopic;
+        // カスタムシナリオの場合、focusTopicは保存しない
+        delete updateData.lastFocusTopic; // 존재할 경우 삭제
     } else if (lastScenarioId !== "custom") {
-        // 일반 시나리오일 경우 집중 주제 저장
+        // 通常シナリオの場合、集中テーマを保存
         updateData.lastFocusTopic = lastFocusTopic;
-        // 일반 시나리오일 경우 customScenarioDetails는 저장하지 않음
-        if (updateData.lastCustomScenarioDetails !== undefined) delete updateData.lastCustomScenarioDetails;
+        // 通常シナリオの場合、customScenarioDetailsは保存しない
+        delete updateData.lastCustomScenarioDetails; // 존재할 경우 삭제
     }
 
     try {
-        await setDoc(userProfileRef, updateData, { merge: true }); // merge: true로 기존 필드 유지하고 지정된 필드만 업데이트
+        await setDoc(userProfileRef, updateData, { merge: true }); // merge: trueで既存フィールドは保持し、指定されたフィールドのみ更新
     } catch (error) {
-        console.error("사용자 프로필 업데이트 오류:", error);
+        console.error("ユーザープロファイルの更新エラー:", error);
         throw error;
     }
 }
 
 /**
- * 메시지를 Firestore에 저장합니다.
- * @param {string} collectionPath - 메시지를 저장할 Firestore 컬렉션 경로
- * @param {object} messageData - 저장할 메시지 데이터
- * @returns {Promise<DocumentReference>} 저장된 문서에 대한 참조
+ * メッセージをFirestoreに保存します。
+ * @param {string} collectionPath - メッセージを保存するFirestoreコレクションパス
+ * @param {object} messageData - 保存するメッセージデータ
+ * @returns {Promise<DocumentReference>} 保存されたドキュメントへの参照
  */
 async function saveMessage(collectionPath, messageData) {
     if (!appState.db || !appState.currentUserId) {
-        console.error("Firebase가 초기화되지 않았거나 사용자가 인증되지 않았습니다.");
+        console.error("Firebaseが初期化されていないか、ユーザーが認証されていません。メッセージ保存不可.");
         throw new Error("Firebase is not initialized or user is not authenticated.");
     }
     return addDoc(collection(appState.db, collectionPath), { ...messageData, timestamp: serverTimestamp() });
 }
 
-// --- 외부 API 통신 함수 ---
+// --- 外部API通信関数 ---
 
 /**
- * AI (Gemini) API를 호출하여 응답을 받습니다.
- * @param {string} prompt - AI에 전달할 프롬프트
- * @returns {Promise<string>} AI 응답 텍스트
+ * AI (Gemini) APIを呼び出し、応答を受け取ります。
+ * @param {string} prompt - AIに渡すプロンプト
+ * @returns {Promise<string>} AI応答テキスト
  */
 async function callGeminiAPI(prompt) {
     const payload = { message: prompt };
@@ -724,30 +761,30 @@ async function callGeminiAPI(prompt) {
         });
 
         if (!response.ok) {
-            let errorDetails = `サーバー応答: ${response.statusText || '不明なエラー'}`; // 일본어 에러 메시지
+            let errorDetails = `サーバー応答: ${response.statusText || '不明なエラー'}`; // 日本語エラーメッセージ
             try {
                 const errorData = await response.json();
                 errorDetails = errorData.error || errorData.message || (typeof errorData === 'object' ? JSON.stringify(errorData) : String(errorData));
                 if (!errorDetails || errorDetails === '{}' || errorDetails.trim() === "") {
-                    errorDetails = `サーバー応答: ${response.statusText || 'エラー内容なし'}`; // 일본어 에러 메시지
+                    errorDetails = `サーバー応答: ${response.statusText || 'エラー内容なし'}`; // 日本語エラーメッセージ
                 }
             } catch (jsonError) {
-                console.warn("APIエラー応答がJSONではないため、テキストとして読み込もうとします。", jsonError); // 일본어 콘솔 메시지
+                console.warn("APIエラー応答がJSONではないため、テキストとして読み込もうとします。", jsonError); // 日本語コンソールメッセージ
                 try {
                     const errorText = await response.text();
-                    errorDetails = errorText.trim() || `サーバー応答: ${response.statusText || 'エラー内容なし'}`; // 일본어 에러 메시지
+                    errorDetails = errorText.trim() || `サーバー応答: ${response.statusText || 'エラー内容なし'}`; // 日本語エラーメッセージ
                 } catch (textError) {
-                    console.error("APIエラー応答をテキストとして読み込むのに失敗しました。", textError); // 일본어 콘솔 메시지
-                    errorDetails = `サーバー応答: ${response.statusText || '不明なエラー'}、応答本文の読み込み失敗`; // 일본어 에러 메시지
+                    console.error("APIエラー応答をテキストとして読み込むのに失敗しました。", textError); // 日本語コンソールメッセージ
+                    errorDetails = `サーバー応答: ${response.statusText || '不明なエラー'}、応答本文の読み込み失敗`; // 日本語エラーメッセージ
                 }
             }
-            const errorMsg = `APIリクエスト失敗 (${response.status}): ${errorDetails}`; // 일본어 에러 메시지
+            const errorMsg = `APIリクエスト失敗 (${response.status}): ${errorDetails}`; // 日本語エラーメッセージ
             console.error("API Error Details:", errorDetails);
             throw new Error(errorMsg);
         }
 
         const result = await response.json();
-        // 응답 형식에 따라 적절한 텍스트 추출
+        // 応答形式に応じて適切なテキストを抽出
         if (result.text) {
             return result.text;
         } else if (result.generated_text) {
@@ -757,59 +794,59 @@ async function callGeminiAPI(prompt) {
         } else if (typeof result === 'string') {
             return result;
         } else if (result.candidates && result.candidates[0]?.content?.parts[0]?.text) {
-            console.warn("Gemini API形式の応答を受け取りました。Glitchエンドポイントがこの形式をサポートしているか確認してください。"); // 일본어 콘솔 메시지
+            console.warn("Gemini API形式の応答を受け取りました。Glitchエンドポイントがこの形式をサポートしているか確認してください。"); // 日本語コンソールメッセージ
             return result.candidates[0].content?.parts[0]?.text || '';
         } else {
-            console.error("API応答からテキストを抽出できませんでした、または予期しない構造です:", result); // 일본어 콘솔 메시지
-            throw new Error('AIから有効なテキスト応答を受け取っていません。'); // 일본어 에러 메시지
+            console.error("API応答からテキストを抽出できませんでした、または予期しない構造です:", result); // 日本語コンソールメッセージ
+            throw new Error('AIから有効なテキスト応答を受け取っていません。'); // 日本語エラーメッセージ
         }
     } catch (error) {
-        console.error("API呼び出し中に例外が発生しました:", error); // 일본어 콘솔 메시지
+        console.error("API呼び出し中に例外が発生しました:", error); // 日本語コンソールメッセージ
         throw error;
     }
 }
 
-// --- 이벤트 핸들러 함수 ---
+// --- イベントハンドラー関数 ---
 
 /**
- * 메시지 전송 버튼 클릭 또는 Enter 키 입력 시 호출됩니다.
+ * メッセージ送信ボタンクリック、またはEnterキー入力時に呼び出されます。
  */
 async function handleSendMessage() {
-    // 입력창이 비어있거나 AI가 응답 중일 때는 실행하지 않음
-    if (elements.userInputElem.value.trim() === '' || appState.isLoading) return;
+    // 入力欄が空であるか、AIが応答中の場合は実行しない
+    if (!elements.userInputElem || elements.userInputElem.value.trim() === '' || appState.isLoading) return;
 
-    // 사용자 정의 시나리오이고 내용이 비어있으며 첫 메시지일 경우 경고
-    if (appState.currentScenario.id === "custom" && elements.customScenarioInputElem.value.trim() === '' && appState.currentMessages.length === 0) {
+    // ユーザー定義シナリオで内容が空かつ最初のメッセージの場合に警告
+    if (appState.currentScenario.id === "custom" && elements.customScenarioInputElem && elements.customScenarioInputElem.value.trim() === '' && appState.currentMessages.length === 0) {
         alert(appState.UI_TEXT.customScenarioInputRequired);
         return;
     }
 
-    // 새 사용자 메시지 생성 및 상태에 추가
+    // 新しいユーザーメッセージを作成し、状態に追加
     const newUserMessage = { sender: 'user', text: elements.userInputElem.value.trim(), timestamp: new Date() };
     appState.currentMessages.push(newUserMessage);
-    renderMessages(); // 메시지 화면 렌더링
-    const currentInputForAPI = elements.userInputElem.value; // API 호출을 위해 현재 입력 값 저장
-    clearInput('userInputElem'); // 입력창 비우기
+    renderMessages(); // メッセージを画面にレンダリング
+    const currentInputForAPI = elements.userInputElem.value; // API呼び出しのために現在の入力値を保存
+    clearInput('userInputElem'); // 入力欄をクリア
 
-    appState.isLoading = true; // 로딩 상태 활성화
-    setSendMessageLoadingState(true); // 전송 버튼 로딩 UI 표시
+    appState.isLoading = true; // ローディング状態を有効化
+    setSendMessageLoadingState(true); // 送信ボタンのローディングUIを表示
 
-    hideSuggestedReplies(); // 응답 제안 숨김
-    closeAnalysisModal(); // 분석 모달 닫기
-    updateScenarioDisplay(true); // 대화 시작 후 시나리오 설명 영역 숨김
+    hideSuggestedReplies(); // 応答提案を非表示
+    closeAnalysisModal(); // 分析モーダルを閉じる
+    updateScenarioDisplay(true); // 会話開始後、シナリオ説明領域を非表示
 
-    // Firebase에 사용자 메시지 저장
+    // Firebaseにユーザーメッセージを保存
     if (appState.currentUserId) {
         try {
-            // 사용자 정의 시나리오일 경우 고유한 대화 경로 생성
-            const conversationPath = `artifacts/${APP_ID}/users/${appState.currentUserId}/conversations/${appState.currentScenario.id === "custom" ? `custom_${elements.customScenarioInputElem.value.substring(0,10).replace(/\s/g, '_')}` : appState.currentScenario.id}/messages`;
+            // ユーザー定義シナリオの場合、固有の会話パスを生成
+            const conversationPath = `artifacts/${APP_ID}/users/${appState.currentUserId}/conversations/${appState.currentScenario.id === "custom" ? `custom_${(elements.customScenarioInputElem.value || '').substring(0,10).replace(/\s/g, '_')}` : appState.currentScenario.id}/messages`;
             await saveMessage(conversationPath, newUserMessage);
         } catch (error) {
-            console.error("사용자 메시지 저장 오류:", error);
+            console.error("ユーザーメッセージの保存エラー:", error);
         }
     }
 
-    // AI 컨텍스트 및 대화 이력 구성
+    // AIコンテキストと会話履歴を構成
     const contextForAI = getDynamicContext(
         appState.currentScenario,
         appState.currentCustomScenarioInput,
@@ -817,101 +854,111 @@ async function handleSendMessage() {
         appState.userIsPlayingPrimaryRole
     );
 
-    let conversationHistoryForAPI = "Previous conversation:\n"; // AI 프롬프트에 전달할 이력 (영어로 유지)
-    // 최근 3턴 (사용자 메시지 3개 + AI 메시지 3개)의 대화 이력을 포함
+    let conversationHistoryForAPI = "Previous conversation:\n"; // AIプロンプトに渡す履歴（英語で保持）
+    // 最近3ターン（ユーザーメッセージ3個 + AIメッセージ3個）の会話履歴を含める
     appState.currentMessages.slice(Math.max(0, appState.currentMessages.length - 7), -1).forEach(msg => {
         conversationHistoryForAPI += `${msg.sender === 'user' ? 'User' : 'AI'}: ${msg.text}\n`;
     });
 
-    // AI에게 보낼 최종 프롬프트 (System Instruction, Previous conversation, User Input)
+    // AIに送信する最終プロンプト（System Instruction, Previous conversation, User Input）
     const promptForAI = `System Instruction: ${contextForAI}\n\n${appState.currentMessages.length > 1 ? conversationHistoryForAPI : ''}User: ${currentInputForAPI}`;
 
     try {
-        const aiResponseText = await callGeminiAPI(promptForAI); // AI API 호출
+        const aiResponseText = await callGeminiAPI(promptForAI); // AI APIを呼び出し
         const newAiMessage = { sender: 'ai', text: aiResponseText, timestamp: new Date() };
-        appState.currentMessages.push(newAiMessage); // AI 응답 상태에 추가
-        renderMessages(); // AI 응답 화면 렌더링
+        appState.currentMessages.push(newAiMessage); // AI応答を状態に追加
+        renderMessages(); // AI応答を画面にレンダリング
 
-        // Firebase에 AI 메시지 저장
+        // FirebaseにAIメッセージを保存
         if (appState.currentUserId) {
-            const conversationPath = `artifacts/${APP_ID}/users/${appState.currentUserId}/conversations/${appState.currentScenario.id === "custom" ? `custom_${elements.customScenarioInputElem.value.substring(0,10).replace(/\s/g, '_')}` : appState.currentScenario.id}/messages`;
+            const conversationPath = `artifacts/${APP_ID}/users/${appState.currentUserId}/conversations/${appState.currentScenario.id === "custom" ? `custom_${(elements.customScenarioInputElem.value || '').substring(0,10).replace(/\s/g, '_')}` : appState.currentScenario.id}/messages`;
             await saveMessage(conversationPath, newAiMessage);
         }
     } catch (error) {
-        // API 오류 발생 시 오류 메시지 표시
+        // APIエラーが発生した場合、エラーメッセージを表示
         appState.currentMessages.push({ sender: 'ai', text: `${appState.UI_TEXT.aiResponseError} ${error.message}`, timestamp: new Date() });
         renderMessages();
     } finally {
-        appState.isLoading = false; // 로딩 상태 비활성화
-        setSendMessageLoadingState(false); // 전송 버튼 로딩 UI 해제
+        appState.isLoading = false; // ローディング状態を無効化
+        setSendMessageLoadingState(false); // 送信ボタンのローディングUIを解除
     }
 }
 
 /**
- * AI 응답 제안 버튼 클릭 시 호출됩니다.
+ * AI応答提案ボタンクリック時に呼び出されます。
  */
 async function handleSuggestReplies() {
-    // 이미 로딩 중이거나 메시지가 없을 경우 실행하지 않음
+    // すでにローディング中であるか、メッセージがない場合は実行しない
     if (appState.isLoadingSuggestions || appState.currentMessages.length === 0) return;
     const lastMessage = appState.currentMessages[appState.currentMessages.length - 1];
-    // 마지막 메시지가 AI의 응답이 아닐 경우 경고
+    // 最後のメッセージがAIの応答でない場合は警告
     if (lastMessage.sender !== 'ai') {
         alert(appState.UI_TEXT.suggestionsAfterAiResponse);
         return;
     }
 
-    appState.isLoadingSuggestions = true; // 로딩 상태 활성화
-    setLoadingState('suggestRepliesButton', appState.UI_TEXT.loading, true); // 버튼 로딩 UI 표시
-    closeAnalysisModal(); // 분석 모달 닫기
+    appState.isLoadingSuggestions = true; // ローディング状態を有効化
+    setLoadingState('suggestRepliesButton', appState.UI_TEXT.loading, true); // ボタンのローディングUIを表示
+    closeAnalysisModal(); // 分析モーダルを閉じる
 
     try {
         const scenarioTitleForPrompt = appState.currentScenario.id === "custom" ? (appState.currentCustomScenarioInput || appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput)) : appState.currentScenario.title;
-        const focusTopicForPrompt = appState.currentScenario.id === "custom" ? "" : (appState.currentFocusTopic ? `ユーザーはさらに「${appState.currentFocusTopic}」に焦点を当てたいと考えています。` : ''); // 일본어
+        const focusTopicForPrompt = appState.currentScenario.id === "custom" ? "" : (appState.currentFocusTopic ? `ユーザーはさらに「${appState.currentFocusTopic}」に焦点を当てたいと考えています。` : '');
 
-        // AI 응답 제안을 위한 프롬프트 구성 (AI가 응답할 언어, 즉 일본어)
-        const prompt = `AIチューターの最後のメッセージ「${lastMessage.text}」に基づき、ユーザー（日本語学習者）が次に言うことができる、多様で自然な響きの返信を3つだけ（短〜中程度の長さで）、「${scenarioTitleForPrompt}」シナリオで提供してください。${focusTopicForPrompt} 厳密に番号付きリスト形式で、各項目を数字とピリオドで始めてください（例：1. 提案1）。リストの前後に導入文や説明文を含めないでください。ユーザーの現在の役割を考慮してください：${appState.userIsPlayingPrimaryRole ? '彼らはシナリオの主要な登場人物です（例：客、患者）' : '彼らはAIチューター/スタッフの役割を演じています'}。`; // 일본어
-        const suggestionsText = await callGeminiAPI(prompt); // AI API 호출
+        // AI応答提案のためのプロンプトを構成（AIが応答する言語、すなわち日本語）
+        const prompt = `AIチューターの最後のメッセージ「${lastMessage.text}」に基づき、ユーザー（日本語学習者）が次に言うことができる、多様で自然な響きの返信を3つだけ（短〜中程度の長さで）、「${scenarioTitleForPrompt}」シナリオで提供してください。${focusTopicForPrompt} 厳密に番号付きリスト形式で、各項目を数字とピリオドで始めてください（例：1. 提案1）。リストの前後に導入文や説明文を含めないでください。ユーザーの現在の役割を考慮してください：${appState.userIsPlayingPrimaryRole ? '彼らはシナリオの主要な登場人物です（例：客、患者）' : '彼らはAIチューター/スタッフの役割を演じています'}。`;
+        const suggestionsText = await callGeminiAPI(prompt); // AI APIを呼び出し
 
-        // AI 응답에서 제안 목록 파싱
+        // AI応答から提案リストをパース
         let parsedSuggestions = suggestionsText.split('\n')
             .map(s => s.trim())
             .filter(s => s.length > 0 && /^\d+\.\s*.+/.test(s))
             .map(s => s.replace(/^\d+\.\s*/, '').trim())
-            .filter(s => s.length > 0 && !s.toLowerCase().startsWith("here are") && !s.toLowerCase().includes("suggestion for")); // 불필요한 문구 필터링
+            .filter(s => s.length > 0 && !s.toLowerCase().startsWith("here are") && !s.toLowerCase().includes("suggestion for")); // 不要なフレーズをフィルタリング
 
-        elements.suggestedRepliesList.innerHTML = ''; // 기존 제안 목록 초기화
+        if (elements.suggestedRepliesList) elements.suggestedRepliesList.innerHTML = ''; // 既存の提案リストを初期化
         if (parsedSuggestions.length > 0) {
             parsedSuggestions.slice(0,3).forEach(reply => {
                 const li = document.createElement('li');
                 li.className = "text-xs sm:text-sm text-sky-700 hover:text-sky-800 cursor-pointer p-1.5 bg-white rounded-md shadow-sm hover:shadow-md transition-shadow";
                 li.textContent = `"${reply}"`;
-                // 제안 클릭 시 입력창에 적용 및 제안 목록 숨김
+                // 提案クリック時に入力欄に適用し、提案リストを非表示にする
                 li.onclick = () => {
-                    elements.userInputElem.value = reply;
+                    if (elements.userInputElem) elements.userInputElem.value = reply;
                     hideSuggestedReplies();
                 };
-                elements.suggestedRepliesList.appendChild(li);
+                if (elements.suggestedRepliesList) elements.suggestedRepliesList.appendChild(li);
             });
-            elements.suggestedRepliesContainer.classList.remove('hidden');
-            elements.suggestedRepliesContainer.classList.add('fade-in');
+            if (elements.suggestedRepliesContainer) {
+                elements.suggestedRepliesContainer.classList.remove('hidden');
+                elements.suggestedRepliesContainer.classList.add('fade-in');
+            }
         } else {
-            elements.suggestedRepliesList.innerHTML = `<li class="text-slate-500">${appState.UI_TEXT.errorMessageSuggestions}</li>`;
-            elements.suggestedRepliesContainer.classList.remove('hidden');
+            if (elements.suggestedRepliesList) {
+                elements.suggestedRepliesList.innerHTML = `<li class="text-slate-500">${appState.UI_TEXT.errorMessageSuggestions}</li>`;
+            }
+            if (elements.suggestedRepliesContainer) {
+                elements.suggestedRepliesContainer.classList.remove('hidden');
+            }
         }
     } catch (error) {
-        elements.suggestedRepliesList.innerHTML = `<li class="text-red-500">${appState.UI_TEXT.errorMessageSuggestions} ${error.message}</li>`;
-        elements.suggestedRepliesContainer.classList.remove('hidden');
+        if (elements.suggestedRepliesList) {
+            elements.suggestedRepliesList.innerHTML = `<li class="text-red-500">${appState.UI_TEXT.errorMessageSuggestions} ${error.message}</li>`;
+        }
+        if (elements.suggestedRepliesContainer) {
+            elements.suggestedRepliesContainer.classList.remove('hidden');
+        }
     } finally {
-        appState.isLoadingSuggestions = false; // 로딩 상태 비활성화
-        setLoadingState('suggestRepliesButton', '', false); // 버튼 로딩 UI 해제
+        appState.isLoadingSuggestions = false; // ローディング状態を無効化
+        setLoadingState('suggestRepliesButton', '', false); // ボタンのローディングUIを解除
     }
 }
 
 /**
- * 문장 분석 버튼 클릭 시 호출됩니다.
+ * 文章分析ボタンクリック時に呼び出されます。
  */
 async function handleAnalyzeSentence() {
-    // 이미 로딩 중이거나 사용자 메시지가 없을 경우 실행하지 않음
+    // すでにローディング中であるか、ユーザーメッセージがない場合は実行しない
     if (appState.isLoadingAnalysis) return;
     const userMessages = appState.currentMessages.filter(msg => msg.sender === 'user');
     if (userMessages.length === 0) {
@@ -919,102 +966,104 @@ async function handleAnalyzeSentence() {
         return;
     }
 
-    appState.isLoadingAnalysis = true; // 로딩 상태 활성화
-    setLoadingState('analyzeSentenceButton', appState.UI_TEXT.loading, true); // 버튼 로딩 UI 표시
-    hideSuggestedReplies(); // 응답 제안 숨김
-    closeAnalysisModal(); // 기존 분석 모달 닫기
+    appState.isLoadingAnalysis = true; // ローディング状態を有効化
+    setLoadingState('analyzeSentenceButton', appState.UI_TEXT.loading, true); // ボタンのローディングUIを表示
+    hideSuggestedReplies(); // 応答提案を非表示
+    closeAnalysisModal(); // 既存の分析モーダルを閉じる
 
     try {
-        const lastUserMessage = userMessages[userMessages.length - 1]; // 가장 최근 사용자 메시지
+        const lastUserMessage = userMessages[userMessages.length - 1]; // 最新のユーザーメッセージ
         const scenarioTitleForPrompt = appState.currentScenario.id === "custom" ? (appState.currentCustomScenarioInput || appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput)) : appState.currentScenario.title;
-        const focusTopicForPrompt = appState.currentScenario.id === "custom" ? "" : (appState.currentFocusTopic ? `ユーザーはさらに「${appState.currentFocusTopic}」に焦点を当てたいと考えています。` : ''); // 일본어
+        const focusTopicForPrompt = appState.currentScenario.id === "custom" ? "" : (appState.currentFocusTopic ? `ユーザーはさらに「${appState.currentFocusTopic}」に焦点を当てたいと考えています。` : '');
 
-        // 문장 분석을 위한 프롬프트 구성 (영어 피드백, 한국어 요약 요청)
-        // 사용자가 일본어를 입력했으므로, AI는 입력된 일본어에 대한 피드백을 영어로, 요약을 한국어로 제공해야 합니다.
-        const analysisPrompt = `The user (learning Japanese) said: "${lastUserMessage.text}" in the context of "${scenarioTitleForPrompt}" scenario. ${focusTopicForPrompt} Provide a structured analysis in English: **⭐ Overall Impression:** (Brief positive comment or general feel) **👍 Strengths:** (What was good about the sentence) **💡 Areas for Improvement:** **Grammar:** (Specific errors & corrections. If none, say "Grammar is good.") **Vocabulary:** (Word choice suggestions, better alternatives. If good, say "Vocabulary is appropriate.") **Naturalness/Fluency:** (Tips to sound more natural. If good, say "Sounds natural.") **✨ Suggested Revision (if any):** (Offer a revised version of the sentence if significant improvements can be made) Keep feedback constructive and easy for a Japanese learner. After the English analysis, provide a concise summary of the feedback in Korean, under a heading "${appState.UI_TEXT.koreanSummaryTitle}". This summary should highlight the main points of the feedback for a beginner to understand easily.`; // AI 프롬프트
-        const combinedAnalysisText = await callGeminiAPI(analysisPrompt); // AI API 호출
-        showAnalysisModal(combinedAnalysisText); // 분석 결과 모달에 표시
+        // 文章分析のためのプロンプトを構成（英語フィードバック、韓国語要約をリクエスト）
+        // ユーザーが日本語を入力したので、AIは入力された日本語に対するフィードバックを英語で、要約を韓国語で提供する必要があります。
+        const analysisPrompt = `The user (learning Japanese) said: "${lastUserMessage.text}" in the context of "${scenarioTitleForPrompt}" scenario. ${focusTopicForPrompt} Provide a structured analysis in English: **⭐ Overall Impression:** (Brief positive comment or general feel) **👍 Strengths:** (What was good about the sentence) **💡 Areas for Improvement:** **Grammar:** (Specific errors & corrections. If none, say "Grammar is good.") **Vocabulary:** (Word choice suggestions, better alternatives. If good, say "Vocabulary is appropriate.") **Naturalness/Fluency:** (Tips to sound more natural. If good, say "Sounds natural.") **✨ Suggested Revision (if any):** (Offer a revised version of the sentence if significant improvements can be made) Keep feedback constructive and easy for a Japanese learner. After the English analysis, provide a concise summary of the feedback in Korean, under a heading "${appState.UI_TEXT.koreanSummaryTitle}". This summary should highlight the main points of the feedback for a beginner to understand easily.`;
+        const combinedAnalysisText = await callGeminiAPI(analysisPrompt); // AI APIを呼び出し
+        showAnalysisModal(combinedAnalysisText); // 分析結果をモーダルに表示
     } catch (error) {
-        elements.englishAnalysisResultDiv.textContent = `${appState.UI_TEXT.errorMessageAnalysis} ${error.message}`;
-        elements.koreanAnalysisResultDiv.textContent = "";
-        elements.analysisModal.classList.remove('hidden');
-        elements.analysisModal.classList.add('fade-in');
+        if (elements.englishAnalysisResultDiv) elements.englishAnalysisResultDiv.textContent = `${appState.UI_TEXT.errorMessageAnalysis} ${error.message}`;
+        if (elements.koreanAnalysisResultDiv) elements.koreanAnalysisResultDiv.textContent = "";
+        if (elements.analysisModal) {
+            elements.analysisModal.classList.remove('hidden');
+            elements.analysisModal.classList.add('fade-in');
+        }
     } finally {
-        appState.isLoadingAnalysis = false; // 로딩 상태 비활성화
-        setLoadingState('analyzeSentenceButton', '', false); // 버튼 로딩 UI 해제
+        appState.isLoadingAnalysis = false; // ローディング状態を無効化
+        setLoadingState('analyzeSentenceButton', '', false); // ボタンのローディングUIを解除
     }
 }
 
 /**
- * 역할 변경 버튼 클릭 시 호출됩니다.
+ * 役割変更ボタンクリック時に呼び出されます。
  */
 function handleRoleSwap() {
     if (appState.isLoading) {
-        alert(appState.UI_TEXT.scenarioChangeLoadingAlert); // AI 응답 중에는 역할 변경 불가
+        alert(appState.UI_TEXT.scenarioChangeLoadingAlert); // AI応答中は役割変更不可
         return;
     }
-    appState.userIsPlayingPrimaryRole = !appState.userIsPlayingPrimaryRole; // 역할 상태 토글
-    appState.currentMessages = []; // 대화 기록 초기화
-    renderMessages(); // 메시지 화면 초기화
-    clearInput('userInputElem'); // 입력창 비우기
-    hideSuggestedReplies(); // 응답 제안 숨김
-    closeAnalysisModal(); // 분석 모달 닫기
-    updateScenarioDisplay(false); // 시나리오 설명 영역 업데이트 (새로운 역할에 맞춰)
+    appState.userIsPlayingPrimaryRole = !appState.userIsPlayingPrimaryRole; // 役割状態をトグル
+    appState.currentMessages = []; // 会話履歴を初期化
+    renderMessages(); // メッセージ画面を初期化
+    clearInput('userInputElem'); // 入力欄をクリア
+    hideSuggestedReplies(); // 応答提案を非表示
+    closeAnalysisModal(); // 分析モーダルを閉じる
+    updateScenarioDisplay(false); // シナリオ説明領域を更新（新しい役割に合わせて）
 
-    // 역할 변경 알림 메시지 생성
+    // 役割変更通知メッセージを作成
     const currentRoleDescription = appState.userIsPlayingPrimaryRole ?
-        (appState.currentScenario.id === "custom" ? '直接入力した状況の主要な役割' : `「${appState.currentScenario.title}」状況の主要な役割（例：お客さん、患者）`) : // 일본어
-        (appState.currentScenario.id === "custom" ? '直接入力した状況のAIの役割' : `「${appState.currentScenario.title}」状況のAIの役割（例：店員、医者）`); // 일본어
+        (appState.currentScenario.id === "custom" ? '直接入力した状況の主要な役割' : `「${appState.currentScenario.title}」状況の主要な役割（例：お客さん、患者）`) :
+        (appState.currentScenario.id === "custom" ? '直接入力した状況のAIの役割' : `「${appState.currentScenario.title}」状況のAIの役割（例：店員、医者）`);
 
     alert(appState.UI_TEXT.roleChangeAlert(currentRoleDescription));
 
-    // 역할 변경 후 AI가 먼저 말을 걸도록 하는 선택적 로직
+    // 役割変更後、AIが最初に話すように促す（オプション）
     // if (!appState.userIsPlayingPrimaryRole && appState.currentMessages.length === 0 && appState.currentScenario.id !== 'custom') {
-    //     const aiGreeting = getStarterPhrases(appState.currentScenario, false)[0] || "こんにちは！何かお手伝いできますか？"; // 일본어
+    //     const aiGreeting = getStarterPhrases(appState.currentScenario, false)[0] || "こんにちは！何かお手伝いできますか？";
     //     appState.currentMessages.push({ sender: 'ai', text: aiGreeting, timestamp: new Date() });
     //     renderMessages();
     // }
 }
 
 /**
- * 새 대화 시작 버튼 클릭 시 호출됩니다.
+ * 新しい会話開始ボタンクリック時に呼び出されます。
  */
 function handleNewConversation() {
     if (appState.isLoading) {
-        alert(appState.UI_TEXT.newConversationLoadingAlert); // AI 응답 중에는 새 대화 시작 불가
+        alert(appState.UI_TEXT.newConversationLoadingAlert); // AI応答中は新しい会話開始不可
         return;
     }
-    appState.currentMessages = []; // 대화 기록 초기화
-    renderMessages(); // 메시지 화면 초기화
-    clearInput('userInputElem'); // 입력창 비우기
-    hideSuggestedReplies(); // 응답 제안 숨김
-    closeAnalysisModal(); // 분석 모달 닫기
-    appState.userIsPlayingPrimaryRole = true; // 새 대화 시작 시 기본 역할로 초기화
-    updateScenarioDisplay(false); // 시나리오 설명 영역 다시 보이게
+    appState.currentMessages = []; // 会話履歴を初期化
+    renderMessages(); // メッセージ画面を初期化
+    clearInput('userInputElem'); // 入力欄をクリア
+    hideSuggestedReplies(); // 応答提案を非表示
+    closeAnalysisModal(); // 分析モーダルを閉じる
+    appState.userIsPlayingPrimaryRole = true; // 新しい会話開始時には主要な役割にリセット
+    updateScenarioDisplay(false); // シナリオ説明領域を再表示
 
-    // 새 대화 시작 알림 메시지
+    // 新しい会話開始通知メッセージ
     const scenarioTitleForAlert = appState.currentScenario.id === 'custom' ? (appState.currentCustomScenarioInput || appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput)) : appState.currentScenario.title;
     alert(appState.UI_TEXT.newConversationAlert(scenarioTitleForAlert));
 }
 
 /**
- * 시나리오 선택 드롭다운에서 시나리오 아이템 클릭 시 호출됩니다.
- * @param {object} scenarioItem - 선택된 시나리오 아이템 객체
+ * シナリオ選択ドロップダウンでシナリオアイテムがクリックされたときに呼び出されます。
+ * @param {object} scenarioItem - 選択されたシナリオアイテムオブジェクト
  */
 function handleScenarioSelect(scenarioItem) {
     if (appState.isLoading) {
-        alert(appState.UI_TEXT.scenarioChangeLoadingAlert); // AI 응답 중에는 시나리오 변경 불가
+        alert(appState.UI_TEXT.scenarioChangeLoadingAlert); // AI応答中はシナリオ変更不可
         return;
     }
-    const fullScenarioDetails = findScenarioById(scenarioItem.id); // 현재 언어의 시나리오 데이터에서 찾음
-    appState.currentScenario = fullScenarioDetails; // 현재 시나리오 업데이트
-    appState.currentMessages = []; // 대화 기록 초기화
-    clearInput('userInputElem'); // 입력창 비우기
-    hideSuggestedReplies(); // 응답 제안 숨김
-    closeAnalysisModal(); // 분석 모달 닫기
-    appState.userIsPlayingPrimaryRole = true; // 시나리오 변경 시 기본 역할로 초기화
+    const fullScenarioDetails = findScenarioById(scenarioItem.id); // 現在の言語のシナリオデータから検索
+    appState.currentScenario = fullScenarioDetails; // 現在のシナリオを更新
+    appState.currentMessages = []; // 会話履歴を初期化
+    clearInput('userInputElem'); // 入力欄をクリア
+    hideSuggestedReplies(); // 応答提案を非表示
+    closeAnalysisModal(); // 分析モーダルを閉じる
+    appState.userIsPlayingPrimaryRole = true; // シナリオ変更時には主要な役割にリセット
 
-    // 시나리오 유형에 따라 관련 입력 필드 상태 초기화
+    // シナリオの種類に応じて関連する入力フィールドの状態をリセット
     if (scenarioItem.id !== "custom") {
         appState.currentCustomScenarioInput = '';
         clearInput('customScenarioInputElem');
@@ -1022,130 +1071,146 @@ function handleScenarioSelect(scenarioItem) {
         appState.currentFocusTopic = '';
         clearInput('focusTopicInput');
     }
-    updateScenarioDisplay(false); // 시나리오 설명 영역 업데이트 (새 시나리오에 맞춰)
-    renderMessages(); // 메시지 화면 초기화
-    toggleScenarioPicker(); // 드롭다운 닫기
+    updateScenarioDisplay(false); // シナリオ説明領域を更新（新しいシナリオに合わせて）
+    renderMessages(); // メッセージ画面を初期化
+    toggleScenarioPicker(); // ドロップダウンを閉じる
 }
 
 /**
- * 언어를 변경하는 함수입니다.
- * @param {string} langCode - 변경할 언어 코드 ('ko', 'ja' 등)
+ * 言語を変更する関数です。
+ * @param {string} langCode - 変更する言語コード（'ko', 'ja'など）
  */
 function setLanguage(langCode) {
     if (!langPacks[langCode]) {
-        console.error(`Unsupported language code: ${langCode}`);
+        console.error(`サポートされていない言語コード: ${langCode}`);
         return;
     }
 
     appState.currentLangCode = langCode;
-    appState.SCENARIO_DATA = langPacks[langCode].scenarios; // 시나리오 데이터 변경
-    appState.UI_TEXT = langPacks[langCode].ui; // UI 텍스트 변경
+    appState.SCENARIO_DATA = langPacks[langCode].scenarios; // シナリオデータを変更
+    appState.UI_TEXT = langPacks[langCode].ui; // UIテキストを変更
 
-    localStorage.setItem('speakup_ai_lang', langCode); // 로컬 스토리지에 언어 설정 저장
+    localStorage.setItem('speakup_ai_lang', langCode); // ローカルストレージに言語設定を保存
 
-    // UI 텍스트 업데이트
+    // UIテキストを更新
     updateAllButtonTexts();
-    // 시나리오 관련 UI 업데이트 (현재 시나리오 유지하면서 언어만 변경)
-    // 현재 시나리오 객체의 description, title 등이 바뀔 수 있으므로 다시 할당하여 UI를 업데이트
-    // 이전에 로드된 currentScenario.id를 사용하여 새 언어 팩에서 해당 시나리오를 다시 찾습니다.
-    appState.currentScenario = findScenarioById(appState.currentScenario?.id || "cafe"); // currentScenario가 null일 경우 'cafe'로 대체
-    if (!appState.currentScenario) { // 혹시 로드된 시나리오가 없다면 기본값으로 설정
+    // シナリオ関連のUIを更新（現在のシナリオを維持しつつ言語のみ変更）
+    // 以前にロードされた currentScenario.id を使用して、新しい言語パックから該当シナリオを再検索します。
+    appState.currentScenario = findScenarioById(appState.currentScenario?.id || "cafe"); // currentScenarioがnullの場合、「cafe」に置き換え
+    if (!appState.currentScenario) { // もしロードされたシナリオがなければ、デフォルト値に設定
          appState.currentScenario = findScenarioById("cafe");
     }
-    updateScenarioDisplay(false); // 시나리오 UI 텍스트 업데이트
-    renderScenarioPicker(); // 시나리오 드롭다운 텍스트 업데이트
-    elements.currentLanguageDisplay.textContent = langPacks[langCode].displayName; // 언어 선택 버튼 텍스트 업데이트
+    updateScenarioDisplay(false); // シナリオUIテキストを更新
+    renderScenarioPicker(); // シナリオドロップダウンのテキストを更新
+    if (elements.currentLanguageDisplay) { // null 체크 추가
+        elements.currentLanguageDisplay.textContent = langPacks[langCode].displayName; // 言語選択ボタンのテキストを更新
+    }
 }
 
-// --- 모든 이벤트 리스너 설정 함수 ---
+// --- すべてのイベントリスナー設定関数 ---
 
 /**
- * 모든 DOM 요소에 이벤트 리스너를 연결합니다.
+ * すべてのDOM要素にイベントリスナーを接続します。
  */
 function attachEventListeners() {
-    elements.scenarioPickerButton.addEventListener('click', toggleScenarioPicker);
-    elements.newConversationButton.addEventListener('click', handleNewConversation);
-    elements.helpButton.addEventListener('click', showGuideModal);
+    console.log("attachEventListeners: イベントリスナー接続開始"); // 디버깅 로그
 
-    elements.closeGuideModalButton.addEventListener('click', closeGuideModal);
-    elements.confirmGuideModalButton.addEventListener('click', closeGuideModal);
+    // null 체크 후 이벤트 리스너 연결
+    if (elements.scenarioPickerButton) elements.scenarioPickerButton.addEventListener('click', toggleScenarioPicker);
+    if (elements.newConversationButton) elements.newConversationButton.addEventListener('click', handleNewConversation);
+    if (elements.helpButton) elements.helpButton.addEventListener('click', showGuideModal);
 
-    elements.sendMessageButton.addEventListener('click', handleSendMessage);
-    elements.userInputElem.addEventListener('keypress', (e) => {
+    if (elements.closeGuideModalButton) elements.closeGuideModalButton.addEventListener('click', closeGuideModal);
+    if (elements.confirmGuideModalButton) elements.confirmGuideModalButton.addEventListener('click', closeGuideModal);
+
+    if (elements.sendMessageButton) elements.sendMessageButton.addEventListener('click', handleSendMessage);
+    if (elements.userInputElem) elements.userInputElem.addEventListener('keypress', (e) => {
         if (e.key === 'Enter' && !appState.isLoading) {
             handleSendMessage();
         }
     });
-    elements.suggestRepliesButton.addEventListener('click', handleSuggestReplies);
-    elements.analyzeSentenceButton.addEventListener('click', handleAnalyzeSentence);
-    elements.roleSwapButton.addEventListener('click', handleRoleSwap);
+    if (elements.suggestRepliesButton) elements.suggestRepliesButton.addEventListener('click', handleSuggestReplies);
+    if (elements.analyzeSentenceButton) elements.analyzeSentenceButton.addEventListener('click', handleAnalyzeSentence);
+    if (elements.roleSwapButton) elements.roleSwapButton.addEventListener('click', handleRoleSwap);
 
-    elements.closeAnalysisModalButtonFromAnalysis.addEventListener('click', closeAnalysisModal);
-    elements.confirmAnalysisModalButtonFromAnalysis.addEventListener('click', closeAnalysisModal);
+    if (elements.closeAnalysisModalButtonFromAnalysis) elements.closeAnalysisModalButtonFromAnalysis.addEventListener('click', closeAnalysisModal);
+    if (elements.confirmAnalysisModalButtonFromAnalysis) elements.confirmAnalysisModalButtonFromAnalysis.addEventListener('click', closeAnalysisModal);
 
-    // 입력 필드 변경 이벤트 (상태 업데이트)
-    elements.focusTopicInput.addEventListener('change', (e) => { appState.currentFocusTopic = e.target.value; });
-    elements.customScenarioInputElem.addEventListener('change', (e) => {
+    // 入力フィールド変更イベント（状態更新）
+    if (elements.focusTopicInput) elements.focusTopicInput.addEventListener('change', (e) => { appState.currentFocusTopic = e.target.value; });
+    if (elements.customScenarioInputElem) elements.customScenarioInputElem.addEventListener('change', (e) => {
         appState.currentCustomScenarioInput = e.target.value;
-        updateScenarioDisplay(); // 사용자 정의 시나리오 설명 업데이트를 위해 호출
+        updateScenarioDisplay(); // ユーザー定義シナリオ説明の更新のために呼び出し
     });
 
-    // 언어 선택 드롭다운 토글
-    elements.languagePickerButton.addEventListener('click', toggleLanguagePicker);
-    // 언어 선택 링크 클릭 (이벤트 위임)
-    elements.languageDropdown.addEventListener('click', (event) => {
-        event.preventDefault(); // 기본 링크 동작 방지
-        const target = event.target.closest('a'); // 클릭된 요소 또는 가장 가까운 <a> 태그 찾기
-        if (target && target.dataset.lang) {
-            const langCode = target.dataset.lang;
-            setLanguage(langCode);
-            toggleLanguagePicker(); // 드롭다운 닫기
-        }
-    });
+    // 言語選択ドロップダウンのトグル
+    if (elements.languagePickerButton) elements.languagePickerButton.addEventListener('click', toggleLanguagePicker);
+    // 言語選択リンクのクリック（イベント委任）
+    if (elements.languageDropdown) {
+        elements.languageDropdown.addEventListener('click', (event) => {
+            event.preventDefault(); // デフォルトのリンク動作を防止
+            const target = event.target.closest('a'); // クリックされた要素、または最も近い<a>タグを検索
+            if (target && target.dataset.lang) {
+                const langCode = target.dataset.lang;
+                setLanguage(langCode);
+                toggleLanguagePicker(); // ドロップダウンを閉じる
+            }
+        });
+    }
 
-    // 문서 전체 클릭 시 드롭다운/모달 닫기 로직
+    // ドキュメント全体のクリック時にドロップダウン/モーダルを閉じるロジック
     document.addEventListener('click', (event) => {
-        // 시나리오 드롭다운 외부 클릭 시 닫기
+        // シナリオドロップダウンの外部クリック時に閉じる
         if (elements.scenarioPickerContainer && !elements.scenarioPickerContainer.contains(event.target) && appState.showScenarioPicker) {
             toggleScenarioPicker();
         }
-        // 언어 드롭다운 외부 클릭 시 닫기
+        // 言語ドロップダウンの外部クリック時に閉じる
         if (elements.languagePickerContainer && !elements.languagePickerContainer.contains(event.target) && appState.showLanguagePicker) {
             toggleLanguagePicker();
         }
-        // 분석 모달 외부 클릭 시 닫기
+        // 分析モーダルの外部クリック時に閉じる
         if (elements.analysisModalContent && !elements.analysisModalContent.contains(event.target) &&
             elements.analysisModal && !elements.analysisModal.classList.contains('hidden')) {
             closeAnalysisModal();
         }
-        // 가이드 모달 외부 클릭 시 닫기
+        // ガイドモーダルの外部クリック時に閉じる
         if (elements.guideModalContent && !elements.guideModalContent.contains(event.target) &&
             elements.guideModal && !elements.guideModal.classList.contains('hidden')) {
             closeGuideModal();
         }
     });
+    console.log("attachEventListeners: イベントリスナー接続完了"); // ディバーギングログ
 }
 
-// --- 앱 초기화 로직 ---
+// --- アプリ初期化ロジック ---
 document.addEventListener('DOMContentLoaded', async () => {
-    initDOMElements(); // 1. DOM 요소 캐싱
-    attachEventListeners(); // 2. 모든 이벤트 리스너 연결
+    console.log("DOMContentLoaded: アプリ初期化開始"); // ディバーギングログ
+    initDOMElements(); // 1. DOM要素をキャッシュ
+    attachEventListeners(); // 2. すべてのイベントリスナーを接続
 
-    // 3. 언어 설정 로드 및 적용
-    const savedLang = localStorage.getItem('speakup_ai_lang') || 'ko'; // 기본값 한국어
-    setLanguage(savedLang); // 이 시점에서 appState.SCENARIO_DATA 및 UI_TEXT가 설정됨
+    // 3. 言語設定をロードし、適用
+    const savedLang = localStorage.getItem('speakup_ai_lang') || 'ko'; // デフォルトは韓国語
+    setLanguage(savedLang); // この時点でappState.SCENARIO_DATAとUI_TEXTが設定される
 
-    await initFirebase(); // 4. Firebase 초기화 및 사용자 인증
+    // Firebaseの初期化とユーザー認証は非同期で待機
+    try {
+        await initFirebase(); // 4. Firebaseの初期化とユーザー認証
+    } catch (firebaseError) {
+        console.error("アプリ初期化中にFirebaseエラー:", firebaseError); // ディバーギングログ
+        // Firebase 오류 시에도 앱이 완전히 죽지 않고 동작하도록 처리 (선택 사항)
+        // 예를 들어, Firebase 관련 기능을 비활성화하거나 사용자에게 알림을 표시
+    }
 
-    // 5. 사용자 프로필 로드 및 앱 상태 초기화
+
+    // 5. ユーザープロファイルのロードとアプリの状態初期化
     if (appState.currentUserId) {
         try {
             const userProfile = await getUserProfile(appState.currentUserId, APP_ID);
-            let loadedScenarioData = findScenarioById("cafe"); // 기본값 '카페에서' (현재 로드된 언어의 SCENARIO_DATA 사용)
+            let loadedScenarioData = findScenarioById("cafe"); // デフォルト値「カフェで」（現在ロードされている言語のSCENARIO_DATAを使用）
 
             if (userProfile) {
                 const lastScenarioId = userProfile.lastScenarioId;
-                const foundScenarioFromDB = findScenarioById(lastScenarioId); // 현재 언어의 SCENARIO_DATA에서 찾음
+                const foundScenarioFromDB = findScenarioById(lastScenarioId); // 現在の言語のSCENARIO_DATAから検索
 
                 if (foundScenarioFromDB) {
                     loadedScenarioData = foundScenarioFromDB;
@@ -1160,7 +1225,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             appState.currentScenario = loadedScenarioData;
 
-            // 사용자 프로필 업데이트 (마지막 로그인 시간, 현재 시나리오 등)
+            // ユーザープロファイルを更新（最終ログイン時間、現在のシナリオなど）
             await updateUserProfile(
                 appState.currentUserId,
                 APP_ID,
@@ -1170,19 +1235,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 appState.currentCustomScenarioInput
             );
         } catch (error) {
-            console.error("사용자 프로필 로드 또는 초기화 오류:", error);
-            appState.currentScenario = findScenarioById("cafe"); // 오류 발생 시 기본 시나리오로 설정
+            console.error("ユーザープロファイルのロードまたは初期化エラー:", error); // ディバーギングログ
+            appState.currentScenario = findScenarioById("cafe"); // エラー発生時はデフォルトシナリオに設定
         }
     } else {
-        appState.currentScenario = findScenarioById("cafe"); // 인증 실패 시 기본 시나리오로 설정
+        appState.currentScenario = findScenarioById("cafe"); // 認証失敗時はデフォルトシナリオに設定
     }
 
-    // 6. 초기 UI 렌더링 (언어 로드 후 시나리오 로드 후)
-    updateScenarioDisplay(false); // 대화 시작 전이므로 설명 영역 표시
-    renderMessages(); // 빈 메시지 컨테이너 렌더링
+    // 6. 初期UIレンダリング（言語ロード後、シナリオロード後）
+    updateScenarioDisplay(false); // 会話開始前なので説明領域を表示
+    renderMessages(); // 空のメッセージコンテナをレンダリング
 
-    // 7. 가이드 모달 표시 여부 확인 (로컬 스토리지 사용)
+    // 7. ガイドモーダル表示の確認（ローカルストレージを使用）
     if (!localStorage.getItem(`guideShown_${APP_ID}`)) {
         showGuideModal();
     }
+    console.log("DOMContentLoaded: アプリ初期化完了"); // ディバーギングログ
 });
