@@ -29,6 +29,18 @@
             </div>
             <h1 id="headerTitle" class="text-xl sm:text-2xl font-semibold text-center absolute left-1/2 transform -translate-x-1/2 truncate max-w-[40%] sm:max-w-[50%]" title="SpeakUp AI">SpeakUp AI</h1>
             <div class="flex items-center space-x-2">
+                <div class="relative" id="languagePickerContainer">
+                    <button id="languagePickerButton" class="flex items-center text-sm sm:text-base bg-sky-700 hover:bg-sky-600 px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
+                        <span id="currentLanguageDisplay">한국어</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 ml-1.5 opacity-80"> <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" /> </svg>
+                    </button>
+                    <div id="languageDropdown" class="hidden absolute right-0 mt-2 w-28 bg-white rounded-lg shadow-xl z-20 border border-slate-200 max-h-96 overflow-y-auto custom-scrollbar fade-in">
+                        <div class="py-1">
+                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-lang="ko">한국어</a>
+                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-lang="ja">日本語</a>
+                        </div>
+                    </div>
+                </div>
                 <button id="helpButton" title="도움말 보기" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
