@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpeakUp AI - AI 영어 회화 튜터</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen gradient-bg p-2 sm:p-4">
+
+    <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col" style="height: calc(100vh - 30px); max-height: 800px;">
+        <header class="header-bg text-white p-4 sm:p-5 rounded-t-2xl flex items-center justify-between relative shadow-md">
+            <div class="flex items-center">
+                <div class="relative" id="scenarioPickerContainer">
+                    <button id="scenarioPickerButton" class="flex items-center text-sm sm:text-base bg-sky-700 hover:bg-sky-600 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
+                        <span id="currentScenarioDisplay">시나리오</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 ml-1.5 opacity-80"> <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" /> </svg>
+                    </button>
+                    <div id="scenarioDropdown" class="hidden absolute left-0 mt-2 w-72 sm:w-80 bg-white rounded-lg shadow-xl z-20 border border-slate-200 max-h-96 overflow-y-auto custom-scrollbar fade-in">
+                        </div>
+                </div>
+            </div>
+            <h1 id="headerTitle" class="text-xl sm:text-2xl font-semibold text-center absolute left-1/2 transform -translate-x-1/2 truncate max-w-[40%] sm:max-w-[50%]" title="SpeakUp AI">SpeakUp AI</h1>
+            <div class="flex items-center space-x-2">
+                <div class="relative" id="languagePickerContainer">
+                    <button id="languagePickerButton" class="flex items-center text-sm sm:text-base bg-sky-700 hover:bg-sky-600 px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
+                        <span id="currentLanguageDisplay">한국어</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 ml-1.5 opacity-80"> <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" /> </svg>
+                    </button>
+                    <div id="languageDropdown" class="hidden absolute right-0 mt-2 w-28 bg-white rounded-lg shadow-xl z-20 border border-slate-200 max-h-96 overflow-y-auto custom-scrollbar fade-in">
+                        <div class="py-1">
+                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-lang="ko">한국어</a>
+                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-lang="ja">日本語</a>
+                        </div>
+                    </div>
+                </div>
+                <button id="helpButton" title="도움말 보기" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
+                    </svg>
+                </button>
+                <button id="newConversationButton" title="새 대화 시작" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" class="w-5 h-5"> <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /> </svg>
+                </button>
+            </div>
+        </header>
+
+        <div id="scenarioDescriptionArea" class="p-4 sm:p-5 border-b border-slate-200 bg-slate-50">
+            <h2 id="scenarioTitle" class="text-lg sm:text-xl font-semibold text-sky-700 mb-1.5">시나리오 제목</h2>
+            <p id="scenarioDescription" class="text-sm text-slate-600 mb-3 leading-relaxed hide-after-conversation-start">시나리오 설명</p>
+            <div id="starterPhrasesContainer" class="mt-2 mb-3 hidden hide-after-conversation-start">
+                <p class="text-xs font-semibold text-sky-600 mb-1.5">이렇게 시작해 보세요:</p>
+                <div id="starterPhrases" class="flex flex-wrap gap-2">
+                    </div>
+            </div>
+            <div id="focusTopicGroup" class="hide-after-conversation-start">
+                 <input type="text" id="focusTopicInput" placeholder="집중 연습 주제 (선택 사항)" class="w-full p-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-shadow"/>
+            </div>
+            <div id="customScenarioGroup" class="hidden hide-after-conversation-start">
+                <textarea id="customScenarioInput" placeholder="연습하고 싶은 상황이나 대화 주제를 자세히 입력해주세요..." class="w-full p-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-shadow" rows="3"></textarea>
+            </div>
+        </div>
+
+        <div id="messagesContainer" class="flex-grow p-4 sm:p-5 overflow-y-auto chat-bg space-y-4 custom-scrollbar">
+            </div>
+
+        <div class="p-4 sm:p-5 border-t border-slate-200 input-area-bg">
+            <div class="flex items-center space-x-3 mb-3">
+                <input type="text" id="userInput" placeholder="메시지를 입력하세요..." class="flex-grow p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-shadow text-base shadow-sm"/>
+                <button id="sendMessageButton" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold p-3 rounded-xl transition-all duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-md hover:shadow-lg btn-glow-blue focus:outline-none focus:ring-2 focus:ring-blue-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6"> <path d="M3.5 2.75a.75.75 0 00-1.061.645l1.906 11.438a.75.75 0 001.412-.001L7.25 9.086l5.438-4.078a.75.75 0 00-.816-1.299L4.06 7.354 3.5 2.75zM2.75 16.5a.75.75 0 001.061.645l12.626-7.575a.75.75 0 000-1.29l-12.626-7.575A.75.75 0 002.75 1.5v15z" /> </svg>
+                </button>
+            </div>
+
+            <div id="suggestedRepliesContainer" class="mb-2.5 p-2.5 bg-sky-50 rounded-lg hidden shadow fade-in">
+                <h4 class="text-xs font-semibold text-sky-700 mb-1.5">AI 응답 제안:</h4>
+                <ul id="suggestedRepliesList" class="space-y-1.5">
+                    </ul>
+            </div>
+
+            <div class="flex space-x-2">
+                <button id="suggestRepliesButton" class="compact-button bg-amber-400 hover:bg-amber-500 text-amber-900 font-semibold rounded-lg transition-all duration-150 ease-in-out disabled:opacity-60 flex items-center justify-center shadow hover:shadow-md btn-secondary-glow focus:outline-none focus:ring-2 focus:ring-amber-300 flex-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"> <path fillRule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.39-3.423 3.352c-.772.753-.235 2.047.788 2.225l4.21.728 1.948 4.24c.322.772 1.416.772 1.737 0l1.947-4.24 4.21-.728c1.023-.178 1.56-1.472.788-2.225l-3.423-3.352-4.753-.39-1.83-4.401zM12.267 8.197L10 12.488l-2.267-4.291-4.573-.374 3.29-3.218-1.043-4.493 4.065 1.956L10 0l2.528 1.978 4.065-1.956-1.043 4.493 3.29 3.218-4.573.374z" clipRule="evenodd" /> </svg>
+                    <span id="suggestRepliesButtonText">응답 제안</span>
+                </button>
+                <button id="analyzeSentenceButton" class="compact-button bg-teal-500 hover:bg-teal-600 text-white font-semibold rounded-lg transition-all duration-150 ease-in-out disabled:opacity-60 flex items-center justify-center shadow-md hover:shadow-lg btn-tertiary-glow focus:outline-none focus:ring-2 focus:ring-teal-300 flex-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"> <path fillRule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.39-3.423 3.352c-.772.753-.235 2.047.788 2.225l4.21.728 1.948 4.24c.322.772 1.416.772 1.737 0l1.947-4.24 4.21-.728c1.023-.178 1.56-1.472.788-2.225l-3.423-3.352-4.753-.39-1.83-4.401zM12.267 8.197L10 12.488l-2.267-4.291-4.573-.374 3.29-3.218-1.043-4.493 4.065 1.956L10 0l2.528 1.978 4.065-1.956-1.043 4.493 3.29 3.218-4.573.374z" clipRule="evenodd" /> </svg>
+                    <span id="analyzeSentenceButtonText">문장 분석</span>
+                </button>
+                <button id="roleSwapButton" class="compact-button bg-indigo-500 hover:bg-indigo-600 text-white font-semibold rounded-lg transition-all duration-150 ease-in-out disabled:opacity-60 flex items-center justify-center shadow-md hover:shadow-lg btn-glow-indigo focus:outline-none focus:ring-2 focus:ring-indigo-300 flex-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                    </svg>
+                    <span id="roleSwapButtonText">역할 변경</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="guideModal" class="hidden fixed inset-0 modal-bg-overlay flex items-center justify-center p-4 z-50 fade-in">
+        <div id="guideModalContent" class="bg-white p-6 sm:p-8 rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl sm:text-2xl font-bold text-sky-600">SpeakUp AI 사용 가이드 🚀</h2>
+                <button id="closeGuideModalButton" class="text-slate-400 hover:text-slate-600 text-3xl transition-colors">×</button>
+            </div>
+            <div class="space-y-3 text-sm sm:text-base text-slate-700">
+                <p><strong>1. 🤖 시나리오 선택:</strong><br/> 화면 좌측 상단의 현재 시나리오 버튼 (예: <span class="font-semibold text-sky-600">카페에서</span>)을 클릭하세요. 다양한 카테고리별 대화 상황을 선택하거나, '✨ 사용자 설정'을 통해 직접 원하는 주제를 입력하여 연습할 수 있습니다.</p>
+                <p><strong>2. 🎯 집중 주제 (선택 사항):</strong><br/> 시나리오 설명 아래에 있는 입력창에 특별히 연습하고 싶은 어휘나 표현 등을 입력하면 AI가 대화에 더 잘 반영해줍니다. (사용자 설정 시나리오에서는 이 입력창이 없습니다.)</p>
+                <p><strong>3. 🗣️ 대화 시작하기:</strong><br/> 화면 상단에 현재 시나리오에 맞는 <span class="text-sky-600 font-medium">"이렇게 시작해 보세요:"</span> 예시 문장들이 제공됩니다. 클릭하면 바로 입력창에 적용돼요! 또는 직접 영어로 메시지를 작성하고 전송 (종이비행기 아이콘) 버튼을 눌러 AI 튜터와 대화를 시작하세요.</p>
+                <p><strong>4. ✨ AI 기능 활용하기 (입력창 하단 버튼):</strong></p>
+                <ul class="list-disc list-inside pl-4 space-y-1">
+                    <li><strong class="text-amber-600">응답 제안:</strong> 대화 중 어떤 말을 해야 할지 막막할 때 누르면, AI가 3가지 응답 예시를 추천해줍니다.</li>
+                    <li><strong class="text-teal-600">문장 분석:</strong> 방금 내가 보낸 영어 문장에 대해 AI가 문법, 어휘, 자연스러움 등을 분석하고, <span class="text-sky-600">한국어 요약</span>도 함께 제공합니다.</li>
+                    <li><strong class="text-indigo-600">역할 변경:</strong> 현재 시나리오에서 사용자와 AI의 역할을 서로 바꿉니다. (예: 손님 ↔ 점원) 역할이 바뀌면 새로운 시작 표현도 제공됩니다.</li>
+                </ul>
+                <p><strong>5. 🔄 새 대화 시작:</strong><br/> 화면 우측 상단의 새로고침 아이콘 버튼을 누르면, 현재 선택된 시나리오 (또는 사용자 설정 주제) 및 역할로 대화 내용을 초기화하고 처음부터 다시 연습할 수 있습니다.</p>
+            </div>
+            <button id="confirmGuideModalButton" class="mt-6 w-full bg-sky-600 hover:bg-sky-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-sky-400">
+                알겠습니다!
+            </button>
+        </div>
+    </div>
+
+    <div id="analysisModal" class="hidden fixed inset-0 modal-bg-overlay flex items-center justify-center p-4 z-50 fade-in">
+        <div id="analysisModalContent" class="bg-white p-6 sm:p-8 rounded-xl shadow-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto custom-scrollbar">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl sm:text-2xl font-semibold text-sky-700">✨ 내 문장 분석 결과</h3>
+                <button id="closeAnalysisModalButtonFromAnalysis" class="text-slate-400 hover:text-slate-600 text-3xl transition-colors">×</button>
+            </div>
+            <div id="englishAnalysisResult" class="mb-5">
+                <h4 class="text-lg font-medium text-slate-800 mb-1.5">📝 영어 피드백:</h4>
+                <div class="text-base text-slate-700 whitespace-pre-wrap leading-relaxed p-3 bg-slate-50 rounded-md border border-slate-200"></div>
+            </div>
+            <div id="koreanAnalysisResult">
+                <h4 class="text-lg font-medium text-slate-800 mb-1.5">🇰🇷 한국어 요약:</h4>
+                <div class="text-base text-slate-700 whitespace-pre-wrap leading-relaxed p-3 bg-sky-50 rounded-md border border-sky-200"></div>
+            </div>
+            <button id="confirmAnalysisModalButtonFromAnalysis" class="mt-6 w-full bg-sky-600 hover:bg-sky-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-sky-400">
+                확인했어요!
+            </button>
+        </div>
+    </div>
+
+    <script>
+// 한국어 언어 데이터
+const ko_SCENARIO_DATA = [
+    { category: "일상 생활 (Everyday Life)", items: [
+        { id: "cafe", title: "카페에서 주문하기 ☕", description: "바리스타에게 커피를 주문하고 간단한 요청을 해보세요. AI는 친절한 바리스타 역할을 합니다.",
+          baseContext: "You are a friendly barista. The user is ordering coffee. Respond concisely (1-2 sentences), ask one question at a time if necessary, and assist with their order. Do not ask questions you've already received answers for.",
+          baseContext_swapped: "You are a customer ordering coffee. The user is the barista. Make your order and ask any questions you might have. Keep your requests concise.",
+          starters_userAsPrimary: ["Hi, can I get a latte?", "Hello! What do you recommend?", "I'd like to order a coffee, please."],
+          starters_userAsOther: ["Hi there! What can I get for you today?", "Welcome! Ready to order?", "Hello! How can I help you?"] },
+        { id: "grocery_shopping", title: "식료품점에서 장보기 🛒", description: "점원에게 물건 위치를 묻거나 계산할 때 대화해보세요. AI는 친절한 점원 역할을 합니다.",
+          baseContext: "You are a helpful grocery store clerk. The user is shopping. Respond concisely (1-2 sentences) and help them find items or checkout. Ask one question at a time if needed. Do not ask questions you've already received answers for.",
+          baseContext_swapped: "You are a customer at a grocery store. The user is the clerk. Ask for help or proceed to checkout concisely.",
+          starters_userAsPrimary: ["Excuse me, where can I find the milk?", "How much is this?", "I'd like to pay for these items."],
+          starters_userAsOther: ["Hi! Can I help you find something?", "Are you ready to check out?", "Did you find everything okay?"] },
+        { id: "making_appointments", title: "예약하기 (미용실, 병원 등) 🗓️", description: "전화나 방문을 통해 예약하는 상황을 연습합니다. AI는 접수원 역할을 합니다.",
+          baseContext: "You are a receptionist at a salon/clinic. The user wants to make an appointment. Guide them concisely (1-2 sentences per turn), asking one question at a time for preferences and confirming details. Do not ask questions you've already received answers for.",
+          baseContext_swapped: "You want to make an appointment. The user is the receptionist. State your needs concisely.",
+          starters_userAsPrimary: ["I'd like to make an appointment for a haircut.", "Do you have any openings next Tuesday?", "Can I book a check-up for this week?"],
+          starters_userAsOther: ["Hello, [Salon/Clinic Name], how can I help you?", "Good morning! How may I assist you with scheduling?", "Are you looking to book an appointment?"] },
+        { id: "daily_routine_talk", title: "일상 이야기하기 ☀️", description: "하루 일과나 주말 계획 등 일상적인 주제로 대화합니다. AI는 친구 역할을 합니다.",
+          baseContext: "You are a friend. The user wants to talk about daily life. Engage in a casual, concise (1-2 sentences per turn) conversation. Ask one question at a time if needed. Do not ask questions you've already received answers for.",
+          baseContext_swapped: "You are talking to a friend (the user). Share something about your day or ask about theirs, keeping it concise.",
+          starters_userAsPrimary: ["How was your day?", "What are you up to this weekend?", "I usually [activity] in the morning."],
+          starters_userAsOther: ["Hey! What's new?", "How's it going?", "Anything interesting happen today?"] },
+        { id: "public_transportation", title: "대중교통 이용하기 🚌", description: "버스나 지하철 표를 사거나 길을 묻는 상황입니다. AI는 역무원 또는 다른 승객 역할을 합니다.",
+          baseContext: "You are a public transport staff or a helpful passenger. The user needs help. Provide clear, concise (1-2 sentences per turn) assistance. Ask one question at a time if needed. Do not ask questions you've already received answers for.",
+          baseContext_swapped: "You need help with public transport. The user is staff/passenger. Ask your question concisely.",
+          starters_userAsPrimary: ["Which bus goes to downtown?", "How much is a single ride ticket?", "Is this the platform for the express train?"],
+          starters_userAsOther: ["Can I help you with something?", "Are you looking for a specific line?", "Tickets can be purchased over there."] }
+    ]},
+    { category: "여행 (Travel)", items: [
+        { id: "airport_checkin", title: "공항 체크인 ✈️", description: "공항 체크인 카운터에서 탑승 수속을 진행합니다.", baseContext: "You are an airline check-in agent. The user is checking in for a flight. Ask for passport/ticket, discuss baggage, seat preferences. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You are at the airport checking in for your flight. The user is the check-in agent. Provide your documents and discuss your flight details concisely.", starters_userAsPrimary: ["I'd like to check in for my flight to London.", "Here's my passport and ticket.", "Can I have a window seat, please?"], starters_userAsOther: ["Good [morning/afternoon/evening]! May I see your passport and ticket, please?", "Where are you flying to today?", "Do you have any bags to check in?"] },
+        { id: "hotel_checkin", title: "호텔 체크인 🏨", description: "호텔 프론트에서 예약 확인 및 체크인을 합니다.", baseContext: "You are a hotel receptionist. The user is checking in. Confirm reservation, explain amenities, answer questions. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You are checking into a hotel. The user is the receptionist. Provide your reservation details and ask any necessary questions concisely.", starters_userAsPrimary: ["I have a reservation under the name [Your Name].", "Could you tell me what time breakfast is served?", "Is there Wi-Fi in the room?"], starters_userAsOther: ["Welcome to our hotel! How can I help you?", "Do you have a reservation with us?", "May I have your name, please?"] },
+        { id: "asking_directions", title: "길 묻기 🗺️", description: "여행 중 모르는 곳에서 길을 묻는 상황입니다.", baseContext: "You are a local resident. The user is a tourist asking for directions. Provide clear, concise (1-2 sentences) instructions and be helpful. Ask one question at a time if needed.", baseContext_swapped:"You are a tourist asking for directions. The user is a local resident. Ask for help finding your way concisely.", starters_userAsPrimary: ["Excuse me, how can I get to the museum?", "Could you show me on the map?", "Is this the right way to the train station?"], starters_userAsOther: ["Yes, how can I help you?", "Where are you trying to go?", "Sure, I can help with that."] },
+        { id: "ordering_at_restaurant_travel", title: "여행 중 식당 주문 🍽️", description: "여행지 식당에서 음식을 주문하고 현지 음식에 대해 질문합니다.", baseContext: "You are a waiter/waitress in a tourist-friendly restaurant. The user is ordering food and might ask about local specialties. Be patient and helpful. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You are a customer at a restaurant in a tourist area. The user is the waiter/waitress. Order food and ask about the menu concisely.", starters_userAsPrimary: ["What's the local specialty here?", "I'd like to try something traditional.", "Can you recommend a dish?"], starters_userAsOther: ["Welcome! Are you ready to order, or do you need a few more minutes?", "Can I get you started with something to drink?", "What can I get for you?"] },
+        { id: "booking_tour", title: "여행 상품 예약하기 🏞️", description: "현지 투어나 액티비티를 예약하는 상황입니다.", baseContext: "You are a travel agent or tour operator. The user wants to book a tour or activity. Provide information about options, prices, and make the booking. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You want to book a local tour or activity. The user is the travel agent. Inquire about options and make a booking concisely.", starters_userAsPrimary: ["I'm interested in booking a city tour.", "What kind of tours do you offer?", "How much does the [tour name] cost?"], starters_userAsOther: ["Hello! How can I help you plan your activities today?", "We have several tours available. What are you interested in?", "Certainly, let me check the availability for you."] },
+        { id: "at_immigration", title: "입국 심사대에서 🛂", description: "공항 입국 심사대에서 심사관의 질문에 답변합니다.", baseContext: "You are an immigration officer. The user is arriving in the country. Ask about the purpose of their visit, length of stay, and check their documents. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You are at immigration control upon arriving in a new country. The user is the immigration officer. Answer their questions about your visit concisely.", starters_userAsPrimary: ["Good morning. May I see your passport?", "What is the purpose of your visit?", "How long do you plan to stay?"], starters_userAsOther: ["Next, please. Passport and landing card.", "Good [morning/afternoon]. Welcome to [Country].", "What is the purpose of your visit to [Country]?"] }
+    ]},
+    { category: "직장 생활 (Work & Business)", items: [
+        { id: "job_interview", title: "면접 보기 💼", description: "구직 면접 상황을 연습합니다. 자기소개, 질문 답변 등", baseContext: "You are an interviewer for a job position. The user is a candidate. Ask common interview questions and evaluate their responses in English. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You are a candidate at a job interview. The user is the interviewer. Answer questions about your qualifications and experience concisely.", starters_userAsPrimary: ["Tell me about yourself.", "Why are you interested in this position?", "What are your strengths?"], starters_userAsOther: ["Thank you for coming in today. Please, have a seat.", "So, tell me a little bit about yourself.", "Why are you interested in this role at our company?"] },
+        { id: "meeting_colleagues", title: "동료와 회의하기 👥", description: "업무 관련 회의에서 의견을 제시하고 토론합니다.", baseContext: "You are a colleague in a business meeting. The user is participating in the meeting. Discuss agenda items, share opinions, and collaborate. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You are participating in a business meeting with colleagues. The user is one of your colleagues. Share your opinions and discuss agenda items concisely.", starters_userAsPrimary: ["I'd like to suggest an idea.", "What are your thoughts on this proposal?", "Let's discuss the next steps."], starters_userAsOther: ["Okay team, let's get started. The first item on the agenda is...", "Does anyone have any initial thoughts on this?", "Thanks for sharing, [User's Name]. What does everyone else think?"] },
+        { id: "phone_call_business", title: "업무 전화 통화 📞", description: "비즈니스 목적으로 전화를 걸거나 받는 상황입니다.", baseContext: "You are a business professional on a phone call. The user is either initiating or receiving a business call. Handle inquiries, schedule meetings, or discuss projects professionally. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You are making or receiving a business phone call. The user is the other party. Discuss professional matters, schedule appointments, or make inquiries concisely.", starters_userAsPrimary: ["Hello, this is [Your Name] from [Your Company].", "May I speak to Mr./Ms. [Name]?", "I'm calling to inquire about..."], starters_userAsOther: ["Good morning, [Company Name], [Your Name] speaking. How can I help you?", "Hello, thank you for calling. This is [Your Name].", "[User's Name] speaking."] },
+        { id: "presentation_qna", title: "발표 후 질의응답 🎤", description: "발표를 마친 후 청중의 질문에 답변하는 상황입니다.", baseContext: "You are an audience member after a presentation. The user is the presenter. Ask relevant questions about their presentation. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You are the presenter who has just finished a presentation. The user is an audience member asking questions. Answer their questions clearly and concisely.", starters_userAsPrimary: ["Thank you for your presentation. I have a question about...", "Could you elaborate on [specific point]?", "What are the implications of your findings?"], starters_userAsOther: ["Thank you for that insightful presentation. We now have some time for questions.", "Any questions for our speaker?", "Yes, the person in the back?"] },
+        { id: "networking_event", title: "네트워킹 행사 🤝", description: "업계 행사에서 새로운 사람들과 교류하며 대화합니다.", baseContext: "You are attending a networking event. The user is also an attendee. Initiate or respond to conversations to build professional connections. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You are attending a networking event. The user is another attendee. Engage in conversation to build professional connections concisely.", starters_userAsPrimary: ["Hi, I'm [Your Name]. What brings you to this event?", "That's an interesting point. Could you tell me more?", "It was nice talking to you. Here's my card."], starters_userAsOther: ["Hello! Enjoying the event?", "Hi, I don't think we've met. I'm [Your Name].", "What line of work are you in?"] }
+    ]},
+    { category: "취미 및 관심사 (Hobbies & Interests)", items: [
+        { id: "discussing_movie", title: "영화 이야기하기 🎬", description: "최근에 본 영화나 좋아하는 영화에 대해 친구와 이야기합니다.", baseContext: "You are a friend discussing movies with the user. Talk about recent movies, favorite genres, actors, etc. Encourage the user to express their opinions in English. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You are discussing movies with a friend (the user). Share your opinions about movies, genres, actors, etc. concisely.", starters_userAsPrimary: ["Have you seen any good movies lately?", "What's your favorite type of movie?", "I recently watched [Movie Title]..."], starters_userAsOther: ["So, any new movies you'd recommend?", "I'm looking for a good movie to watch, any ideas?", "What did you think of [Movie Title]?"] },
+        { id: "talking_about_music", title: "음악 취향 공유하기 🎶", description: "좋아하는 음악 장르, 가수, 노래에 대해 이야기 나눕니다.", baseContext: "You are a friend talking about music. Discuss favorite genres, artists, songs, concerts, etc. Help the user share their musical tastes in English. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You are talking about music with a friend (the user). Share your musical tastes, favorite artists, songs, etc. concisely.", starters_userAsPrimary: ["What kind of music do you like?", "Who's your favorite singer?", "Have you heard the new song by [Artist]?"], starters_userAsOther: ["I'm always looking for new music. Any recommendations?", "What have you been listening to lately?", "Do you like [Genre/Artist]?"] },
+        { id: "discussing_books", title: "책에 대해 대화하기 📚", description: "읽은 책이나 좋아하는 작가, 장르에 대해 이야기합니다.", baseContext: "You are a fellow book lover. The user wants to discuss books they've read, favorite authors, or genres. Share your thoughts and ask them about theirs. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You are discussing books with a fellow book lover (the user). Talk about books you've read, favorite authors, or genres concisely.", starters_userAsPrimary: ["What are you reading currently?", "Do you have a favorite author?", "I just finished a great book called..."], starters_userAsOther: ["Read any good books lately?", "I'm looking for a new book. Any suggestions?", "What kind of books do you usually enjoy?"] },
+        { id: "talking_about_sports", title: "스포츠 이야기하기 ⚽", description: "좋아하는 스포츠, 팀, 선수에 대해 이야기합니다.", baseContext: "You are a sports enthusiast. The user wants to talk about sports. Discuss favorite sports, teams, players, recent games, etc. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You are talking about sports with an enthusiast (the user). Discuss your favorite sports, teams, players, or recent games concisely.", starters_userAsPrimary: ["Did you watch the game last night?", "Who's your favorite team?", "I love playing [sport]."], starters_userAsOther: ["That was some game last night, wasn't it?", "Are you a fan of [Sport/Team]?", "What sports do you follow?"] }
+    ]},
+    { category: "사교 활동 (Socializing)", items: [
+        { id: "meeting_new_people", title: "새로운 사람과 스몰톡 👋", description: "파티나 모임에서 처음 만난 사람과 가벼운 대화를 나눕니다.", baseContext: "You are someone the user has just met at a social event. Engage in small talk, ask about their interests, job, etc., to help them practice initiating conversations with new people. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You have just met someone (the user) at a social event. Engage in small talk, share your interests, or ask about theirs concisely.", starters_userAsPrimary: ["Hi, I'm [Your Name]. Nice to meet you.", "So, what do you do for a living?", "Are you enjoying the event?"], starters_userAsOther: ["Hello! I don't think we've met. I'm [Your Name].", "Great event, isn't it?", "Hi there, mind if I join you?"] },
+        { id: "inviting_friend", title: "친구 초대하기 (식사, 영화 등) 📧", description: "친구에게 식사나 영화 관람 등을 제안하고 약속을 잡습니다.", baseContext: "You are a friend of the user. The user wants to invite you out for a meal, movie, or another activity. Respond to their invitation, discuss plans, and confirm details. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You want to invite your friend (the user). Make an invitation, suggest plans, and confirm details concisely.", starters_userAsPrimary: ["Are you free to grab dinner on Friday?", "I was wondering if you'd like to see a movie with me.", "Let's hang out sometime next week."], starters_userAsOther: ["Hey, what are you up to later?", "I was thinking of [activity], want to join?", "We should get together soon."] },
+        { id: "accepting_declining_invitation", title: "초대 수락/거절하기 ✅❌", description: "친구의 초대에 대해 수락하거나 정중히 거절하는 방법을 연습합니다.", baseContext: "You have invited the user to an event. The user will practice accepting or declining your invitation politely. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You have been invited to an event by the user. Practice accepting or declining the invitation politely and concisely.", starters_userAsPrimary: ["Thanks for inviting me! I'd love to come.", "That sounds great, but I'm afraid I have other plans.", "I appreciate the invitation, but I don't think I can make it."], starters_userAsOther: ["I'm having a get-together on Saturday, would you like to come?", "Want to catch a movie this weekend?", "I'm planning a [event], hope you can make it!"] }
+    ]},
+    { category: "문제 해결 및 요청 (Problem Solving & Requests)", items: [
+        { id: "returning_item", title: "물건 환불/교환하기 🛍️", description: "상점에서 구매한 물건을 환불하거나 교환 요청하는 상황입니다.", baseContext: "You are a store clerk. The user wants to return or exchange an item they purchased. Ask for the reason, receipt, and guide them through the store's policy. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You want to return or exchange an item at a store. The user is the store clerk. Explain your reason and follow the process concisely.", starters_userAsPrimary: ["I'd like to return this item, please.", "Can I exchange this for a different size?", "There's a problem with this product I bought."], starters_userAsOther: ["Hi, how can I help you today?", "Do you have your receipt?", "What seems to be the problem with the item?"] },
+        { id: "tech_support", title: "기술 지원 문의하기 💻", description: "제품 사용 중 문제가 발생하여 기술 지원팀에 문의합니다.", baseContext: "You are a technical support agent. The user is calling about an issue with a product or service. Help them troubleshoot the problem or escalate the issue. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You are calling technical support for an issue with a product or service. The user is the support agent. Describe your problem and seek assistance concisely.", starters_userAsPrimary: ["I'm having trouble with my [product/service].", "My internet isn't working.", "Could you help me fix this error?"], starters_userAsOther: ["Thank you for calling Tech Support, my name is [Your Name]. How can I help you?", "Could you please describe the issue you're experiencing?", "Have you tried restarting your device?"] },
+        { id: "making_complaint", title: "불만 제기하기 (호텔, 식당 등) 😠", description: "서비스나 제품에 대한 불만을 정중하게 표현합니다.", baseContext: "You are a manager or customer service representative. The user has a complaint about a service or product. Listen to their concerns and try to resolve the issue. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You have a complaint about a service or product. The user is the manager or customer service representative. Express your dissatisfaction politely and concisely.", starters_userAsPrimary: ["I'm afraid I have a complaint about...", "I'm not satisfied with the service I received.", "Could I speak to the manager, please?"], starters_userAsOther: ["I understand you have a concern. Please tell me what happened.", "I'm sorry to hear you're not satisfied. How can I make things right?", "Thank you for bringing this to my attention."] }
+    ]},
+    { category: "건강 및 의료 (Health & Medical)", items: [
+        { id: "hospital_visit", title: "병원 방문 (일반 진료) 🏥", description: "의사나 간호사에게 증상을 설명하고 진료 관련 대화를 나눕니다. AI는 의료진 역할을 합니다.",
+          baseContext: "You are a doctor or nurse at a hospital. The user is a patient explaining their symptoms. Ask clarifying questions ONE AT A TIME. Keep responses concise (1-2 sentences) and professional. Do not ask many questions at once. Do not ask questions you've already received answers for.",
+          baseContext_swapped: "You are a patient visiting a doctor/nurse (the user). Describe your symptoms or ask for advice concisely. Respond to one question at a time.",
+          starters_userAsPrimary: ["I'd like to see a doctor. I'm not feeling well.", "I have a persistent cough and a sore throat.", "I think I might have sprained my ankle."],
+          starters_userAsOther: ["Hello, what seems to be the problem today?", "Good morning. How can I help you?", "Please tell me what's bothering you."] },
+        { id: "dentist_visit", title: "치과 방문 🦷", description: "치과 의사나 위생사에게 치아 문제를 설명하거나 정기 검진 관련 대화를 합니다. AI는 치과 의료진 역할을 합니다.",
+          baseContext: "You are a dentist or dental hygienist. The user is a patient. Ask about their dental issue or needs. Keep questions focused and concise (1-2 sentences per turn). Ask ONE question at a time. Do not ask questions you've already received answers for.",
+          baseContext_swapped: "You are a patient at a dental clinic. The user is the dentist/hygienist. Explain your dental concern or reason for visit concisely. Respond to one question at a time.",
+          starters_userAsPrimary: ["I have a toothache, and I'd like to make an appointment.", "I'm here for my 6-month check-up and cleaning.", "This tooth has been really sensitive to cold lately."],
+          starters_userAsOther: ["Hi, welcome to our dental clinic. How can I help you today?", "What brings you in to see us?", "Are you here for a check-up or a specific issue?"] }
+    ]},
+    { category: "특별한 상황 (Special Occasions)", items: [
+        { id: "birthday_party", title: "생일 파티 대화 🎉", description: "생일 축하 메시지를 전하고 파티에서 대화합니다.", baseContext: "You are a guest at a birthday party. The user is also a guest or the birthday person. Engage in light conversation, offer good wishes. Respond concisely (1-2 sentences) and one question at a time. Do not ask questions you've already received answers for.", baseContext_swapped:"You are at a birthday party. The user is another guest or the birthday person. Engage in conversation and offer good wishes concisely.", starters_userAsPrimary: ["Happy birthday!", "This is a great party!", "How are you enjoying your special day?"], starters_userAsOther: ["Thanks for coming to my party!", "So glad you could make it!", "Are you having a good time?"] },
+        { id: "congratulating_someone", title: "축하 표현하기 🥳", description: "다른 사람의 좋은 일(승진, 졸업 등)을 축하합니다.", baseContext: "You are a friend or colleague of the user. The user wants to congratulate you or someone else on an achievement. Respond appropriately and concisely (1-2 sentences). Do not ask questions you've already received answers for.", baseContext_swapped:"You want to congratulate a friend or colleague (the user) on an achievement. Express your congratulations concisely.", starters_userAsPrimary: ["Congratulations on your promotion!", "That's fantastic news! Well done.", "I'm so happy for you!"], starters_userAsOther: ["Thank you so much!", "I really appreciate that.", "It means a lot to hear that from you."] }
+    ]},
+    { category: "사용자 설정", isCustomCategory: true, items: [
+        { id: "custom", title: "직접 입력 ✨", description: "연습하고 싶은 상황이나 대화 주제를 아래에 자세히 입력해주세요.", baseContext: "", baseContext_swapped: "", starters_userAsPrimary: ["Let's talk about [your topic].", "I want to practice discussing [your situation].", "Can we simulate a conversation about [your scenario]?"], starters_userAsOther: ["Okay, I'm ready for the custom scenario you described. What's my first line?", "I understand the custom scenario. How should I begin as the other person?", "Let's start the custom role-play. What's my role according to your description?"] }
+    ]}
+];
+
+const ko_UI_TEXT = {
+    appTitle: "SpeakUp AI",
+    suggestReplies: "응답 제안",
+    analyzeSentence: "문장 분석",
+    roleSwapButtonText: "역할 변경",
+    loading: "로딩중...",
+    aiResponseError: "죄송합니다. AI 응답을 생성하는 중 오류가 발생했습니다:",
+    errorMessageSuggestions: "제안을 가져오는 중 오류가 발생했습니다.",
+    errorMessageAnalysis: "분석 중 오류가 발생했습니다.",
+    noUserMessageForAnalysis: "분석할 메시지가 없습니다. 먼저 영어로 메시지를 보내주세요.",
+    suggestionsAfterAiResponse: "AI 응답 이후에 제안을 요청해주세요.",
+    scenarioChangeLoadingAlert: "AI가 응답 중일 때는 시나리오를 변경할 수 없습니다.",
+    newConversationLoadingAlert: "AI가 응답 중일 때는 새 대화를 시작할 수 없습니다.",
+    roleChangeAlert: (role) => `역할이 변경되었습니다! 이제 당신은 ${role}입니다.`,
+    newConversationAlert: (scenario) => `"${scenario}" 시나리오로 새 대화를 시작합니다!`,
+    customScenarioInputRequired: "사용자 설정 시나리오를 선택하셨습니다. 아래에 연습하고 싶은 상황을 입력해주세요.",
+    scenarioTitleCustom: (input) => input ? `✨ 사용자 설정: ${input}` : "✨ 사용자 설정 시나리오",
+    customScenarioDescription: "입력하신 상황에 맞춰 AI가 대화 상대가 되어드립니다.",
+    customScenarioPlaceholder: "연습하고 싶은 상황이나 대화 주제를 자세히 입력해주세요...",
+    starterPhrasePrefix: "이렇게 시작해 보세요:",
+    focusTopicPlaceholder: "집중 연습 주제 (선택 사항)",
+    guideModalTitle: "SpeakUp AI 사용 가이드 🚀",
+    guideModalConfirmButton: "알겠습니다!",
+    analysisResultTitle: "✨ 내 문장 분석 결과",
+    englishFeedbackTitle: "📝 영어 피드백:",
+    koreanSummaryTitle: "🇰🇷 한국어 요약:",
+    analysisConfirmButton: "확인했어요!",
+    guideP1_html: `<strong>1. 🤖 시나리오 선택:</strong><br/> 화면 좌측 상단의 현재 시나리오 버튼 (예: <span class="font-semibold text-sky-600">카페에서</span>)을 클릭하세요. 다양한 카테고리별 대화 상황을 선택하거나, '✨ 사용자 설정'을 통해 직접 원하는 주제를 입력하여 연습할 수 있습니다.`,
+    guideP2_html: `<strong>2. 🎯 집중 주제 (선택 사항):</strong><br/> 시나리오 설명 아래에 있는 입력창에 특별히 연습하고 싶은 어휘나 표현 등을 입력하면 AI가 대화에 더 잘 반영해줍니다. (사용자 설정 시나리오에서는 이 입력창이 없습니다.)`,
+    guideP3_html: `<strong>3. 🗣️ 대화 시작하기:</strong><br/> 화면 상단에 현재 시나리오에 맞는 <span class="text-sky-600 font-medium">"이렇게 시작해 보세요:"</span> 예시 문장들이 제공됩니다. 클릭하면 바로 입력창에 적용돼요! 또는 직접 영어로 메시지를 작성하고 전송 (종이비행기 아이콘) 버튼을 눌러 AI 튜터와 대화를 시작하세요.`,
+    guideP4_header_html: `<strong>4. ✨ AI 기능 활용하기 (입력창 하단 버튼):</strong>`,
+    guideP4_item1_html: `<strong class="text-amber-600">응답 제안:</strong> 대화 중 어떤 말을 해야 할지 막막할 때 누르면, AI가 3가지 응답 예시를 추천해줍니다.`,
+    guideP4_item2_html: `<strong class="text-teal-600">문장 분석:</strong> 방금 내가 보낸 영어 문장에 대해 AI가 문법, 어휘, 자연스러움 등을 분석하고, <span class="text-sky-600">한국어 요약</span>도 함께 제공합니다.`,
+    guideP4_item3_html: `<strong class="text-indigo-600">역할 변경:</strong> 현재 시나리오에서 사용자와 AI의 역할을 서로 바꿉니다. (예: 손님 ↔ 점원) 역할이 바뀌면 새로운 시작 표현도 제공됩니다.`,
+    guideP5_html: `<strong>5. 🔄 새 대화 시작:</strong><br/> 화면 우측 상단의 새로고침 아이콘 버튼을 누르면, 현재 선택된 시나리오 (또는 사용자 설정 주제) 및 역할로 대화 내용을 초기화하고 처음부터 다시 연습할 수 있습니다.`
+};
+
+// 일본어 언어 데이터
+const ja_SCENARIO_DATA = [
+    { category: "日常生活", items: [
+        { id: "cafe", title: "カフェで注文 ☕", description: "バリスタにコーヒーを注文し、簡単なリクエストをしてみましょう。AIは親切なバリスタの役割を演じます。",
+          baseContext: "あなたは親切なバリスタです。ユーザーはコーヒーを注文しています。簡潔に（1～2文）返答し、必要に応じて一度に1つの質問をして、注文を手伝ってください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたはコーヒーを注文する客です。ユーザーはバリスタです。注文をして、質問があれば聞いてください。リクエストは簡潔にしてください。",
+          starters_userAsPrimary: ["こんにちは、ラテをお願いします", "何かおすすめはありますか？", "コーヒーを注文したいのですが"],
+          starters_userAsOther: ["いらっしゃいませ！今日は何をお作りしましょうか？", "ようこそ！ご注文はお決まりですか？", "こんにちは！何かお手伝いできますか？"] },
+        { id: "grocery_shopping", title: "スーパーで買い物 🛒", description: "店員に商品の場所を尋ねたり、レジでの会話を練習します。AIは親切な店員の役割を演じます。",
+          baseContext: "あなたは親切なスーパーの店員です。ユーザーは買い物をしています。簡潔に（1～2文）返答し、商品を見つけたりレジを手伝ったりしてください。必要に応じて一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたはスーパーの客です。ユーザーは店員です。助けを求めたり、レジに進んだりしてください。簡潔に。",
+          starters_userAsPrimary: ["すみません、牛乳はどこにありますか？", "これはいくらですか？", "これらの商品を買いたいのですが"],
+          starters_userAsOther: ["いらっしゃいませ！何かお探しですか？", "レジにお進みですか？", "お探しのものは見つかりましたか？"] },
+        { id: "making_appointments", title: "予約する（美容院、病院など）🗓️", description: "電話や訪問で予約をする状況を練習します。AIは受付係の役割を演じます。",
+          baseContext: "あなたは美容院/クリニックの受付係です。ユーザーは予約をしたがっています。簡潔に（1ターンに1～2文）案内し、好みを尋ねて詳細を確認するために一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたは予約をしたい人です。ユーザーは受付係です。ニーズを簡潔に述べてください。",
+          starters_userAsPrimary: ["ヘアカットの予約をしたいのですが", "来週の火曜日に空きはありますか？", "今週の検診を予約できますか？"],
+          starters_userAsOther: ["お電話ありがとうございます。[サロン/クリニック名]です。どのようなご用件でしょうか？", "おはようございます！予約のお手伝いをさせていただきます", "予約をご希望ですか？"] },
+        { id: "daily_routine_talk", title: "日常の話をする ☀️", description: "一日の出来事や週末の計画など、日常的な話題で会話します。AIは友達の役割を演じます。",
+          baseContext: "あなたは友達です。ユーザーは日常生活について話したがっています。カジュアルで簡潔な（1ターンに1～2文）会話をしてください。必要に応じて一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたは友達（ユーザー）と話しています。あなたの一日について何か共有したり、相手のことを聞いたりしてください。簡潔に。",
+          starters_userAsPrimary: ["今日はどうだった？", "週末は何か予定ある？", "私は朝に[活動]をするよ"],
+          starters_userAsOther: ["やあ！最近どう？", "元気？", "今日何か面白いことあった？"] },
+        { id: "public_transportation", title: "公共交通機関を使う 🚌", description: "バスや地下鉄の切符を買ったり、道を尋ねる状況です。AIは駅員または他の乗客の役割を演じます。",
+          baseContext: "あなたは公共交通機関のスタッフまたは親切な乗客です。ユーザーは助けが必要です。明確で簡潔な（1ターンに1～2文）サポートを提供してください。必要に応じて一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたは公共交通機関の助けが必要です。ユーザーはスタッフ/乗客です。簡潔に質問してください。",
+          starters_userAsPrimary: ["ダウンタウンへ行くバスはどれですか？", "片道切符はいくらですか？", "ここは急行電車のホームですか？"],
+          starters_userAsOther: ["何かお手伝いしましょうか？", "特定の路線をお探しですか？", "切符はあちらで購入できます"] }
+    ]},
+    { category: "旅行", items: [
+        { id: "airport_checkin", title: "空港でチェックイン ✈️", description: "空港のチェックインカウンターで搭乗手続きをします。",
+          baseContext: "あなたは航空会社のチェックイン係です。ユーザーはフライトのチェックインをしています。パスポート/チケットを求め、荷物、座席の好みについて話し合ってください。簡潔に（1～2文）返答し、一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたは空港でフライトのチェックインをしています。ユーザーはチェックイン係です。書類を提供し、フライトの詳細について簡潔に話し合ってください。",
+          starters_userAsPrimary: ["ロンドン行きのフライトにチェックインしたいのですが", "パスポートとチケットです", "窓側の席をお願いできますか？"],
+          starters_userAsOther: ["おはようございます！パスポートとチケットを拝見できますか？", "今日はどちらへ飛ばれますか？", "預ける荷物はございますか？"] },
+        { id: "hotel_checkin", title: "ホテルでチェックイン 🏨", description: "ホテルのフロントで予約確認とチェックインをします。",
+          baseContext: "あなたはホテルの受付係です。ユーザーはチェックインしています。予約を確認し、設備を説明し、質問に答えてください。簡潔に（1～2文）返答し、一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたはホテルにチェックインしています。ユーザーは受付係です。予約の詳細を提供し、必要な質問を簡潔にしてください。",
+          starters_userAsPrimary: ["[名前]で予約しています", "朝食は何時からですか？", "部屋にWi-Fiはありますか？"],
+          starters_userAsOther: ["ようこそ！どのようなご用件でしょうか？", "当ホテルにご予約はございますか？", "お名前をお聞かせください"] },
+        { id: "asking_directions", title: "道を尋ねる 🗺️", description: "旅行中に知らない場所で道を尋ねる状況です。",
+          baseContext: "あなたは地元の住民です。ユーザーは道を尋ねる観光客です。明確で簡潔な（1～2文）指示を提供し、親切にしてください。必要に応じて一度に1つの質問をしてください。",
+          baseContext_swapped: "あなたは道を尋ねる観光客です。ユーザーは地元の住民です。道を見つけるのを手伝ってもらうよう簡潔に頼んでください。",
+          starters_userAsPrimary: ["すみません、博物館への行き方を教えてください", "地図で示していただけますか？", "駅へはこの道で合っていますか？"],
+          starters_userAsOther: ["はい、どうされましたか？", "どちらへ行かれたいですか？", "もちろん、お手伝いします"] },
+        { id: "ordering_at_restaurant_travel", title: "旅行中にレストランで注文 🍽️", description: "旅行先のレストランで食事を注文し、現地の料理について質問します。",
+          baseContext: "あなたは観光客向けレストランのウェイター/ウェイトレスです。ユーザーは食事を注文し、地元の特産品について尋ねるかもしれません。忍耐強く親切にしてください。簡潔に（1～2文）返答し、一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたは観光地のレストランの客です。ユーザーはウェイター/ウェイトレスです。食事を注文し、メニューについて簡潔に尋ねてください。",
+          starters_userAsPrimary: ["ここの名物料理は何ですか？", "何か伝統的なものを試してみたいです", "おすすめの料理はありますか？"],
+          starters_userAsOther: ["いらっしゃいませ！ご注文はお決まりですか、それとももう少しお時間が必要ですか？", "まずお飲み物はいかがですか？", "何をお持ちしましょうか？"] },
+        { id: "booking_tour", title: "旅行ツアーを予約する 🏞️", description: "現地のツアーやアクティビティを予約する状況です。",
+          baseContext: "あなたは旅行代理店またはツアーオペレーターです。ユーザーはツアーやアクティビティを予約したがっています。オプション、価格について情報を提供し、予約してください。簡潔に（1～2文）返答し、一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたは地元のツアーやアクティビティを予約したがっています。ユーザーは旅行代理店です。オプションについて尋ね、簡潔に予約してください。",
+          starters_userAsPrimary: ["市内観光ツアーを予約したいのですが", "どんなツアーがありますか？", "[ツアー名]の料金はいくらですか？"],
+          starters_userAsOther: ["こんにちは！今日のアクティビティ計画をお手伝いしましょうか？", "いくつかツアーがあります。何に興味がありますか？", "確かに、空き状況を確認させてください"] },
+        { id: "at_immigration", title: "入国審査で 🛂", description: "空港の入国審査で審査官の質問に答えます。",
+          baseContext: "あなたは入国審査官です。ユーザーは入国しています。訪問の目的、滞在期間について尋ね、書類を確認してください。簡潔に（1～2文）返答し、一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたは新しい国に到着した入国審査を受けています。ユーザーは入国審査官です。訪問について簡潔に質問に答えてください。",
+          starters_userAsPrimary: ["おはようございます。パスポートを拝見できますか？", "訪問の目的は何ですか？", "どのくらい滞在予定ですか？"],
+          starters_userAsOther: ["次の方、どうぞ。パスポートと入国カード", "おはようございます。[国]へようこそ", "[国]への訪問の目的は何ですか？"] }
+    ]},
+    { category: "仕事・ビジネス", items: [
+        { id: "job_interview", title: "面接を受ける 💼", description: "就職面接の状況を練習します。自己紹介、質問への回答など。",
+          baseContext: "あなたは職位の面接官です。ユーザーは候補者です。一般的な面接の質問をし、英語での回答を評価してください。簡潔に（1～2文）返答し、一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたは就職面接の候補者です。ユーザーは面接官です。資格や経験について質問に簡潔に答えてください。",
+          starters_userAsPrimary: ["自己紹介をお願いします", "なぜこのポジションに興味がありますか？", "あなたの強みは何ですか？"],
+          starters_userAsOther: ["本日はお越しいただきありがとうございます。どうぞお座りください", "それでは、少し自己紹介をしていただけますか？", "なぜ弊社のこの役職に興味を持たれたのですか？"] },
+        { id: "meeting_colleagues", title: "同僚と会議をする 👥", description: "仕事関連の会議で意見を述べたり、議論したりします。",
+          baseContext: "あなたはビジネス会議の同僚です。ユーザーは会議に参加しています。議題について話し合い、意見を共有し、協力してください。簡潔に（1～2文）返答し、一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたは同僚とのビジネス会議に参加しています。ユーザーはあなたの同僚の一人です。意見を共有し、議題について簡潔に話し合ってください。",
+          starters_userAsPrimary: ["アイデアを提案したいと思います", "この提案についてどう思いますか？", "次のステップについて話し合いましょう"],
+          starters_userAsOther: ["では皆さん、始めましょう。議題の最初の項目は...", "これについて最初の意見はありますか？", "[ユーザー名]さん、ありがとうございます。他の皆さんはどう思いますか？"] },
+        { id: "phone_call_business", title: "ビジネス電話をかける 📞", description: "ビジネス目的で電話をかけたり受けたりする状況です。",
+          baseContext: "あなたは電話でのビジネスプロフェッショナルです。ユーザーはビジネス電話を開始または受信しています。問い合わせに対応し、会議をスケジュールし、プロジェクトについて専門的に話し合ってください。簡潔に（1～2文）返答し、一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたはビジネス電話をかけたり受けたりしています。ユーザーは相手です。専門的な事項について話し合い、アポイントメントをスケジュールし、簡潔に問い合わせてください。",
+          starters_userAsPrimary: ["こんにちは、[会社名]の[あなたの名前]です", "[名前]さんとお話しできますか？", "～について問い合わせたくてお電話しました"],
+          starters_userAsOther: ["おはようございます、[会社名]、[あなたの名前]です。どのようなご用件でしょうか？", "お電話ありがとうございます。[あなたの名前]です", "[ユーザー名]です"] },
+        { id: "presentation_qna", title: "プレゼン後の質疑応答 🎤", description: "プレゼンテーションを終えた後、聴衆の質問に答える状況です。",
+          baseContext: "あなたはプレゼンテーション後の聴衆メンバーです。ユーザーはプレゼンターです。プレゼンテーションについて関連する質問をしてください。簡潔に（1～2文）返答し、一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたはプレゼンテーションを終えたばかりのプレゼンターです。ユーザーは質問をする聴衆メンバーです。質問に明確かつ簡潔に答えてください。",
+          starters_userAsPrimary: ["プレゼンテーションありがとうございました。～について質問があります", "[特定のポイント]について詳しく説明していただけますか？", "あなたの発見の意味は何ですか？"],
+          starters_userAsOther: ["素晴らしいプレゼンテーションをありがとうございました。質問の時間があります", "スピーカーへの質問はありますか？", "はい、後ろの方？"] },
+        { id: "networking_event", title: "ネットワーキングイベント 🤝", description: "業界のイベントで新しい人々と交流し、会話します。",
+          baseContext: "あなたはネットワーキングイベントに参加しています。ユーザーも参加者です。プロフェッショナルなつながりを構築するために会話を始めたり応答したりしてください。簡潔に（1～2文）返答し、一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたはネットワーキングイベントに参加しています。ユーザーは別の参加者です。プロフェッショナルなつながりを構築するために簡潔に会話してください。",
+          starters_userAsPrimary: ["こんにちは、[あなたの名前]です。このイベントに何をもたらしましたか？", "それは興味深い点ですね。もっと教えていただけますか？", "お話しできて良かったです。これが私の名刺です"],
+          starters_userAsOther: ["こんにちは！イベントを楽しんでいますか？", "こんにちは、まだお会いしていないと思います。[あなたの名前]です", "どのような仕事をされていますか？"] }
+    ]},
+    { category: "趣味・関心事", items: [
+        { id: "discussing_movie", title: "映画について話す 🎬", description: "最近見た映画や好きな映画について友達と話します。",
+          baseContext: "あなたはユーザーと映画について話し合う友達です。最近の映画、好きなジャンル、俳優などについて話してください。ユーザーが英語で意見を表現するのを促してください。簡潔に（1～2文）返答し、一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたは友達（ユーザー）と映画について話し合っています。映画、ジャンル、俳優などについて簡潔に意見を共有してください。",
+          starters_userAsPrimary: ["最近何か良い映画を見ましたか？", "どんな映画が好きですか？", "最近[映画タイトル]を見ました..."],
+          starters_userAsOther: ["それで、おすすめの新しい映画はありますか？", "見る良い映画を探しています、何かアイデアは？", "[映画タイトル]についてどう思いましたか？"] },
+        { id: "talking_about_music", title: "音楽の好みを共有する 🎶", description: "好きな音楽ジャンル、歌手、曲について話します。",
+          baseContext: "あなたは音楽について話す友達です。好きなジャンル、アーティスト、曲、コンサートなどについて話し合ってください。ユーザーが英語で音楽の好みを共有するのを手伝ってください。簡潔に（1～2文）返答し、一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたは友達（ユーザー）と音楽について話しています。音楽の好み、好きなアーティスト、曲などを簡潔に共有してください。",
+          starters_userAsPrimary: ["どんな音楽が好きですか？", "好きな歌手は誰ですか？", "[アーティスト]の新しい曲を聞きましたか？"],
+          starters_userAsOther: ["私はいつも新しい音楽を探しています。何かおすすめは？", "最近何を聞いていますか？", "[ジャンル/アーティスト]は好きですか？"] },
+        { id: "discussing_books", title: "本について会話する 📚", description: "読んだ本や好きな作家、ジャンルについて話します。",
+          baseContext: "あなたは本好きの仲間です。ユーザーは読んだ本、好きな作家、ジャンルについて話し合いたがっています。あなたの考えを共有し、相手のことを尋ねてください。簡潔に（1～2文）返答し、一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたは本好きの仲間（ユーザー）と本について話し合っています。読んだ本、好きな作家、ジャンルについて簡潔に話してください。",
+          starters_userAsPrimary: ["今何を読んでいますか？", "好きな作家はいますか？", "素晴らしい本を読み終えたところです..."],
+          starters_userAsOther: ["最近何か良い本を読みましたか？", "新しい本を探しています。何か提案は？", "どんな本が好きですか？"] },
+        { id: "talking_about_sports", title: "スポーツについて話す ⚽", description: "好きなスポーツ、チーム、選手について話します。",
+          baseContext: "あなたはスポーツ愛好家です。ユーザーはスポーツについて話したがっています。好きなスポーツ、チーム、選手、最近の試合などについて話し合ってください。簡潔に（1～2文）返答し、一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたは愛好家（ユーザー）とスポーツについて話しています。好きなスポーツ、チーム、選手、最近の試合について簡潔に話し合ってください。",
+          starters_userAsPrimary: ["昨夜の試合を見ましたか？", "好きなチームはどこですか？", "私は[スポーツ]をするのが大好きです"],
+          starters_userAsOther: ["昨夜はすごい試合でしたね？", "[スポーツ/チーム]のファンですか？", "どんなスポーツをフォローしていますか？"] }
+    ]},
+    { category: "社交活動", items: [
+        { id: "meeting_new_people", title: "新しい人とスモールトーク 👋", description: "パーティーや集まりで初めて会った人と軽い会話をします。",
+          baseContext: "あなたはユーザーが社交イベントで会ったばかりの人です。スモールトークをし、興味、仕事などについて尋ねて、新しい人との会話を始める練習を手伝ってください。簡潔に（1～2文）返答し、一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたは社交イベントで誰か（ユーザー）に会ったばかりです。スモールトークをし、興味を共有したり、相手のことを簡潔に尋ねたりしてください。",
+          starters_userAsPrimary: ["こんにちは、[あなたの名前]です。お会いできて嬉しいです", "お仕事は何をされていますか？", "イベントを楽しんでいますか？"],
+          starters_userAsOther: ["こんにちは！まだお会いしていないと思います。[あなたの名前]です", "素晴らしいイベントですね？", "こんにちは、ご一緒してもいいですか？"] },
+        { id: "inviting_friend", title: "友達を誘う（食事、映画など）📧", description: "友達に食事や映画鑑賞などを提案し、約束を取り付けます。",
+          baseContext: "あなたはユーザーの友達です。ユーザーは食事、映画、または他の活動にあなたを誘いたがっています。招待に応答し、計画について話し合い、詳細を確認してください。簡潔に（1～2文）返答し、一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたは友達（ユーザー）を誘いたがっています。招待をし、計画を提案し、詳細を簡潔に確認してください。",
+          starters_userAsPrimary: ["金曜日に夕食を食べに行く時間はありますか？", "一緒に映画を見に行きませんか？", "来週のいつか会いましょう"],
+          starters_userAsOther: ["ねえ、後で何してる？", "[活動]を考えていたんだけど、参加する？", "そろそろ会うべきだね"] },
+        { id: "accepting_declining_invitation", title: "招待を受け入れる/断る ✅❌", description: "友達の招待を受け入れたり、丁寧に断る方法を練習します。",
+          baseContext: "あなたはユーザーをイベントに招待しました。ユーザーは招待を丁寧に受け入れたり断ったりする練習をします。簡潔に（1～2文）返答し、一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたはユーザーによってイベントに招待されました。招待を丁寧に受け入れたり断ったりする練習を簡潔にしてください。",
+          starters_userAsPrimary: ["招待してくれてありがとう！ぜひ行きたいです", "それは素晴らしいですが、残念ながら他の予定があります", "招待に感謝しますが、行けないと思います"],
+          starters_userAsOther: ["土曜日に集まりをするんだけど、来る？", "今週末に映画を見に行かない？", "[イベント]を計画しているんだ、来れるといいな！"] }
+    ]},
+    { category: "問題解決・リクエスト", items: [
+        { id: "returning_item", title: "商品の返品/交換 🛍️", description: "店で購入した商品を返品または交換リクエストする状況です。",
+          baseContext: "あなたは店員です。ユーザーは購入した商品を返品または交換したがっています。理由、レシートを尋ね、店のポリシーに従って案内してください。簡潔に（1～2文）返答し、一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたは店で商品を返品または交換したがっています。ユーザーは店員です。理由を説明し、簡潔にプロセスに従ってください。",
+          starters_userAsPrimary: ["この商品を返品したいのですが", "これを別のサイズと交換できますか？", "買った商品に問題があります"],
+          starters_userAsOther: ["こんにちは、今日はどのようなご用件ですか？", "レシートはお持ちですか？", "商品の何が問題のようですか？"] },
+        { id: "tech_support", title: "技術サポートに問い合わせる 💻", description: "製品使用中に問題が発生し、技術サポートチームに問い合わせます。",
+          baseContext: "あなたは技術サポートエージェントです。ユーザーは製品やサービスの問題について電話しています。問題のトラブルシューティングを手伝うか、問題をエスカレートしてください。簡潔に（1～2文）返答し、一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたは製品やサービスの問題について技術サポートに電話しています。ユーザーはサポートエージェントです。問題を説明し、簡潔に支援を求めてください。",
+          starters_userAsPrimary: ["[製品/サービス]に問題があります", "インターネットが動作しません", "このエラーを修正するのを手伝ってもらえますか？"],
+          starters_userAsOther: ["技術サポートにお電話いただきありがとうございます、[あなたの名前]です。どのようなお手伝いができますか？", "どのような問題が発生しているか説明していただけますか？", "デバイスを再起動してみましたか？"] },
+        { id: "making_complaint", title: "苦情を申し立てる（ホテル、レストランなど）😠", description: "サービスや製品に対する不満を丁寧に表現します。",
+          baseContext: "あなたはマネージャーまたはカスタマーサービス担当者です。ユーザーはサービスや製品について苦情があります。彼らの懸念を聞き、問題を解決しようとしてください。簡潔に（1～2文）返答し、一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたはサービスや製品について苦情があります。ユーザーはマネージャーまたはカスタマーサービス担当者です。不満を丁寧かつ簡潔に表現してください。",
+          starters_userAsPrimary: ["申し訳ありませんが、～について苦情があります", "受けたサービスに満足していません", "マネージャーと話せますか？"],
+          starters_userAsOther: ["ご心配があることを理解しています。何が起こったか教えてください", "ご満足いただけなくて申し訳ありません。どのように解決できますか？", "これを私の注意に持ってきてくれてありがとうございます"] }
+    ]},
+    { category: "健康・医療", items: [
+        { id: "hospital_visit", title: "病院を訪れる（一般診療）🏥", description: "医師や看護師に症状を説明し、診療関連の会話をします。AIは医療従事者の役割を演じます。",
+          baseContext: "あなたは病院の医師または看護師です。ユーザーは症状を説明する患者です。一度に1つずつ明確な質問をしてください。簡潔に（1～2文）かつ専門的に返答してください。一度に多くの質問をしないでください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたは医師/看護師（ユーザー）を訪れる患者です。症状を説明したり、アドバイスを簡潔に求めたりしてください。一度に1つの質問に答えてください。",
+          starters_userAsPrimary: ["医師に診てもらいたいです。体調が良くありません", "持続的な咳と喉の痛みがあります", "足首を捻挫したかもしれません"],
+          starters_userAsOther: ["こんにちは、今日はどのような問題がありますか？", "おはようございます。どのようなお手伝いができますか？", "何が心配か教えてください"] },
+        { id: "dentist_visit", title: "歯科を訪れる 🦷", description: "歯科医師や歯科衛生士に歯の問題を説明したり、定期検診関連の会話をします。AIは歯科医療従事者の役割を演じます。",
+          baseContext: "あなたは歯科医師または歯科衛生士です。ユーザーは患者です。歯の問題やニーズについて尋ねてください。質問は焦点を絞って簡潔に（1ターンに1～2文）してください。一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたは歯科クリニックの患者です。ユーザーは歯科医師/衛生士です。歯の懸念や訪問の理由を簡潔に説明してください。一度に1つの質問に答えてください。",
+          starters_userAsPrimary: ["歯が痛くて、予約を取りたいです", "6ヶ月の検診とクリーニングに来ました", "この歯が最近冷たいものにとても敏感です"],
+          starters_userAsOther: ["こんにちは、当歯科クリニックへようこそ。今日はどのようなお手伝いができますか？", "何か来院されたご用件は？", "検診ですか、それとも特定の問題ですか？"] }
+    ]},
+    { category: "特別な機会", items: [
+        { id: "birthday_party", title: "誕生日パーティーでの会話 🎉", description: "誕生日のお祝いメッセージを伝え、パーティーで会話します。",
+          baseContext: "あなたは誕生日パーティーのゲストです。ユーザーもゲストまたは誕生日の人です。軽い会話をし、良い願いを提供してください。簡潔に（1～2文）返答し、一度に1つの質問をしてください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたは誕生日パーティーにいます。ユーザーは別のゲストまたは誕生日の人です。会話をし、簡潔に良い願いを提供してください。",
+          starters_userAsPrimary: ["お誕生日おめでとう！", "素晴らしいパーティーですね！", "特別な日を楽しんでいますか？"],
+          starters_userAsOther: ["パーティーに来てくれてありがとう！", "来てくれて本当に嬉しい！", "楽しんでいますか？"] },
+        { id: "congratulating_someone", title: "お祝いを表現する 🥳", description: "他の人の良いこと（昇進、卒業など）をお祝いします。",
+          baseContext: "あなたはユーザーの友人または同僚です。ユーザーはあなたまたは他の誰かの成果をお祝いしたがっています。適切かつ簡潔に（1～2文）応答してください。すでに回答を得た質問はしないでください。",
+          baseContext_swapped: "あなたは友人または同僚（ユーザー）の成果をお祝いしたがっています。簡潔にお祝いを表現してください。",
+          starters_userAsPrimary: ["昇進おめでとうございます！", "素晴らしいニュースですね！よくやりました", "本当に嬉しいです！"],
+          starters_userAsOther: ["本当にありがとうございます！", "それは本当に感謝しています", "あなたからそれを聞くことは本当に意味があります"] }
+    ]},
+    { category: "カスタム設定", isCustomCategory: true, items: [
+        { id: "custom", title: "自分で入力 ✨", description: "練習したい状況や会話のトピックを下に詳しく入力してください。", 
+          baseContext: "", 
+          baseContext_swapped: "", 
+          starters_userAsPrimary: ["[あなたのトピック]について話しましょう", "[あなたの状況]についての議論を練習したいです", "[あなたのシナリオ]についての会話をシミュレートできますか？"], 
+          starters_userAsOther: ["わかりました、あなたが説明したカスタムシナリオの準備ができています。私の最初のセリフは何ですか？", "カスタムシナリオを理解しました。もう一人の人物としてどのように始めるべきですか？", "カスタムロールプレイを始めましょう。あなたの説明によると私の役割は何ですか？"] }
+    ]}
+];
+
+const ja_UI_TEXT = {
+    appTitle: "SpeakUp AI",
+    suggestReplies: "返信提案",
+    analyzeSentence: "文章分析",
+    roleSwapButtonText: "役割交換",
+    loading: "読み込み中...",
+    aiResponseError: "申し訳ございません。AI応答の生成中にエラーが発生しました：",
+    errorMessageSuggestions: "提案の取得中にエラーが発生しました。",
+    errorMessageAnalysis: "分析中にエラーが発生しました。",
+    noUserMessageForAnalysis: "分析するメッセージがありません。まず英語でメッセージを送信してください。",
+    suggestionsAfterAiResponse: "AI応答の後に提案を要求してください。",
+    scenarioChangeLoadingAlert: "AIが応答中はシナリオを変更できません。",
+    newConversationLoadingAlert: "AIが応答中は新しい会話を開始できません。",
+    roleChangeAlert: (role) => `役割が変更されました！あなたは今${role}です。`,
+    newConversationAlert: (scenario) => `「${scenario}」シナリオで新しい会話を開始します！`,
+    customScenarioInputRequired: "カスタムシナリオを選択しました。以下に練習したい状況を入力してください。",
+    scenarioTitleCustom: (input) => input ? `✨ カスタム: ${input}` : "✨ カスタムシナリオ",
+    customScenarioDescription: "入力した状況に合わせてAIが会話相手になります。",
+    customScenarioPlaceholder: "練習したい状況や会話のトピックを詳しく入力してください...",
+    starterPhrasePrefix: "このように始めてみてください：",
+    focusTopicPlaceholder: "集中練習テーマ（オプション）",
+    guideModalTitle: "SpeakUp AI 使用ガイド 🚀",
+    guideModalConfirmButton: "わかりました！",
+    analysisResultTitle: "✨ 文章分析結果",
+    englishFeedbackTitle: "📝 英語フィードバック：",
+    koreanSummaryTitle: "🇯🇵 日本語要約：",
+    analysisConfirmButton: "確認しました！",
+    guideP1_html: `<strong>1. 🤖 シナリオ選択：</strong><br/> 画面左上のシナリオボタンをクリックしてください。`,
+    guideP2_html: `<strong>2. 🎯 集中テーマ（オプション）：</strong><br/> 特別に練習したい語彙や表現を入力してください。`,
+    guideP3_html: `<strong>3. 🗣️ 会話開始：</strong><br/> 英語でメッセージを入力して送信ボタンを押してください。`,
+    guideP4_header_html: `<strong>4. ✨ AI機能活用：</strong>`,
+    guideP4_item1_html: `<strong class="text-amber-600">返信提案：</strong> AIが3つの返信例を提案します。`,
+    guideP4_item2_html: `<strong class="text-teal-600">文章分析：</strong> 文法、語彙、自然さを分析します。`,
+    guideP4_item3_html: `<strong class="text-indigo-600">役割交換：</strong> ユーザーとAIの役割を交換します。`,
+    guideP5_html: `<strong>5. 🔄 新しい会話：</strong><br/> 右上の更新ボタンで会話をリセットできます。`
+};
+
+// 언어 팩 정의
+const langPacks = {
+    'ko': { scenarios: ko_SCENARIO_DATA, ui: ko_UI_TEXT, displayName: "한국어" },
+    'ja': { scenarios: ja_SCENARIO_DATA, ui: ja_UI_TEXT, displayName: "日本語" },
+};
+
+// --- 앱 설정 ---
+const APP_ID = 'ai-tutor-html-default-v1';
+const API_ENDPOINT = "https://magenta-morning-find.glitch.me/generate";
+
+// --- 앱의 전역 상태 관리 ---
+const appState = {
+    currentMessages: [],
+    currentScenario: null,
+    currentFocusTopic: '',
+    currentCustomScenarioInput: '',
+    isLoading: false,
+    isLoadingSuggestions: false,
+    isLoadingAnalysis: false,
+    showScenarioPicker: false,
+    expandedCategories: {},
+    userIsPlayingPrimaryRole: true,
+    currentLangCode: '',
+    SCENARIO_DATA: null,
+    UI_TEXT: null,
+    showLanguagePicker: false,
+};
+
+// --- DOM 요소 캐싱 ---
+const elements = {};
+
+function initDOMElements() {
+    console.log("initDOMElements: DOM 요소 캐싱 시작");
+    
+    elements.scenarioPickerButton = document.getElementById('scenarioPickerButton');
+    elements.currentScenarioDisplay = document.getElementById('currentScenarioDisplay');
+    elements.scenarioDropdown = document.getElementById('scenarioDropdown');
+    elements.headerTitle = document.getElementById('headerTitle');
+    elements.newConversationButton = document.getElementById('newConversationButton');
+    elements.helpButton = document.getElementById('helpButton');
+
+    elements.languagePickerContainer = document.getElementById('languagePickerContainer');
+    elements.languagePickerButton = document.getElementById('languagePickerButton');
+    elements.currentLanguageDisplay = document.getElementById('currentLanguageDisplay');
+    elements.languageDropdown = document.getElementById('languageDropdown');
+
+    elements.scenarioDescriptionArea = document.getElementById('scenarioDescriptionArea');
+    elements.scenarioTitleElem = document.getElementById('scenarioTitle');
+    elements.scenarioDescriptionElem = document.getElementById('scenarioDescription');
+    elements.starterPhrasesContainer = document.getElementById('starterPhrasesContainer');
+    elements.focusTopicGroup = document.getElementById('focusTopicGroup');
+    elements.focusTopicInput = document.getElementById('focusTopicInput');
+    elements.customScenarioGroup = document.getElementById('customScenarioGroup');
+    elements.customScenarioInputElem = document.getElementById('customScenarioInput');
+
+    elements.messagesContainer = document.getElementById('messagesContainer');
+    elements.userInputElem = document.getElementById('userInput');
+    elements.sendMessageButton = document.getElementById('sendMessageButton');
+
+    elements.suggestedRepliesContainer = document.getElementById('suggestedRepliesContainer');
+    elements.suggestedRepliesList = document.getElementById('suggestedRepliesList');
+    elements.suggestRepliesButton = document.getElementById('suggestRepliesButton');
+    elements.suggestRepliesButtonText = document.getElementById('suggestRepliesButtonText');
+
+    elements.analyzeSentenceButton = document.getElementById('analyzeSentenceButton');
+    elements.analyzeSentenceButtonText = document.getElementById('analyzeSentenceButtonText');
+
+    elements.roleSwapButton = document.getElementById('roleSwapButton');
+    elements.roleSwapButtonText = document.getElementById('roleSwapButtonText');
+
+    elements.guideModal = document.getElementById('guideModal');
+    elements.guideModalContent = document.getElementById('guideModalContent');
+    elements.closeGuideModalButton = document.getElementById('closeGuideModalButton');
+    elements.confirmGuideModalButton = document.getElementById('confirmGuideModalButton');
+
+    elements.analysisModal = document.getElementById('analysisModal');
+    elements.analysisModalContent = document.getElementById('analysisModalContent');
+    elements.englishAnalysisResultDiv = document.querySelector('#englishAnalysisResult div');
+    elements.koreanAnalysisResultDiv = document.querySelector('#koreanAnalysisResult div');
+    elements.closeAnalysisModalButtonFromAnalysis = document.getElementById('closeAnalysisModalButtonFromAnalysis');
+    elements.confirmAnalysisModalButtonFromAnalysis = document.getElementById('confirmAnalysisModalButtonFromAnalysis');
+
+    elements.guideModalTitle = elements.guideModal ? elements.guideModal.querySelector('h2') : null;
+    elements.analysisModalTitle = elements.analysisModal ? elements.analysisModal.querySelector('h3') : null;
+    elements.englishFeedbackTitle = elements.analysisModal ? elements.analysisModal.querySelector('#englishAnalysisResult h4') : null;
+    elements.koreanSummaryTitle = elements.analysisModal ? elements.analysisModal.querySelector('#koreanAnalysisResult h4') : null;
+
+    elements.guideP1 = elements.guideModalContent ? elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(1)') : null;
+    elements.guideP2 = elements.guideModalContent ? elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(2)') : null;
+    elements.guideP3 = elements.guideModalContent ? elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(3)') : null;
+    elements.guideP4_header = elements.guideModalContent ? elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(4) strong') : null;
+    elements.guideUl = elements.guideModalContent ? elements.guideModalContent.querySelector('ul') : null;
+    elements.guideUl_item1_li = elements.guideUl ? elements.guideUl.querySelector('li:nth-of-type(1)') : null;
+    elements.guideUl_item2_li = elements.guideUl ? elements.guideUl.querySelector('li:nth-of-type(2)') : null;
+    elements.guideUl_item3_li = elements.guideUl ? elements.guideUl.querySelector('li:nth-of-type(3)') : null;
+    elements.guideP5 = elements.guideModalContent ? elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(5)') : null;
+    
+    console.log("initDOMElements: DOM 요소 캐싱 완료", elements);
+}
+
+// --- 유틸리티 함수 ---
+
+function simpleMarkdownToHtml(text) {
+    if (!text) return '';
+    let html = text;
+    html = html.replace(/\*\*(.*?)\*\*|__(.*?)__/g, '<strong>$1$2</strong>');
+    html = html.replace(/\*(.*?)\*|_(.*?)_/g, '<em>$1$2</em>');
+    html = html.replace(/~~(.*?)~~/g, '<del>$1</del>');
+    html = html.replace(/^\s*[\*\-\+]\s+(.*)/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.*?<\/li>)+/gs, '<ul>$&</ul>');
+    html = html.replace(/\n/g, '<br />');
+    html = html.replace(/<li><br \/>/g, '<li>');
+    html = html.replace(/<br \/><\/li>/g, '</li>');
+    html = html.replace(/<br \/>\s*<ul>/g, '<ul>');
+    html = html.replace(/<\/ul>\s*<br \/>/g, '</ul>');
+    return html;
+}
+
+function findScenarioById(id) {
+    for (const category of appState.SCENARIO_DATA) {
+        const found = category.items.find(item => item.id === id);
+        if (found) return { ...found, categoryTitle: category.category };
+    }
+    return null;
+}
+
+function getStarterPhrases(scenario, userIsPlayingPrimaryRole) {
+    return userIsPlayingPrimaryRole ? (scenario.starters_userAsPrimary || scenario.starters) : scenario.starters_userAsOther;
+}
+
+function getDynamicContext(scenario, customInput, focusTopic, userIsPlayingPrimaryRole) {
+    if (!scenario) return "You are a general English tutor. No specific scenario is selected.";
+
+    let scenarioSpecificContext = "";
+    if (scenario.id === "custom") {
+        if (!customInput.trim()) return `You are a helpful and friendly AI tutor. The user hasn't specified a custom scenario yet. Ask them what they'd like to practice. Keep your response brief (1-2 sentences) and ask only one question at a time.`;
+        if (!userIsPlayingPrimaryRole) {
+            scenarioSpecificContext = `ROLE SWAP: You are now the conversation partner in the user's custom scenario: "${customInput}". The human user is acting as your AI tutor or guide. Respond naturally based on the scenario, keep your response brief (1-2 sentences), and ask only one question at a time if needed. Don't ask questions that have already been answered.`;
+        } else {
+            scenarioSpecificContext = `You are a helpful and friendly AI tutor. The user wants to practice a conversation in their custom scenario: "${customInput}". Act as their conversation partner for this topic, ask relevant questions, and help them practice their English. Keep your response brief (1-2 sentences) and ask only one question at a time if needed. Don't ask questions that have already been answered.`;
+        }
+    } else {
+        if (userIsPlayingPrimaryRole) {
+            scenarioSpecificContext = scenario.baseContext;
+        } else {
+            scenarioSpecificContext = scenario.baseContext_swapped || `Role swap! You are now playing the role that the AI normally plays in the "${scenario.title}" scenario. For example, if the user was the customer in a cafe, you are now the customer. The human user is playing the opposite role (e.g., the barista). Start or respond accordingly, keep your response brief (1-2 sentences), and ask only one question at a time if needed. Don't ask questions that have already been answered.`;
+        }
+    }
+
+    const focusTopicInstruction = (userIsPlayingPrimaryRole && focusTopic && scenario.id !== "custom") ? `\n\nThe user wants to focus on: "${focusTopic}". Try to incorporate this into the conversation.` : '';
+
+    return `${scenarioSpecificContext}${focusTopicInstruction}`;
+}
+
+// --- UI 렌더링 및 조작 함수 ---
+
+function renderMessages() {
+    if (!elements.messagesContainer) return;
+    elements.messagesContainer.innerHTML = '';
+    appState.currentMessages.forEach(msg => {
+        const messageWrapper = document.createElement('div');
+        messageWrapper.className = `flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`;
+        const messageBubble = document.createElement('div');
+        messageBubble.className = `max-w-3/4 sm:max-w-md lg:max-w-lg px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl shadow ${
+            msg.sender === 'user' ? 'user-bubble text-white rounded-br-none' : 'ai-bubble text-slate-800 rounded-bl-none'
+        }`;
+        messageBubble.innerHTML = simpleMarkdownToHtml(msg.text);
+        messageWrapper.appendChild(messageBubble);
+        elements.messagesContainer.appendChild(messageWrapper);
+    });
+    elements.messagesContainer.scrollTop = elements.messagesContainer.scrollHeight;
+}
+
+function updateScenarioDisplay(isConversationStarting = false) {
+    if (!appState.currentScenario) return;
+
+    const displayTitle = appState.currentScenario.id === 'custom'
+        ? (appState.currentCustomScenarioInput ? `${appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput).split(':')[0]}: ${appState.currentCustomScenarioInput.substring(0, 10)}...` : appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput))
+        : (appState.currentScenario.categoryTitle ? `${appState.currentScenario.title.split(" ")[0]}` : appState.currentScenario.title.split(" ")[0]);
+
+    if (elements.currentScenarioDisplay) elements.currentScenarioDisplay.textContent = displayTitle;
+    if (elements.headerTitle) elements.headerTitle.title = appState.currentScenario.title;
+
+    const elementsToHide = document.querySelectorAll('.hide-after-conversation-start');
+    if (isConversationStarting) {
+        elementsToHide.forEach(el => el.classList.add('hidden'));
+        if (elements.scenarioDescriptionArea) {
+            elements.scenarioDescriptionArea.classList.remove('pb-4', 'sm:pb-5');
+        }
+        if (elements.scenarioTitleElem) {
+            elements.scenarioTitleElem.classList.remove('mb-1.5');
+            elements.scenarioTitleElem.classList.add('mb-0');
+        }
+    } else {
+        elementsToHide.forEach(el => el.classList.remove('hidden'));
+        if (elements.scenarioTitleElem) {
+            elements.scenarioTitleElem.textContent = appState.currentScenario.id === "custom"
+                ? appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput)
+                : appState.currentScenario.title;
+        }
+        if (elements.scenarioDescriptionElem) {
+            elements.scenarioDescriptionElem.textContent = appState.currentScenario.id === "custom"
+                ? appState.UI_TEXT.customScenarioDescription
+                : appState.currentScenario.description;
+        }
+
+        if (elements.starterPhrasesContainer) {
+            elements.starterPhrasesContainer.innerHTML = '';
+        }
+
+        const starters = getStarterPhrases(appState.currentScenario, appState.userIsPlayingPrimaryRole);
+        if (starters && starters.length > 0) {
+            if (elements.starterPhrasesContainer) {
+                elements.starterPhrasesContainer.classList.remove('hidden');
+
+                const starterPrefix = document.createElement('p');
+                starterPrefix.className = "text-xs font-semibold text-sky-600 mb-1.5";
+                starterPrefix.textContent = appState.UI_TEXT.starterPhrasePrefix;
+                elements.starterPhrasesContainer.appendChild(starterPrefix);
+
+                const newStarterPhrasesDiv = document.createElement('div');
+                newStarterPhrasesDiv.id = 'starterPhrases';
+                newStarterPhrasesDiv.className = 'flex flex-wrap gap-2';
+                elements.starterPhrasesContainer.appendChild(newStarterPhrasesDiv);
+
+                starters.forEach(starter => {
+                    const button = document.createElement('button');
+                    button.className = "text-xs bg-sky-100 hover:bg-sky-200 text-sky-700 px-2 py-1 rounded-md shadow-sm transition-colors";
+                    button.textContent = `"${starter}"`;
+                    button.onclick = () => { if (elements.userInputElem) elements.userInputElem.value = starter; };
+                    newStarterPhrasesDiv.appendChild(button);
+                });
+            }
+        } else {
+            if (elements.starterPhrasesContainer) {
+                elements.starterPhrasesContainer.classList.add('hidden');
+            }
+        }
+
+        if (appState.currentScenario.id === "custom") {
+            if (elements.customScenarioGroup) elements.customScenarioGroup.classList.remove('hidden');
+            if (elements.focusTopicGroup) elements.focusTopicGroup.classList.add('hidden');
+            if (elements.customScenarioInputElem) {
+                elements.customScenarioInputElem.value = appState.currentCustomScenarioInput;
+                elements.customScenarioInputElem.placeholder = appState.UI_TEXT.customScenarioPlaceholder;
+            }
+        } else {
+            if (elements.customScenarioGroup) elements.customScenarioGroup.classList.add('hidden');
+            if (elements.focusTopicGroup) elements.focusTopicGroup.classList.remove('hidden');
+            if (elements.focusTopicInput) {
+                elements.focusTopicInput.value = appState.currentFocusTopic;
+                elements.focusTopicInput.placeholder = appState.UI_TEXT.focusTopicPlaceholder;
+            }
+        }
+
+        if (elements.scenarioDescriptionArea) {
+            elements.scenarioDescriptionArea.classList.remove('hidden');
+            elements.scenarioDescriptionArea.classList.add('pb-4', 'sm:pb-5');
+        }
+        if (elements.scenarioTitleElem) {
+            elements.scenarioTitleElem.classList.add('mb-1.5');
+            elements.scenarioTitleElem.classList.remove('mb-0');
+        }
+    }
+}
+
+function updateAllButtonTexts() {
+    if (elements.headerTitle) elements.headerTitle.textContent = appState.UI_TEXT.appTitle;
+    if (elements.helpButton) elements.helpButton.title = appState.UI_TEXT.guideModalTitle.split(' ')[0];
+    if (elements.newConversationButton) elements.newConversationButton.title = appState.UI_TEXT.newConversationAlert("").split(" ")[0];
+
+    if (elements.suggestRepliesButtonText) elements.suggestRepliesButtonText.textContent = appState.UI_TEXT.suggestReplies;
+    if (elements.analyzeSentenceButtonText) elements.analyzeSentenceButtonText.textContent = appState.UI_TEXT.analyzeSentence;
+    if (elements.roleSwapButtonText) elements.roleSwapButtonText.textContent = appState.UI_TEXT.roleSwapButtonText;
+    if (elements.userInputElem) elements.userInputElem.placeholder = appState.UI_TEXT.customScenarioPlaceholder;
+
+    if (elements.guideModalTitle) elements.guideModalTitle.textContent = appState.UI_TEXT.guideModalTitle;
+    if (elements.guideP1) elements.guideP1.innerHTML = appState.UI_TEXT.guideP1_html;
+    if (elements.guideP2) elements.guideP2.innerHTML = appState.UI_TEXT.guideP2_html;
+    if (elements.guideP3) elements.guideP3.innerHTML = appState.UI_TEXT.guideP3_html;
+
+    if (elements.guideP4_header) elements.guideP4_header.innerHTML = appState.UI_TEXT.guideP4_header_html;
+    if (elements.guideUl_item1_li) elements.guideUl_item1_li.innerHTML = appState.UI_TEXT.guideP4_item1_html;
+    if (elements.guideUl_item2_li) elements.guideUl_item2_li.innerHTML = appState.UI_TEXT.guideP4_item2_html;
+    if (elements.guideUl_item3_li) elements.guideUl_item3_li.innerHTML = appState.UI_TEXT.guideP4_item3_html;
+
+    if (elements.guideP5) elements.guideP5.innerHTML = appState.UI_TEXT.guideP5_html;
+    if (elements.confirmGuideModalButton) elements.confirmGuideModalButton.textContent = appState.UI_TEXT.guideModalConfirmButton;
+
+    if (elements.analysisModalTitle) elements.analysisModalTitle.textContent = appState.UI_TEXT.analysisResultTitle;
+    if (elements.englishFeedbackTitle) elements.englishFeedbackTitle.textContent = appState.UI_TEXT.englishFeedbackTitle;
+    if (elements.koreanSummaryTitle) elements.koreanSummaryTitle.textContent = appState.UI_TEXT.koreanSummaryTitle;
+    if (elements.confirmAnalysisModalButtonFromAnalysis) elements.confirmAnalysisModalButtonFromAnalysis.textContent = appState.UI_TEXT.analysisConfirmButton;
+
+    const langLinks = elements.languageDropdown ? elements.languageDropdown.querySelectorAll('a') : [];
+    langLinks.forEach(link => {
+        const langCode = link.dataset.lang;
+        if (langPacks[langCode]) {
+            link.textContent = langPacks[langCode].displayName;
+        }
+    });
+
+    if (elements.currentLanguageDisplay && langPacks[appState.currentLangCode]) {
+        elements.currentLanguageDisplay.textContent = langPacks[appState.currentLangCode].displayName;
+    }
+}
+
+function setLoadingState(buttonId, textWhileLoading, isLoadingFlag) {
+    const button = elements[buttonId];
+    const buttonTextSpan = elements[`${buttonId}Text`];
+    if (button && buttonTextSpan) {
+        button.disabled = isLoadingFlag;
+        buttonTextSpan.textContent = isLoadingFlag ? textWhileLoading : (buttonId === 'suggestRepliesButton' ? appState.UI_TEXT.suggestReplies : appState.UI_TEXT.analyzeSentence);
+    }
+}
+
+function setSendMessageLoadingState(isLoadingFlag) {
+    if (!elements.sendMessageButton) return;
+    elements.sendMessageButton.disabled = isLoadingFlag;
+    if (isLoadingFlag) {
+        elements.sendMessageButton.innerHTML = `<svg class="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle> <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path> </svg>`;
+    } else {
+        elements.sendMessageButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6"> <path d="M3.5 2.75a.75.75 0 00-1.061.645l1.906 11.438a.75.75 0 001.412-.001L7.25 9.086l5.438-4.078a.75.75 0 00-.816-1.299L4.06 7.354 3.5 2.75zM2.75 16.5a.75.75 0 001.061.645l12.626-7.575a.75.75 0 000-1.29l-12.626-7.575A.75.75 0 002.75 1.5v15z" /> </svg>`;
+    }
+}
+
+function clearInput(elementId) {
+    if (elements[elementId]) {
+        elements[elementId].value = '';
+    }
+}
+
+function hideSuggestedReplies() {
+    if (elements.suggestedRepliesList) elements.suggestedRepliesList.innerHTML = '';
+    if (elements.suggestedRepliesContainer) elements.suggestedRepliesContainer.classList.add('hidden');
+}
+
+function renderScenarioPicker() {
+    if (!elements.scenarioDropdown) return;
+    elements.scenarioDropdown.innerHTML = '';
+    appState.SCENARIO_DATA.forEach(category => {
+        const categoryDiv = document.createElement('div');
+        const categoryHeader = document.createElement('div');
+        categoryHeader.className = `flex justify-between items-center p-1.5 sm:p-2 hover:bg-sky-100 cursor-pointer text-slate-800 font-medium text-xs sm:text-sm category-header`;
+        if (category.isCustomCategory && appState.currentScenario && appState.currentScenario.id === category.items[0].id) {
+            categoryHeader.classList.add('scenario-picker-item-selected');
+        }
+
+        const categoryTitleSpan = document.createElement('span');
+        categoryTitleSpan.textContent = category.category;
+        categoryHeader.appendChild(categoryTitleSpan);
+
+        if (!category.isCustomCategory) {
+            const chevron = document.createElement('span');
+            const svgNS = "http://www.w3.org/2000/svg";
+            const svgEl = document.createElementNS(svgNS, "svg");
+            svgEl.setAttribute("viewBox", "0 0 20 20");
+            svgEl.setAttribute("fill", "currentColor");
+            svgEl.classList.add("w-5", "h-5", "transform", "transition-transform");
+            if (appState.expandedCategories[category.category]) {
+                svgEl.classList.add("rotate-90");
+            } else {
+                svgEl.classList.remove("rotate-90");
+            }
+            const pathEl = document.createElementNS(svgNS, "path");
+            pathEl.setAttribute("fill-rule", "evenodd");
+            pathEl.setAttribute("d", "M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z");
+            pathEl.setAttribute("clip-rule", "evenodd");
+            svgEl.appendChild(pathEl);
+            chevron.appendChild(svgEl);
+            categoryHeader.appendChild(chevron);
+        }
+
+        categoryHeader.onclick = (event) => {
+            event.stopPropagation();
+            console.log("카테고리 헤더 클릭:", category.category);
+            if (category.isCustomCategory) {
+                handleScenarioSelect(category.items[0]);
+            } else {
+                appState.expandedCategories[category.category] = !appState.expandedCategories[category.category];
+                renderScenarioPicker();
+            }
+        };
+        categoryDiv.appendChild(categoryHeader);
+
+        if (appState.expandedCategories[category.category] && !category.isCustomCategory) {
+            const itemsDiv = document.createElement('div');
+            itemsDiv.className = "pl-3 border-l border-sky-200";
+            category.items.forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = `py-1 px-1.5 sm:py-1.5 sm:px-2 text-xs hover:bg-sky-50 cursor-pointer text-slate-600 scenario-picker-item`;
+                if (appState.currentScenario && appState.currentScenario.id === item.id) {
+                    itemDiv.classList.add('scenario-picker-item-selected');
+                }
+                itemDiv.textContent = item.title;
+                itemDiv.onclick = (event) => {
+                    event.stopPropagation();
+                    console.log("시나리오 아이템 클릭:", item.title);
+                    handleScenarioSelect(item);
+                };
+                itemsDiv.appendChild(itemDiv);
+            });
+            categoryDiv.appendChild(itemsDiv);
+        }
+        elements.scenarioDropdown.appendChild(categoryDiv);
+    });
+}
+
+function toggleScenarioPicker() {
+    console.log("toggleScenarioPicker 호출됨");
+    appState.showScenarioPicker = !appState.showScenarioPicker;
+    if (appState.showScenarioPicker) {
+        renderScenarioPicker();
+        if (elements.scenarioDropdown) {
+            elements.scenarioDropdown.classList.remove('hidden');
+            elements.scenarioDropdown.classList.add('fade-in');
+        }
+        if (appState.showLanguagePicker) {
+            toggleLanguagePicker();
+        }
+    } else {
+        if (elements.scenarioDropdown) {
+            elements.scenarioDropdown.classList.add('hidden');
+        }
+        appState.expandedCategories = {};
+    }
+}
+
+function toggleLanguagePicker() {
+    console.log("toggleLanguagePicker 호출됨");
+    appState.showLanguagePicker = !appState.showLanguagePicker;
+    if (appState.showLanguagePicker) {
+        if (elements.languageDropdown) {
+            elements.languageDropdown.classList.remove('hidden');
+            elements.languageDropdown.classList.add('fade-in');
+        }
+        if (appState.showScenarioPicker) {
+            toggleScenarioPicker();
+        }
+    } else {
+        if (elements.languageDropdown) {
+            elements.languageDropdown.classList.add('hidden');
+        }
+    }
+}
+
+// --- 모달 관련 함수 ---
+
+function showGuideModal() {
+    console.log("showGuideModal 호출됨");
+    if (!elements.guideModal) return;
+    elements.guideModal.classList.remove('hidden');
+    elements.guideModal.classList.add('fade-in');
+}
+
+function closeGuideModal() {
+    console.log("closeGuideModal 호출됨");
+    if (!elements.guideModal) return;
+    elements.guideModal.classList.add('hidden');
+    localStorage.setItem(`guideShown_${APP_ID}`, 'true');
+}
+
+function showAnalysisModal(combinedAnalysisText) {
+    const koreanSummaryMarker = appState.UI_TEXT.koreanSummaryTitle;
+    const koreanSummaryIndex = combinedAnalysisText.indexOf(koreanSummaryMarker);
+
+    let engAnalysis = "";
+    let korSummary = "";
+
+    if (koreanSummaryIndex !== -1) {
+        engAnalysis = combinedAnalysisText.substring(0, koreanSummaryIndex).trim();
+        korSummary = combinedAnalysisText.substring(koreanSummaryIndex + koreanSummaryMarker.length).trim();
+    } else {
+        engAnalysis = combinedAnalysisText.trim();
+        korSummary = "한국어 요약을 생성할 수 없습니다.";
+    }
+
+    if (elements.englishAnalysisResultDiv) elements.englishAnalysisResultDiv.innerHTML = simpleMarkdownToHtml(engAnalysis);
+    if (elements.koreanAnalysisResultDiv) elements.koreanAnalysisResultDiv.innerHTML = simpleMarkdownToHtml(korSummary);
+
+    if (elements.analysisModal) {
+        elements.analysisModal.classList.remove('hidden');
+        elements.analysisModal.classList.add('fade-in');
+    }
+}
+
+function closeAnalysisModal() {
+    console.log("closeAnalysisModal 호출됨");
+    if (elements.analysisModal) elements.analysisModal.classList.add('hidden');
+    if (elements.englishAnalysisResultDiv) elements.englishAnalysisResultDiv.innerHTML = '';
+    if (elements.koreanAnalysisResultDiv) elements.koreanAnalysisResultDiv.innerHTML = '';
+}
+
+// --- 외부API통신함수 ---
+
+async function callGeminiAPI(prompt) {
+    const payload = { message: prompt };
+    try {
+        const response = await fetch(API_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            let errorDetails = `Server response: ${response.statusText || 'Unknown error'}`;
+            try {
+                const errorData = await response.json();
+                errorDetails = errorData.error || errorData.message || (typeof errorData === 'object' ? JSON.stringify(errorData) : String(errorData));
+                if (!errorDetails || errorDetails === '{}' || errorDetails.trim() === "") {
+                    errorDetails = `Server response: ${response.statusText || 'No error details'}`;
+                }
+            } catch (jsonError) {
+                console.warn("API error response is not JSON, trying to read as text.", jsonError);
+                try {
+                    const errorText = await response.text();
+                    errorDetails = errorText.trim() || `Server response: ${response.statusText || 'No error details'}`;
+                } catch (textError) {
+                    console.error("Failed to read API error response as text.", textError);
+                    errorDetails = `Server response: ${response.statusText || 'Unknown error'}, failed to read response body`;
+                }
+            }
+            const errorMsg = `API request failed (${response.status}): ${errorDetails}`;
+            console.error("API Error Details:", errorDetails);
+            throw new Error(errorMsg);
+        }
+
+        const result = await response.json();
+        if (result.text) {
+            return result.text;
+        } else if (result.generated_text) {
+            return result.generated_text;
+        } else if (result.reply) {
+            return result.reply;
+        } else if (typeof result === 'string') {
+            return result;
+        } else if (result.candidates && result.candidates[0]?.content?.parts[0]?.text) {
+            console.warn("Received Gemini API format response. Make sure the Glitch endpoint supports this format.");
+            return result.candidates[0].content?.parts[0]?.text || '';
+        } else {
+            console.error("Cannot extract text from API response or unexpected structure:", result);
+            throw new Error('No valid text response received from AI.');
+        }
+    } catch (error) {
+        console.error("Exception during API call:", error);
+        throw error;
+    }
+}
+
+// --- 이벤트핸들러함수 ---
+
+async function handleSendMessage() {
+    console.log("handleSendMessage 호출됨");
+    if (!elements.userInputElem || elements.userInputElem.value.trim() === '' || appState.isLoading) return;
+
+    if (appState.currentScenario.id === "custom" && elements.customScenarioInputElem && elements.customScenarioInputElem.value.trim() === '' && appState.currentMessages.length === 0) {
+        alert(appState.UI_TEXT.customScenarioInputRequired);
+        return;
+    }
+
+    const newUserMessage = { sender: 'user', text: elements.userInputElem.value.trim(), timestamp: new Date() };
+    appState.currentMessages.push(newUserMessage);
+    renderMessages();
+    const currentInputForAPI = elements.userInputElem.value;
+    clearInput('userInputElem');
+
+    appState.isLoading = true;
+    setSendMessageLoadingState(true);
+
+    hideSuggestedReplies();
+    closeAnalysisModal();
+    updateScenarioDisplay(true);
+
+    const contextForAI = getDynamicContext(
+        appState.currentScenario,
+        appState.currentCustomScenarioInput,
+        appState.currentFocusTopic,
+        appState.userIsPlayingPrimaryRole
+    );
+
+    let conversationHistoryForAPI = "Previous conversation:\n";
+    appState.currentMessages.slice(Math.max(0, appState.currentMessages.length - 7), -1).forEach(msg => {
+        conversationHistoryForAPI += `${msg.sender === 'user' ? 'User' : 'AI'}: ${msg.text}\n`;
+    });
+
+    const promptForAI = `System Instruction: ${contextForAI}\n\n${appState.currentMessages.length > 1 ? conversationHistoryForAPI : ''}User: ${currentInputForAPI}`;
+
+    try {
+        const aiResponseText = await callGeminiAPI(promptForAI);
+        const newAiMessage = { sender: 'ai', text: aiResponseText, timestamp: new Date() };
+        appState.currentMessages.push(newAiMessage);
+        renderMessages();
+    } catch (error) {
+        appState.currentMessages.push({ sender: 'ai', text: `${appState.UI_TEXT.aiResponseError} ${error.message}`, timestamp: new Date() });
+        renderMessages();
+    } finally {
+        appState.isLoading = false;
+        setSendMessageLoadingState(false);
+    }
+}
+
+async function handleSuggestReplies() {
+    console.log("handleSuggestReplies 호출됨");
+    if (appState.isLoadingSuggestions || appState.currentMessages.length === 0) return;
+    const lastMessage = appState.currentMessages[appState.currentMessages.length - 1];
+    if (lastMessage.sender !== 'ai') {
+        alert(appState.UI_TEXT.suggestionsAfterAiResponse);
+        return;
+    }
+
+    appState.isLoadingSuggestions = true;
+    setLoadingState('suggestRepliesButton', appState.UI_TEXT.loading, true);
+    closeAnalysisModal();
+
+    try {
+        const scenarioTitleForPrompt = appState.currentScenario.id === "custom" ? (appState.currentCustomScenarioInput || appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput)) : appState.currentScenario.title;
+        const focusTopicForPrompt = appState.currentScenario.id === "custom" ? "" : (appState.currentFocusTopic ? `The user wants to focus on: "${appState.currentFocusTopic}".` : '');
+
+        const prompt = `Based on the AI tutor's last message: "${lastMessage.text}", provide exactly 3 different, natural-sounding replies the user (an English learner) could say next (short to medium length) in the "${scenarioTitleForPrompt}" scenario. ${focusTopicForPrompt} Use strictly numbered list format, with each item starting with a number and period (e.g., 1. Suggestion 1). Do not include any introduction or explanation before or after the list. Consider the user's current role: ${appState.userIsPlayingPrimaryRole ? 'they are the primary actor in the scenario (e.g., customer, patient)' : 'they are playing the AI tutor/staff role'}`;
+        const suggestionsText = await callGeminiAPI(prompt);
+
+        let parsedSuggestions = suggestionsText.split('\n')
+            .map(s => s.trim())
+            .filter(s => s.length > 0 && /^\d+\.\s*.+/.test(s))
+            .map(s => s.replace(/^\d+\.\s*/, '').trim())
+            .filter(s => s.length > 0 && !s.toLowerCase().startsWith("here are") && !s.toLowerCase().includes("suggestion for"));
+
+        if (elements.suggestedRepliesList) elements.suggestedRepliesList.innerHTML = '';
+        if (parsedSuggestions.length > 0) {
+            parsedSuggestions.slice(0,3).forEach(reply => {
+                const li = document.createElement('li');
+                li.className = "text-xs sm:text-sm text-sky-700 hover:text-sky-800 cursor-pointer p-1.5 bg-white rounded-md shadow-sm hover:shadow-md transition-shadow";
+                li.textContent = `"${reply}"`;
+                li.onclick = () => {
+                    if (elements.userInputElem) elements.userInputElem.value = reply;
+                    hideSuggestedReplies();
+                };
+                if (elements.suggestedRepliesList) elements.suggestedRepliesList.appendChild(li);
+            });
+            if (elements.suggestedRepliesContainer) {
+                elements.suggestedRepliesContainer.classList.remove('hidden');
+                elements.suggestedRepliesContainer.classList.add('fade-in');
+            }
+        } else {
+            if (elements.suggestedRepliesList) {
+                elements.suggestedRepliesList.innerHTML = `<li class="text-slate-500">${appState.UI_TEXT.errorMessageSuggestions}</li>`;
+            }
+            if (elements.suggestedRepliesContainer) {
+                elements.suggestedRepliesContainer.classList.remove('hidden');
+            }
+        }
+    } catch (error) {
+        if (elements.suggestedRepliesList) {
+            elements.suggestedRepliesList.innerHTML = `<li class="text-red-500">${appState.UI_TEXT.errorMessageSuggestions} ${error.message}</li>`;
+        }
+        if (elements.suggestedRepliesContainer) {
+            elements.suggestedRepliesContainer.classList.remove('hidden');
+        }
+    } finally {
+        appState.isLoadingSuggestions = false;
+        setLoadingState('suggestRepliesButton', '', false);
+    }
+}
+
+async function handleAnalyzeSentence() {
+    console.log("handleAnalyzeSentence 호출됨");
+    if (appState.isLoadingAnalysis) return;
+    const userMessages = appState.currentMessages.filter(msg => msg.sender === 'user');
+    if (userMessages.length === 0) {
+        alert(appState.UI_TEXT.noUserMessageForAnalysis);
+        return;
+    }
+
+    appState.isLoadingAnalysis = true;
+    setLoadingState('analyzeSentenceButton', appState.UI_TEXT.loading, true);
+    hideSuggestedReplies();
+    closeAnalysisModal();
+
+    try {
+        const lastUserMessage = userMessages[userMessages.length - 1];
+        const scenarioTitleForPrompt = appState.currentScenario.id === "custom" ? (appState.currentCustomScenarioInput || appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput)) : appState.currentScenario.title;
+        const focusTopicForPrompt = appState.currentScenario.id === "custom" ? "" : (appState.currentFocusTopic ? `The user wants to focus on: "${appState.currentFocusTopic}".` : '');
+
+        const analysisPrompt = `The user (learning English) said: "${lastUserMessage.text}" in the context of "${scenarioTitleForPrompt}" scenario. ${focusTopicForPrompt} Provide a structured analysis in English: **⭐ Overall Impression:** (Brief positive comment or general feel) **👍 Strengths:** (What was good about the sentence) **💡 Areas for Improvement:** **Grammar:** (Specific errors & corrections. If none, say "Grammar is good.") **Vocabulary:** (Word choice suggestions, better alternatives. If good, say "Vocabulary is appropriate.") **Naturalness/Fluency:** (Tips to sound more natural. If good, say "Sounds natural.") **✨ Suggested Revision (if any):** (Offer a revised version of the sentence if significant improvements can be made) Keep feedback constructive and easy for an English learner. After the English analysis, provide a concise summary of the feedback in Korean, under a heading "${appState.UI_TEXT.koreanSummaryTitle}". This summary should highlight the main points of the feedback for a beginner to understand easily.`;
+        const combinedAnalysisText = await callGeminiAPI(analysisPrompt);
+        showAnalysisModal(combinedAnalysisText);
+    } catch (error) {
+        if (elements.englishAnalysisResultDiv) elements.englishAnalysisResultDiv.textContent = `${appState.UI_TEXT.errorMessageAnalysis} ${error.message}`;
+        if (elements.koreanAnalysisResultDiv) elements.koreanAnalysisResultDiv.textContent = "";
+        if (elements.analysisModal) {
+            elements.analysisModal.classList.remove('hidden');
+            elements.analysisModal.classList.add('fade-in');
+        }
+    } finally {
+        appState.isLoadingAnalysis = false;
+        setLoadingState('analyzeSentenceButton', '', false);
+    }
+}
+
+function handleRoleSwap() {
+    console.log("handleRoleSwap 호출됨");
+    if (appState.isLoading) {
+        alert(appState.UI_TEXT.scenarioChangeLoadingAlert);
+        return;
+    }
+    appState.userIsPlayingPrimaryRole = !appState.userIsPlayingPrimaryRole;
+    appState.currentMessages = [];
+    renderMessages();
+    clearInput('userInputElem');
+    hideSuggestedReplies();
+    closeAnalysisModal();
+    updateScenarioDisplay(false);
+
+    const currentRoleDescription = appState.userIsPlayingPrimaryRole ?
+        (appState.currentScenario.id === "custom" ? '직접 입력한 상황의 주요한 역할' : `"${appState.currentScenario.title}" 상황의 주요한 역할 (예: 손님, 환자)`) :
+        (appState.currentScenario.id === "custom" ? '직접 입력한 상황의 AI의 역할' : `"${appState.currentScenario.title}" 상황의 AI의 역할 (예: 점원, 의사)`);
+
+    alert(appState.UI_TEXT.roleChangeAlert(currentRoleDescription));
+}
+
+function handleNewConversation() {
+    console.log("handleNewConversation 호출됨");
+    if (appState.isLoading) {
+        alert(appState.UI_TEXT.newConversationLoadingAlert);
+        return;
+    }
+    appState.currentMessages = [];
+    renderMessages();
+    clearInput('userInputElem');
+    hideSuggestedReplies();
+    closeAnalysisModal();
+    appState.userIsPlayingPrimaryRole = true;
+    updateScenarioDisplay(false);
+
+    const scenarioTitleForAlert = appState.currentScenario.id === 'custom' ? (appState.currentCustomScenarioInput || appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput)) : appState.currentScenario.title;
+    alert(appState.UI_TEXT.newConversationAlert(scenarioTitleForAlert));
+}
+
+function handleScenarioSelect(scenarioItem) {
+    console.log("handleScenarioSelect 호출됨:", scenarioItem);
+    if (appState.isLoading) {
+        alert(appState.UI_TEXT.scenarioChangeLoadingAlert);
+        return;
+    }
+    const fullScenarioDetails = findScenarioById(scenarioItem.id);
+    appState.currentScenario = fullScenarioDetails;
+    appState.currentMessages = [];
+    clearInput('userInputElem');
+    hideSuggestedReplies();
+    closeAnalysisModal();
+    appState.userIsPlayingPrimaryRole = true;
+
+    if (scenarioItem.id !== "custom") {
+        appState.currentCustomScenarioInput = '';
+        clearInput('customScenarioInputElem');
+    } else {
+        appState.currentFocusTopic = '';
+        clearInput('focusTopicInput');
+    }
+    updateScenarioDisplay(false);
+    renderMessages();
+    toggleScenarioPicker();
+}
+
+function setLanguage(langCode) {
+    console.log("setLanguage 호출됨:", langCode);
+    if (!langPacks[langCode]) {
+        console.error(`Unsupported language code: ${langCode}`);
+        return;
+    }
+
+    appState.currentLangCode = langCode;
+    appState.SCENARIO_DATA = langPacks[langCode].scenarios;
+    appState.UI_TEXT = langPacks[langCode].ui;
+
+    localStorage.setItem('speakup_ai_lang', langCode);
+
+    updateAllButtonTexts();
+    appState.currentScenario = findScenarioById(appState.currentScenario?.id || "cafe");
+    if (!appState.currentScenario) {
+         appState.currentScenario = findScenarioById("cafe");
+    }
+    updateScenarioDisplay(false);
+    renderScenarioPicker();
+    if (elements.currentLanguageDisplay) {
+        elements.currentLanguageDisplay.textContent = langPacks[langCode].displayName;
+    }
+}
+
+// --- 모든이벤트리스너설정함수 ---
+
+function attachEventListeners() {
+    console.log("attachEventListeners: 이벤트 리스너 연결 시작");
+
+    if (elements.scenarioPickerButton) {
+        console.log("시나리오 선택 버튼에 이벤트 리스너 연결");
+        elements.scenarioPickerButton.addEventListener('click', toggleScenarioPicker);
+    }
+    if (elements.newConversationButton) {
+        console.log("새 대화 버튼에 이벤트 리스너 연결");
+        elements.newConversationButton.addEventListener('click', handleNewConversation);
+    }
+    if (elements.helpButton) {
+        console.log("도움말 버튼에 이벤트 리스너 연결");
+        elements.helpButton.addEventListener('click', showGuideModal);
+    }
+
+    if (elements.closeGuideModalButton) elements.closeGuideModalButton.addEventListener('click', closeGuideModal);
+    if (elements.confirmGuideModalButton) elements.confirmGuideModalButton.addEventListener('click', closeGuideModal);
+
+    if (elements.sendMessageButton) {
+        console.log("메시지 전송 버튼에 이벤트 리스너 연결");
+        elements.sendMessageButton.addEventListener('click', handleSendMessage);
+    }
+    if (elements.userInputElem) {
+        elements.userInputElem.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !appState.isLoading) {
+                handleSendMessage();
+            }
+        });
+    }
+    if (elements.suggestRepliesButton) {
+        console.log("응답 제안 버튼에 이벤트 리스너 연결");
+        elements.suggestRepliesButton.addEventListener('click', handleSuggestReplies);
+    }
+    if (elements.analyzeSentenceButton) {
+        console.log("문장 분석 버튼에 이벤트 리스너 연결");
+        elements.analyzeSentenceButton.addEventListener('click', handleAnalyzeSentence);
+    }
+    if (elements.roleSwapButton) {
+        console.log("역할 변경 버튼에 이벤트 리스너 연결");
+        elements.roleSwapButton.addEventListener('click', handleRoleSwap);
+    }
+
+    if (elements.closeAnalysisModalButtonFromAnalysis) elements.closeAnalysisModalButtonFromAnalysis.addEventListener('click', closeAnalysisModal);
+    if (elements.confirmAnalysisModalButtonFromAnalysis) elements.confirmAnalysisModalButtonFromAnalysis.addEventListener('click', closeAnalysisModal);
+
+    if (elements.focusTopicInput) elements.focusTopicInput.addEventListener('change', (e) => { appState.currentFocusTopic = e.target.value; });
+    if (elements.customScenarioInputElem) elements.customScenarioInputElem.addEventListener('change', (e) => {
+        appState.currentCustomScenarioInput = e.target.value;
+        updateScenarioDisplay();
+    });
+
+    if (elements.languagePickerButton) {
+        console.log("언어 선택 버튼에 이벤트 리스너 연결");
+        elements.languagePickerButton.addEventListener('click', toggleLanguagePicker);
+    }
+    if (elements.languageDropdown) {
+        elements.languageDropdown.addEventListener('click', (event) => {
+            event.preventDefault();
+            const target = event.target.closest('a');
+            if (target && target.dataset.lang) {
+                const langCode = target.dataset.lang;
+                setLanguage(langCode);
+                toggleLanguagePicker();
+            }
+        });
+    }
+
+    document.addEventListener('click', (event) => {
+        if (elements.scenarioPickerContainer && !elements.scenarioPickerContainer.contains(event.target) && appState.showScenarioPicker) {
+            toggleScenarioPicker();
+        }
+        if (elements.languagePickerContainer && !elements.languagePickerContainer.contains(event.target) && appState.showLanguagePicker) {
+            toggleLanguagePicker();
+        }
+        if (elements.analysisModalContent && !elements.analysisModalContent.contains(event.target) &&
+            elements.analysisModal && !elements.analysisModal.classList.contains('hidden')) {
+            closeAnalysisModal();
+        }
+        if (elements.guideModalContent && !elements.guideModalContent.contains(event.target) &&
+            elements.guideModal && !elements.guideModal.classList.contains('hidden')) {
+            closeGuideModal();
+        }
+    });
+    console.log("attachEventListeners: 이벤트 리스너 연결 완료");
+}
+
+// --- 앱초기화로직 ---
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log("DOMContentLoaded: 앱 초기화 시작");
+    initDOMElements();
+    attachEventListeners();
+
+    const savedLang = localStorage.getItem('speakup_ai_lang') || 'ko';
+    setLanguage(savedLang);
+
+    appState.currentScenario = findScenarioById("cafe");
+    
+    updateScenarioDisplay(false);
+    renderMessages();
+
+    if (!localStorage.getItem(`guideShown_${APP_ID}`)) {
+        showGuideModal();
+    }
+    console.log("DOMContentLoaded: 앱 초기화 완료");
+});
+    </script>
+</body>
+</html>
