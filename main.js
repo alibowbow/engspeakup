@@ -15,14 +15,6 @@ const langPacks = {
 
 // --- 앱 설정 (실제 사용 시 환경 변수 등으로 대체하는 것이 좋습니다) ---
 const APP_ID = 'ai-tutor-html-default-v1';
-const FIREBASE_CONFIG = {
-    apiKey: "YOUR_API_KEY", // 실제 API 키로 대체하세요
-    authDomain: "YOUR_AUTH_DOMAIN", // 실제 Auth 도메인으로 대체하세요
-    projectId: "YOUR_PROJECT_ID", // 실제 프로젝트 ID로 대체하세요
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID" // 실제 앱 ID로 대체하세요
-};
 const API_ENDPOINT = "https://magenta-morning-find.glitch.me/generate"; // AI 응답 생성 API 엔드포인트
 
 // --- 앱의 전역 상태 관리 ---
