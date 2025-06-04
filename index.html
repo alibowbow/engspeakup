@@ -690,7 +690,10 @@ function exportConversationToJson(returnString = false) {
 
 function applyConversationData(data) {
     if (Array.isArray(data.messages)) {
-        appState.currentMessages = data.messages.map(m => ({ favorite: false, ...m }));
+        appState.currentMessages = data.messages.map(m => ({
+            ...m,
+            favorite: m.favorite === true
+        }));
     }
     if (data.scenarioId) {
         const scenario = findScenarioById(data.scenarioId);
