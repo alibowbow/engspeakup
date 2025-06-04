@@ -1284,7 +1284,10 @@ function attachEventListeners() {
     }
     if (elements.helpButton) {
         console.log("도움말 버튼에 이벤트 리스너 연결");
-        elements.helpButton.addEventListener('click', showGuideModal);
+        elements.helpButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            showGuideModal();
+        });
     }
 
     if (elements.closeGuideModalButton) elements.closeGuideModalButton.addEventListener('click', closeGuideModal);
