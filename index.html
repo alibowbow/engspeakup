@@ -11,6 +11,7 @@
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
         }
     </style>
+    <script src="./config.js"></script>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen gradient-bg p-2 sm:p-4">
 
@@ -518,7 +519,10 @@ const langPacks = {
 
 // --- 앱 설정 ---
 const APP_ID = 'ai-tutor-html-default-v1';
-const API_ENDPOINT = "https://magenta-morning-find.glitch.me/generate";
+const API_ENDPOINT =
+    (window.APP_CONFIG && window.APP_CONFIG.API_ENDPOINT) ||
+    (typeof process !== 'undefined' && process.env && process.env.API_ENDPOINT) ||
+    "https://magenta-morning-find.glitch.me/generate";
 
 // --- 앱의 전역 상태 관리 ---
 const appState = {
