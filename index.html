@@ -682,7 +682,9 @@ function exportConversationToJson(returnString = false) {
 }
 
 function applyConversationData(data) {
-    if (Array.isArray(data.messages)) appState.currentMessages = data.messages;
+    if (Array.isArray(data.messages)) {
+        appState.currentMessages = data.messages.map(m => ({ favorite: false, ...m }));
+    }
     if (data.scenarioId) {
         const scenario = findScenarioById(data.scenarioId);
         if (scenario) appState.currentScenario = scenario;
@@ -738,6 +740,16 @@ function renderMessages() {
         }`;
         messageBubble.innerHTML = simpleMarkdownToHtml(msg.text);
         messageWrapper.appendChild(messageBubble);
+        const favButton = document.createElement('button');
+        favButton.className = 'favorite-btn ml-1';
+        favButton.textContent = msg.favorite ? '★' : '☆';
+        favButton.title = appState.UI_TEXT?.favoriteButtonTitle || 'Favorite';
+        favButton.onclick = () => {
+            msg.favorite = !msg.favorite;
+            renderMessages();
+            saveConversationToLocal();
+        };
+        messageWrapper.appendChild(favButton);
         elements.messagesContainer.appendChild(messageWrapper);
     });
     elements.messagesContainer.scrollTop = elements.messagesContainer.scrollHeight;
@@ -1130,7 +1142,7 @@ async function handleSendMessage() {
         return;
     }
 
-    const newUserMessage = { sender: 'user', text: elements.userInputElem.value.trim(), timestamp: new Date() };
+    const newUserMessage = { sender: 'user', text: elements.userInputElem.value.trim(), timestamp: new Date(), favorite: false };
     appState.currentMessages.push(newUserMessage);
     renderMessages();
     saveConversationToLocal();
@@ -1160,12 +1172,12 @@ async function handleSendMessage() {
 
     try {
         const aiResponseText = await callGeminiAPI(promptForAI);
-        const newAiMessage = { sender: 'ai', text: aiResponseText, timestamp: new Date() };
+        const newAiMessage = { sender: 'ai', text: aiResponseText, timestamp: new Date(), favorite: false };
         appState.currentMessages.push(newAiMessage);
         renderMessages();
         saveConversationToLocal();
     } catch (error) {
-        appState.currentMessages.push({ sender: 'ai', text: `${appState.UI_TEXT.aiResponseError} ${error.message}`, timestamp: new Date() });
+        appState.currentMessages.push({ sender: 'ai', text: `${appState.UI_TEXT.aiResponseError} ${error.message}`, timestamp: new Date(), favorite: false });
         renderMessages();
         saveConversationToLocal();
     } finally {
