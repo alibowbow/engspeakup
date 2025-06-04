@@ -29,6 +29,7 @@ export const UI_TEXT = {
     guideModalConfirmButton: "分かりました！",
     appTitle: "SpeakUp AI",
     roleSwapButtonText: "役割変更",
+    favoriteButtonTitle: "お気に入り",
 
     // 가이드 모달 상세 텍스트 (HTML 포함) - 이 부분을 반드시 HTML 파일의 p 태그 내용에 맞게 수정해야 합니다.
     guideP1_html: `<strong>1. 🤖 シナリオ選択:</strong><br/> 画面左上隅の現在のシナリオボタン（例：カフェで）をクリックします。さまざまなカテゴリ別の会話状況を選択したり、「✨ ユーザー設定」を通じてご希望のテーマを直接入力して練習できます。`,
@@ -99,6 +100,7 @@ export const SCENARIO_DATA = [
           starters_userAsPrimary: ["シティツアーを予約したいのですが。", "どのようなツアーを提供していますか？", "[ツアー名]はいくらですか？"],
           starters_userAsOther: ["こんにちは！今日のアクティビティの計画をお手伝いできますか？", "いくつかのツアーをご用意しております。何にご興味がありますか？", "かしこまりました、空き状況を確認いたします。"] },
         { id: "at_immigration", title: "入国審査 🛂", description: "空港の入国審査で審査官の質問に答えます。",
+
           baseContext: "あなたは入国審査官です。ユーザーは訪問目的や滞在期間を説明しています。書類を確認しつつ一度に1つの質問をしてください。既に聞いた内容を繰り返さないでください。",
           baseContext_swapped:"あなたは新しい国に到着し入国審査を受けています。ユーザーは審査官です。質問には簡潔に答えてください。",
           starters_userAsPrimary: ["おはようございます。パスポートを拝見します。", "渡航目的は何ですか？", "滞在予定期間はどのくらいですか？"],

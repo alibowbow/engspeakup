@@ -1,0 +1,84 @@
+/* Custom styles for SpeakUp AI */
+
+.gradient-bg {
+    background: linear-gradient(135deg, #dbeafe 0%, #93c5fd 100%);
+}
+
+.header-bg {
+    background: linear-gradient(90deg, #0369a1 0%, #0284c7 100%);
+}
+
+.chat-bg {
+    background-color: #f1f5f9;
+}
+
+.input-area-bg {
+    background-color: #f8fafc;
+}
+
+.modal-bg-overlay {
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+.user-bubble {
+    background-color: #0284c7;
+}
+
+.ai-bubble {
+    background-color: #e0f2fe;
+}
+
+.fade-in {
+    animation: fadeIn 0.25s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #94a3b8 transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #94a3b8;
+    border-radius: 4px;
+}
+
+.btn-glow-blue:hover {
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+}
+
+.btn-glow-indigo:hover {
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.6);
+}
+
+.btn-secondary-glow:hover {
+    box-shadow: 0 0 8px rgba(251, 191, 36, 0.6);
+}
+
+.btn-tertiary-glow:hover {
+    box-shadow: 0 0 8px rgba(45, 212, 191, 0.6);
+}
+
+.compact-button {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.favorite-btn {
+    color: #fbbf24;
+    font-size: 1.25rem;
+    line-height: 1;
+}
+

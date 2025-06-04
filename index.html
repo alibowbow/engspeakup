@@ -15,8 +15,9 @@
 <body class="flex flex-col items-center justify-center min-h-screen gradient-bg p-2 sm:p-4">
 
     <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col" style="height: calc(100vh - 30px); max-height: 800px;">
-        <header class="header-bg text-white p-4 sm:p-5 rounded-t-2xl flex items-center justify-between relative shadow-md">
-            <div class="flex items-center">
+        <header class="header-bg text-white p-4 sm:p-5 rounded-t-2xl flex flex-wrap items-center justify-between relative shadow-md">
+            <h1 id="headerTitle" class="order-first w-full sm:order-none sm:w-auto text-xl sm:text-2xl font-semibold text-center truncate sm:absolute sm:left-1/2 sm:transform sm:-translate-x-1/2 max-w-full sm:max-w-[80%]" title="SpeakUp AI">SpeakUp AI</h1>
+            <div class="flex items-center order-2 sm:order-none">
                 <div class="relative" id="scenarioPickerContainer">
                     <button id="scenarioPickerButton" class="flex items-center text-sm sm:text-base bg-sky-700 hover:bg-sky-600 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
                         <span id="currentScenarioDisplay">시나리오</span>
@@ -26,8 +27,7 @@
                         </div>
                 </div>
             </div>
-            <h1 id="headerTitle" class="text-xl sm:text-2xl font-semibold text-center absolute left-1/2 transform -translate-x-1/2 truncate max-w-[40%] sm:max-w-[50%]" title="SpeakUp AI">SpeakUp AI</h1>
-            <div class="flex items-center space-x-2">
+            <div class="flex items-center space-x-2 order-3 sm:order-none">
                 <div class="relative" id="languagePickerContainer">
                     <button id="languagePickerButton" class="flex items-center text-sm sm:text-base bg-sky-700 hover:bg-sky-600 px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
                         <span id="currentLanguageDisplay">한국어</span>
@@ -46,8 +46,22 @@
                     </svg>
                 </button>
                 <button id="newConversationButton" title="새 대화 시작" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" class="w-5 h-5"> <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /> </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"> <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /> </svg>
                 </button>
+                <div class="relative" id="jsonMenuContainer">
+                    <button id="jsonMenuButton" title="JSON" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-8m0 8l3-3m-3 3l-3-3m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
+                        </svg>
+                    </button>
+                    <div id="jsonMenuDropdown" class="hidden absolute right-0 mt-2 w-32 bg-white rounded-lg shadow-xl z-20 border border-slate-200 fade-in">
+                        <div class="py-1">
+                            <a href="#" id="jsonMenuSave" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Save JSON</a>
+                            <a href="#" id="jsonMenuLoad" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Load JSON</a>
+                        </div>
+                    </div>
+                    <input type="file" id="importJsonInput" accept="application/json" class="hidden" />
+                </div>
             </div>
         </header>
 
@@ -506,6 +520,7 @@ const appState = {
     SCENARIO_DATA: null,
     UI_TEXT: null,
     showLanguagePicker: false,
+    showJsonMenu: false,
 };
 
 // --- DOM 요소 캐싱 ---
@@ -519,6 +534,12 @@ function initDOMElements() {
     elements.scenarioDropdown = document.getElementById('scenarioDropdown');
     elements.headerTitle = document.getElementById('headerTitle');
     elements.newConversationButton = document.getElementById('newConversationButton');
+    elements.jsonMenuContainer = document.getElementById('jsonMenuContainer');
+    elements.jsonMenuButton = document.getElementById('jsonMenuButton');
+    elements.jsonMenuDropdown = document.getElementById('jsonMenuDropdown');
+    elements.jsonMenuSave = document.getElementById('jsonMenuSave');
+    elements.jsonMenuLoad = document.getElementById('jsonMenuLoad');
+    elements.importJsonInput = document.getElementById('importJsonInput');
     elements.helpButton = document.getElementById('helpButton');
 
     elements.languagePickerContainer = document.getElementById('languagePickerContainer');
@@ -634,6 +655,87 @@ function getDynamicContext(scenario, customInput, focusTopic, userIsPlayingPrima
     return `${scenarioSpecificContext}${focusTopicInstruction}`;
 }
 
+function saveConversationToLocal(dataStr) {
+    try {
+        const toSave = dataStr || JSON.stringify({
+            messages: appState.currentMessages,
+            scenarioId: appState.currentScenario?.id,
+            customScenarioInput: appState.currentCustomScenarioInput,
+            focusTopic: appState.currentFocusTopic,
+            userIsPlayingPrimaryRole: appState.userIsPlayingPrimaryRole
+        });
+        localStorage.setItem('savedConversation', toSave);
+    } catch (e) { console.error('Failed to save conversation', e); }
+}
+
+function exportConversationToJson(returnString = false) {
+    const data = {
+        messages: appState.currentMessages,
+        scenarioId: appState.currentScenario?.id,
+        customScenarioInput: appState.currentCustomScenarioInput,
+        focusTopic: appState.currentFocusTopic,
+        userIsPlayingPrimaryRole: appState.userIsPlayingPrimaryRole
+    };
+    const jsonStr = JSON.stringify(data, null, 2);
+    saveConversationToLocal(jsonStr);
+    if (returnString) return jsonStr;
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'conversation.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function applyConversationData(data) {
+    if (Array.isArray(data.messages)) {
+        appState.currentMessages = data.messages.map(m => ({
+            ...m,
+            favorite: m.favorite === true
+        }));
+    }
+    if (data.scenarioId) {
+        const scenario = findScenarioById(data.scenarioId);
+        if (scenario) appState.currentScenario = scenario;
+    }
+    appState.currentCustomScenarioInput = data.customScenarioInput || '';
+    appState.currentFocusTopic = data.focusTopic || '';
+    if (typeof data.userIsPlayingPrimaryRole === 'boolean') {
+        appState.userIsPlayingPrimaryRole = data.userIsPlayingPrimaryRole;
+    }
+    renderMessages();
+    updateScenarioDisplay(false);
+}
+
+function importConversationFromJson(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const data = JSON.parse(reader.result);
+                applyConversationData(data);
+                saveConversationToLocal(JSON.stringify(data));
+                resolve();
+            } catch (e) {
+                alert('Invalid JSON');
+                reject(e);
+            }
+        };
+        reader.onerror = reject;
+        reader.readAsText(file);
+    });
+}
+
+function restoreConversationFromLocal() {
+    const saved = localStorage.getItem('savedConversation');
+    if (!saved) return;
+    try {
+        const data = JSON.parse(saved);
+        applyConversationData(data);
+    } catch (e) { console.error('Failed to restore', e); }
+}
+
 // --- UI 렌더링 및 조작 함수 ---
 
 function renderMessages() {
@@ -648,6 +750,16 @@ function renderMessages() {
         }`;
         messageBubble.innerHTML = simpleMarkdownToHtml(msg.text);
         messageWrapper.appendChild(messageBubble);
+        const favButton = document.createElement('button');
+        favButton.className = 'favorite-btn ml-1';
+        favButton.textContent = msg.favorite ? '★' : '☆';
+        favButton.title = appState.UI_TEXT?.favoriteButtonTitle || 'Favorite';
+        favButton.onclick = () => {
+            msg.favorite = !msg.favorite;
+            renderMessages();
+            saveConversationToLocal();
+        };
+        messageWrapper.appendChild(favButton);
         elements.messagesContainer.appendChild(messageWrapper);
     });
     elements.messagesContainer.scrollTop = elements.messagesContainer.scrollHeight;
@@ -926,6 +1038,22 @@ function toggleLanguagePicker() {
     }
 }
 
+function toggleJsonMenu() {
+    appState.showJsonMenu = !appState.showJsonMenu;
+    if (appState.showJsonMenu) {
+        if (elements.jsonMenuDropdown) {
+            elements.jsonMenuDropdown.classList.remove('hidden');
+            elements.jsonMenuDropdown.classList.add('fade-in');
+        }
+        if (appState.showScenarioPicker) toggleScenarioPicker();
+        if (appState.showLanguagePicker) toggleLanguagePicker();
+    } else {
+        if (elements.jsonMenuDropdown) {
+            elements.jsonMenuDropdown.classList.add('hidden');
+        }
+    }
+}
+
 // --- 모달 관련 함수 ---
 
 function showGuideModal() {
@@ -1040,9 +1168,10 @@ async function handleSendMessage() {
         return;
     }
 
-    const newUserMessage = { sender: 'user', text: elements.userInputElem.value.trim(), timestamp: new Date() };
+    const newUserMessage = { sender: 'user', text: elements.userInputElem.value.trim(), timestamp: new Date(), favorite: false };
     appState.currentMessages.push(newUserMessage);
     renderMessages();
+    saveConversationToLocal();
     const currentInputForAPI = elements.userInputElem.value;
     clearInput('userInputElem');
 
@@ -1069,12 +1198,14 @@ async function handleSendMessage() {
 
     try {
         const aiResponseText = await callGeminiAPI(promptForAI);
-        const newAiMessage = { sender: 'ai', text: aiResponseText, timestamp: new Date() };
+        const newAiMessage = { sender: 'ai', text: aiResponseText, timestamp: new Date(), favorite: false };
         appState.currentMessages.push(newAiMessage);
         renderMessages();
+        saveConversationToLocal();
     } catch (error) {
-        appState.currentMessages.push({ sender: 'ai', text: `${appState.UI_TEXT.aiResponseError} ${error.message}`, timestamp: new Date() });
+        appState.currentMessages.push({ sender: 'ai', text: `${appState.UI_TEXT.aiResponseError} ${error.message}`, timestamp: new Date(), favorite: false });
         renderMessages();
+        saveConversationToLocal();
     } finally {
         appState.isLoading = false;
         setSendMessageLoadingState(false);
@@ -1188,6 +1319,7 @@ function handleRoleSwap() {
     appState.userIsPlayingPrimaryRole = !appState.userIsPlayingPrimaryRole;
     appState.currentMessages = [];
     renderMessages();
+    saveConversationToLocal();
     clearInput('userInputElem');
     hideSuggestedReplies();
     closeAnalysisModal();
@@ -1241,6 +1373,7 @@ function handleScenarioSelect(scenarioItem) {
     }
     updateScenarioDisplay(false);
     renderMessages();
+    saveConversationToLocal();
     toggleScenarioPicker();
 }
 
@@ -1282,9 +1415,35 @@ function attachEventListeners() {
         console.log("새 대화 버튼에 이벤트 리스너 연결");
         elements.newConversationButton.addEventListener('click', handleNewConversation);
     }
+    if (elements.jsonMenuButton) {
+        elements.jsonMenuButton.addEventListener('click', toggleJsonMenu);
+    }
+    if (elements.jsonMenuSave) {
+        elements.jsonMenuSave.addEventListener('click', (e) => {
+            e.preventDefault();
+            exportConversationToJson();
+            toggleJsonMenu();
+        });
+    }
+    if (elements.jsonMenuLoad && elements.importJsonInput) {
+        elements.jsonMenuLoad.addEventListener('click', (e) => {
+            e.preventDefault();
+            elements.importJsonInput.click();
+        });
+        elements.importJsonInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                importConversationFromJson(e.target.files[0]);
+                e.target.value = '';
+            }
+            toggleJsonMenu();
+        });
+    }
     if (elements.helpButton) {
         console.log("도움말 버튼에 이벤트 리스너 연결");
-        elements.helpButton.addEventListener('click', showGuideModal);
+        elements.helpButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            showGuideModal();
+        });
     }
 
     if (elements.closeGuideModalButton) elements.closeGuideModalButton.addEventListener('click', closeGuideModal);
@@ -1346,6 +1505,9 @@ function attachEventListeners() {
         if (elements.languagePickerContainer && !elements.languagePickerContainer.contains(event.target) && appState.showLanguagePicker) {
             toggleLanguagePicker();
         }
+        if (elements.jsonMenuContainer && !elements.jsonMenuContainer.contains(event.target) && appState.showJsonMenu) {
+            toggleJsonMenu();
+        }
         if (elements.analysisModalContent && !elements.analysisModalContent.contains(event.target) &&
             elements.analysisModal && !elements.analysisModal.classList.contains('hidden')) {
             closeAnalysisModal();
@@ -1368,9 +1530,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     setLanguage(savedLang);
 
     appState.currentScenario = findScenarioById("cafe");
-    
+
     updateScenarioDisplay(false);
     renderMessages();
+    restoreConversationFromLocal();
 
     if (!localStorage.getItem(`guideShown_${APP_ID}`)) {
         showGuideModal();

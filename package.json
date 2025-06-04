@@ -1,0 +1,11 @@
+{
+  "name": "engspeakup",
+  "type": "module",
+  "scripts": {
+    "test": "jest --experimental-vm-modules"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jsdom": "^22.1.0"
+  }
+}
