@@ -48,20 +48,23 @@
                 <button id="newConversationButton" title="새 대화 시작" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"> <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /> </svg>
                 </button>
-                <div class="relative" id="jsonMenuContainer">
-                    <button id="jsonMenuButton" title="JSON" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-8m0 8l3-3m-3 3l-3-3m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
-                        </svg>
-                    </button>
-                    <div id="jsonMenuDropdown" class="hidden absolute right-0 mt-2 w-32 bg-white rounded-lg shadow-xl z-20 border border-slate-200 fade-in">
-                        <div class="py-1">
-                            <a href="#" id="jsonMenuSave" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Save JSON</a>
-                            <a href="#" id="jsonMenuLoad" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Load JSON</a>
-                        </div>
-                    </div>
-                    <input type="file" id="importJsonInput" accept="application/json" class="hidden" />
-                </div>
+<<
+                <button id="exportJsonButton" title="Save JSON" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-8m0 8l3-3m-3 3l-3-3m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
+                    </svg>
+                </button>
+                <button id="importJsonButton" title="Load JSON" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v8m0-8l3 3m-3-3l-3 3m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
+                    </svg>
+                </button>
+                <button id="viewFavoritesButton" title="Favorites" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                        <path d="M11.48 3.5a.75.75 0 011.04 0l2.42 2.45 3.4.53a.75.75 0 01.42 1.28l-2.46 2.43.58 3.38a.75.75 0 01-1.08.79L12 13.34l-3.38 1.42a.75.75 0 01-1.08-.79l.58-3.38L5.66 8.26a.75.75 0 01.42-1.28l3.4-.53 2.42-2.45z" />
+                    </svg>
+                </button>
+                <input type="file" id="importJsonInput" accept="application/json" class="hidden" />
             </div>
         </header>
 
@@ -156,6 +159,19 @@
                 <div class="text-base text-slate-700 whitespace-pre-wrap leading-relaxed p-3 bg-sky-50 rounded-md border border-sky-200"></div>
             </div>
             <button id="confirmAnalysisModalButtonFromAnalysis" class="mt-6 w-full bg-sky-600 hover:bg-sky-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-sky-400">
+                확인했어요!
+            </button>
+        </div>
+    </div>
+
+    <div id="favoritesModal" class="hidden fixed inset-0 modal-bg-overlay flex items-center justify-center p-4 z-50 fade-in">
+        <div id="favoritesModalContent" class="bg-white p-6 sm:p-8 rounded-xl shadow-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto custom-scrollbar">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl sm:text-2xl font-semibold text-sky-700">⭐ 즐겨찾은 문장</h3>
+                <button id="closeFavoritesModalButton" class="text-slate-400 hover:text-slate-600 text-3xl transition-colors">×</button>
+            </div>
+            <div id="favoritesList" class="space-y-2 text-base text-slate-700"></div>
+            <button id="confirmFavoritesModalButton" class="mt-6 w-full bg-sky-600 hover:bg-sky-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-sky-400">
                 확인했어요!
             </button>
         </div>
@@ -534,11 +550,10 @@ function initDOMElements() {
     elements.scenarioDropdown = document.getElementById('scenarioDropdown');
     elements.headerTitle = document.getElementById('headerTitle');
     elements.newConversationButton = document.getElementById('newConversationButton');
-    elements.jsonMenuContainer = document.getElementById('jsonMenuContainer');
-    elements.jsonMenuButton = document.getElementById('jsonMenuButton');
-    elements.jsonMenuDropdown = document.getElementById('jsonMenuDropdown');
-    elements.jsonMenuSave = document.getElementById('jsonMenuSave');
-    elements.jsonMenuLoad = document.getElementById('jsonMenuLoad');
+
+    elements.exportJsonButton = document.getElementById('exportJsonButton');
+    elements.importJsonButton = document.getElementById('importJsonButton');
+    elements.viewFavoritesButton = document.getElementById('viewFavoritesButton');
     elements.importJsonInput = document.getElementById('importJsonInput');
     elements.helpButton = document.getElementById('helpButton');
 
@@ -583,10 +598,17 @@ function initDOMElements() {
     elements.closeAnalysisModalButtonFromAnalysis = document.getElementById('closeAnalysisModalButtonFromAnalysis');
     elements.confirmAnalysisModalButtonFromAnalysis = document.getElementById('confirmAnalysisModalButtonFromAnalysis');
 
+    elements.favoritesModal = document.getElementById('favoritesModal');
+    elements.favoritesModalContent = document.getElementById('favoritesModalContent');
+    elements.closeFavoritesModalButton = document.getElementById('closeFavoritesModalButton');
+    elements.confirmFavoritesModalButton = document.getElementById('confirmFavoritesModalButton');
+    elements.favoritesList = document.getElementById('favoritesList');
+
     elements.guideModalTitle = elements.guideModal ? elements.guideModal.querySelector('h2') : null;
     elements.analysisModalTitle = elements.analysisModal ? elements.analysisModal.querySelector('h3') : null;
     elements.englishFeedbackTitle = elements.analysisModal ? elements.analysisModal.querySelector('#englishAnalysisResult h4') : null;
     elements.koreanSummaryTitle = elements.analysisModal ? elements.analysisModal.querySelector('#koreanAnalysisResult h4') : null;
+    elements.favoritesModalTitle = elements.favoritesModal ? elements.favoritesModal.querySelector('h3') : null;
 
     elements.guideP1 = elements.guideModalContent ? elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(1)') : null;
     elements.guideP2 = elements.guideModalContent ? elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(2)') : null;
@@ -690,10 +712,8 @@ function exportConversationToJson(returnString = false) {
 
 function applyConversationData(data) {
     if (Array.isArray(data.messages)) {
-        appState.currentMessages = data.messages.map(m => ({
-            ...m,
-            favorite: m.favorite === true
-        }));
+        appState.currentMessages = data.messages.map(m => ({ ...m, favorite: m.favorite ?? false }));
+
     }
     if (data.scenarioId) {
         const scenario = findScenarioById(data.scenarioId);
@@ -861,6 +881,7 @@ function updateScenarioDisplay(isConversationStarting = false) {
 function updateAllButtonTexts() {
     if (elements.headerTitle) elements.headerTitle.textContent = appState.UI_TEXT.appTitle;
     if (elements.helpButton) elements.helpButton.title = appState.UI_TEXT.guideModalTitle.split(' ')[0];
+    if (elements.viewFavoritesButton) elements.viewFavoritesButton.title = appState.UI_TEXT.viewFavoritesButtonTitle;
     if (elements.newConversationButton) elements.newConversationButton.title = appState.UI_TEXT.newConversationAlert("").split(" ")[0];
 
     if (elements.suggestRepliesButtonText) elements.suggestRepliesButtonText.textContent = appState.UI_TEXT.suggestReplies;
@@ -885,6 +906,8 @@ function updateAllButtonTexts() {
     if (elements.englishFeedbackTitle) elements.englishFeedbackTitle.textContent = appState.UI_TEXT.englishFeedbackTitle;
     if (elements.koreanSummaryTitle) elements.koreanSummaryTitle.textContent = appState.UI_TEXT.koreanSummaryTitle;
     if (elements.confirmAnalysisModalButtonFromAnalysis) elements.confirmAnalysisModalButtonFromAnalysis.textContent = appState.UI_TEXT.analysisConfirmButton;
+    if (elements.favoritesModalTitle) elements.favoritesModalTitle.textContent = appState.UI_TEXT.favoritesModalTitle;
+    if (elements.confirmFavoritesModalButton) elements.confirmFavoritesModalButton.textContent = appState.UI_TEXT.analysisConfirmButton;
 
     const langLinks = elements.languageDropdown ? elements.languageDropdown.querySelectorAll('a') : [];
     langLinks.forEach(link => {
@@ -1099,6 +1122,30 @@ function closeAnalysisModal() {
     if (elements.analysisModal) elements.analysisModal.classList.add('hidden');
     if (elements.englishAnalysisResultDiv) elements.englishAnalysisResultDiv.innerHTML = '';
     if (elements.koreanAnalysisResultDiv) elements.koreanAnalysisResultDiv.innerHTML = '';
+}
+
+function showFavoritesModal() {
+    if (!elements.favoritesModal) return;
+    const favs = appState.currentMessages.filter(m => m.favorite);
+    if (elements.favoritesList) {
+        elements.favoritesList.innerHTML = '';
+        if (favs.length === 0) {
+            elements.favoritesList.textContent = appState.UI_TEXT.noFavoritesMessage;
+        } else {
+            favs.forEach(msg => {
+                const p = document.createElement('p');
+                p.className = 'p-2 bg-slate-50 rounded border border-slate-200';
+                p.textContent = msg.text;
+                elements.favoritesList.appendChild(p);
+            });
+        }
+    }
+    elements.favoritesModal.classList.remove('hidden');
+    elements.favoritesModal.classList.add('fade-in');
+}
+
+function closeFavoritesModal() {
+    if (elements.favoritesModal) elements.favoritesModal.classList.add('hidden');
 }
 
 // --- 외부API통신함수 ---
@@ -1438,6 +1485,9 @@ function attachEventListeners() {
             toggleJsonMenu();
         });
     }
+    if (elements.viewFavoritesButton) {
+        elements.viewFavoritesButton.addEventListener('click', showFavoritesModal);
+    }
     if (elements.helpButton) {
         console.log("도움말 버튼에 이벤트 리스너 연결");
         elements.helpButton.addEventListener('click', (event) => {
@@ -1475,6 +1525,8 @@ function attachEventListeners() {
 
     if (elements.closeAnalysisModalButtonFromAnalysis) elements.closeAnalysisModalButtonFromAnalysis.addEventListener('click', closeAnalysisModal);
     if (elements.confirmAnalysisModalButtonFromAnalysis) elements.confirmAnalysisModalButtonFromAnalysis.addEventListener('click', closeAnalysisModal);
+    if (elements.closeFavoritesModalButton) elements.closeFavoritesModalButton.addEventListener('click', closeFavoritesModal);
+    if (elements.confirmFavoritesModalButton) elements.confirmFavoritesModalButton.addEventListener('click', closeFavoritesModal);
 
     if (elements.focusTopicInput) elements.focusTopicInput.addEventListener('change', (e) => { appState.currentFocusTopic = e.target.value; });
     if (elements.customScenarioInputElem) elements.customScenarioInputElem.addEventListener('change', (e) => {
@@ -1515,6 +1567,10 @@ function attachEventListeners() {
         if (elements.guideModalContent && !elements.guideModalContent.contains(event.target) &&
             elements.guideModal && !elements.guideModal.classList.contains('hidden')) {
             closeGuideModal();
+        }
+        if (elements.favoritesModalContent && !elements.favoritesModalContent.contains(event.target) &&
+            elements.favoritesModal && !elements.favoritesModal.classList.contains('hidden')) {
+            closeFavoritesModal();
         }
     });
     console.log("attachEventListeners: 이벤트 리스너 연결 완료");

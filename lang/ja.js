@@ -31,6 +31,10 @@ export const UI_TEXT = {
     roleSwapButtonText: "役割変更",
     favoriteButtonTitle: "お気に入り",
 
+    viewFavoritesButtonTitle: "お気に入り一覧",
+    favoritesModalTitle: "⭐ お気に入りの文",
+    noFavoritesMessage: "お気に入りに登録された文はありません。",
+
     // 가이드 모달 상세 텍스트 (HTML 포함) - 이 부분을 반드시 HTML 파일의 p 태그 내용에 맞게 수정해야 합니다.
     guideP1_html: `<strong>1. 🤖 シナリオ選択:</strong><br/> 画面左上隅の現在のシナリオボタン（例：カフェで）をクリックします。さまざまなカテゴリ別の会話状況を選択したり、「✨ ユーザー設定」を通じてご希望のテーマを直接入力して練習できます。`,
     guideP2_html: `<strong>2. 🎯 集中テーマ（任意）:</strong><br/> シナリオ説明の下にある入力欄に、特に練習したい語彙や表現などを入力すると、AIが会話により良く反映してくれます。（ユーザー設定シナリオではこの入力欄はありません。）`,

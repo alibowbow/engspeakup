@@ -2,7 +2,7 @@
   "name": "engspeakup",
   "type": "module",
   "scripts": {
-    "test": "jest --experimental-vm-modules"
+    "test": "NODE_OPTIONS=--experimental-vm-modules node node_modules/.bin/jest"
   },
   "devDependencies": {
     "jest": "^29.7.0",
