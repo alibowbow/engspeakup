@@ -1129,12 +1129,31 @@ function toggleFavorite(index) {
     saveConversationToLocal();
 }
 function showFavoritesModal() {
-    if (!elements.favoritesModal) return;
+    // Attempt to re-fetch if elements.favoritesModal is null or not a valid element
+    // This is a defensive measure; ideally, initDOMElements should always succeed.
+    if (!elements.favoritesModal || !(elements.favoritesModal instanceof Element)) {
+        console.warn("elements.favoritesModal was not valid. Re-querying from DOM...");
+        elements.favoritesModal = document.getElementById('favoritesModal');
+        // If still not found, then there's a more fundamental issue.
+        if (!elements.favoritesModal) {
+            console.error("CRITICAL: Re-query for 'favoritesModal' failed. Modal cannot be shown.");
+            alert("Error: The favorites modal component could not be found in the page."); // User-facing alert
+            return;
+        }
+    }
+
     const favs = appState.currentMessages.filter(m => m.favorite);
+
+    // It's also good practice to ensure favoritesList is valid or re-query it too if needed.
+    if (!elements.favoritesList || !(elements.favoritesList instanceof Element)) {
+        console.warn("elements.favoritesList was not valid. Re-querying from DOM...");
+        elements.favoritesList = document.getElementById('favoritesList');
+    }
+
     if (elements.favoritesList) {
         elements.favoritesList.innerHTML = '';
         if (favs.length === 0) {
-            elements.favoritesList.textContent = appState.UI_TEXT.noFavoritesMessage;
+            elements.favoritesList.textContent = appState.UI_TEXT.noFavoritesMessage || "No favorite messages."; // Fallback for UI_TEXT
         } else {
             favs.forEach(msg => {
                 const p = document.createElement('p');
@@ -1143,7 +1162,10 @@ function showFavoritesModal() {
                 elements.favoritesList.appendChild(p);
             });
         }
+    } else {
+        console.error("Error: elements.favoritesList is null even after re-query attempt. Cannot display favorite messages.");
     }
+
     elements.favoritesModal.classList.remove('hidden');
     elements.favoritesModal.classList.add('fade-in');
 }
