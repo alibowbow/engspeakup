@@ -48,17 +48,20 @@
                 <button id="newConversationButton" title="새 대화 시작" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"> <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /> </svg>
                 </button>
-                <button id="exportJsonButton" title="Save JSON" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-8m0 8l3-3m-3 3l-3-3m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
-                    </svg>
-                </button>
-                <button id="importJsonButton" title="Load JSON" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v8m0-8l3 3m-3-3l-3 3m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
-                    </svg>
-                </button>
-                <input type="file" id="importJsonInput" accept="application/json" class="hidden" />
+                <div class="relative" id="saveDropdownContainer">
+                    <button id="saveDropdownButton" title="저장 메뉴" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 5.25a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 20.25a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+                        </svg>
+                    </button>
+                    <div id="saveDropdown" class="hidden absolute right-0 mt-2 w-28 bg-white rounded-lg shadow-xl z-20 border border-slate-200">
+                        <div class="py-1">
+                            <a href="#" id="exportJsonLink" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Save JSON</a>
+                            <a href="#" id="importJsonLink" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Load JSON</a>
+                        </div>
+                    </div>
+                    <input type="file" id="importJsonInput" accept="application/json" class="hidden" />
+                </div>
             </div>
         </header>
 
@@ -517,6 +520,7 @@ const appState = {
     SCENARIO_DATA: null,
     UI_TEXT: null,
     showLanguagePicker: false,
+    showSaveDropdown: false,
 };
 
 // --- DOM 요소 캐싱 ---
@@ -530,8 +534,11 @@ function initDOMElements() {
     elements.scenarioDropdown = document.getElementById('scenarioDropdown');
     elements.headerTitle = document.getElementById('headerTitle');
     elements.newConversationButton = document.getElementById('newConversationButton');
-    elements.exportJsonButton = document.getElementById('exportJsonButton');
-    elements.importJsonButton = document.getElementById('importJsonButton');
+    elements.saveDropdownContainer = document.getElementById('saveDropdownContainer');
+    elements.saveDropdownButton = document.getElementById('saveDropdownButton');
+    elements.saveDropdown = document.getElementById('saveDropdown');
+    elements.exportJsonLink = document.getElementById('exportJsonLink');
+    elements.importJsonLink = document.getElementById('importJsonLink');
     elements.importJsonInput = document.getElementById('importJsonInput');
     elements.helpButton = document.getElementById('helpButton');
 
@@ -990,6 +997,9 @@ function toggleScenarioPicker() {
         if (appState.showLanguagePicker) {
             toggleLanguagePicker();
         }
+        if (appState.showSaveDropdown) {
+            toggleSaveDropdown();
+        }
     } else {
         if (elements.scenarioDropdown) {
             elements.scenarioDropdown.classList.add('hidden');
@@ -1009,9 +1019,28 @@ function toggleLanguagePicker() {
         if (appState.showScenarioPicker) {
             toggleScenarioPicker();
         }
+        if (appState.showSaveDropdown) {
+            toggleSaveDropdown();
+        }
     } else {
         if (elements.languageDropdown) {
             elements.languageDropdown.classList.add('hidden');
+        }
+    }
+}
+
+function toggleSaveDropdown() {
+    appState.showSaveDropdown = !appState.showSaveDropdown;
+    if (appState.showSaveDropdown) {
+        if (elements.saveDropdown) {
+            elements.saveDropdown.classList.remove('hidden');
+            elements.saveDropdown.classList.add('fade-in');
+        }
+        if (appState.showScenarioPicker) toggleScenarioPicker();
+        if (appState.showLanguagePicker) toggleLanguagePicker();
+    } else {
+        if (elements.saveDropdown) {
+            elements.saveDropdown.classList.add('hidden');
         }
     }
 }
@@ -1377,11 +1406,21 @@ function attachEventListeners() {
         console.log("새 대화 버튼에 이벤트 리스너 연결");
         elements.newConversationButton.addEventListener('click', handleNewConversation);
     }
-    if (elements.exportJsonButton) {
-        elements.exportJsonButton.addEventListener('click', () => exportConversationToJson());
+    if (elements.saveDropdownButton) {
+        elements.saveDropdownButton.addEventListener('click', toggleSaveDropdown);
     }
-    if (elements.importJsonButton && elements.importJsonInput) {
-        elements.importJsonButton.addEventListener('click', () => elements.importJsonInput.click());
+    if (elements.exportJsonLink) {
+        elements.exportJsonLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            exportConversationToJson();
+            toggleSaveDropdown();
+        });
+    }
+    if (elements.importJsonLink && elements.importJsonInput) {
+        elements.importJsonLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            elements.importJsonInput.click();
+        });
         elements.importJsonInput.addEventListener('change', (e) => {
             if (e.target.files && e.target.files[0]) {
                 importConversationFromJson(e.target.files[0]);
@@ -1455,6 +1494,9 @@ function attachEventListeners() {
         }
         if (elements.languagePickerContainer && !elements.languagePickerContainer.contains(event.target) && appState.showLanguagePicker) {
             toggleLanguagePicker();
+        }
+        if (elements.saveDropdownContainer && !elements.saveDropdownContainer.contains(event.target) && appState.showSaveDropdown) {
+            toggleSaveDropdown();
         }
         if (elements.analysisModalContent && !elements.analysisModalContent.contains(event.target) &&
             elements.analysisModal && !elements.analysisModal.classList.contains('hidden')) {
