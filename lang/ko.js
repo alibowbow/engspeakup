@@ -29,6 +29,10 @@ export const UI_TEXT = {
     appTitle: "SpeakUp AI",
     roleSwapButtonText: "역할 변경",
     favoriteButtonTitle: "즐겨찾기",
+    saveConversationButtonTitle: "대화 저장",
+    historyButtonTitle: "과거 대화",
+    conversationSavedAlert: "대화가 저장되었습니다!",
+    historyModalTitle: "저장된 대화",
 
     // 가이드 모달 상세 텍스트 (HTML 포함) - 이 부분을 반드시 HTML 파일의 p 태그 내용에 맞게 수정해야 합니다.
     guideP1_html: `<strong>1. 🤖 시나리오 선택:</strong><br/> 화면 좌측 상단의 현재 시나리오 버튼 (예: <span class="font-semibold text-sky-600">카페에서</span>)을 클릭하세요. 다양한 카테고리별 대화 상황을 선택하거나, '✨ 사용자 설정'을 통해 직접 원하는 주제를 입력하여 연습할 수 있습니다.`,

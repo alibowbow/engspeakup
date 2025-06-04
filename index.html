@@ -58,6 +58,16 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v8m0-8l3 3m-3-3l-3 3m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
                     </svg>
                 </button>
+                <button id="saveHistoryButton" title="대화 저장" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18V3H3zm3 3h12v12H6V6z" />
+                    </svg>
+                </button>
+                <button id="historyButton" title="과거 대화" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+                    </svg>
+                </button>
                 <input type="file" id="importJsonInput" accept="application/json" class="hidden" />
             </div>
         </header>
@@ -155,6 +165,16 @@
             <button id="confirmAnalysisModalButtonFromAnalysis" class="mt-6 w-full bg-sky-600 hover:bg-sky-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-sky-400">
                 확인했어요!
             </button>
+        </div>
+    </div>
+
+    <div id="historyModal" class="hidden fixed inset-0 modal-bg-overlay flex items-center justify-center p-4 z-50 fade-in">
+        <div id="historyModalContent" class="bg-white p-6 sm:p-8 rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl sm:text-2xl font-bold text-sky-600">저장된 대화</h2>
+                <button id="closeHistoryModalButton" class="text-slate-400 hover:text-slate-600 text-3xl transition-colors">×</button>
+            </div>
+            <ul id="historyList" class="divide-y divide-slate-200"></ul>
         </div>
     </div>
 
@@ -517,6 +537,7 @@ const appState = {
     SCENARIO_DATA: null,
     UI_TEXT: null,
     showLanguagePicker: false,
+    conversationHistory: [],
 };
 
 // --- DOM 요소 캐싱 ---
@@ -533,6 +554,8 @@ function initDOMElements() {
     elements.exportJsonButton = document.getElementById('exportJsonButton');
     elements.importJsonButton = document.getElementById('importJsonButton');
     elements.importJsonInput = document.getElementById('importJsonInput');
+    elements.saveHistoryButton = document.getElementById('saveHistoryButton');
+    elements.historyButton = document.getElementById('historyButton');
     elements.helpButton = document.getElementById('helpButton');
 
     elements.languagePickerContainer = document.getElementById('languagePickerContainer');
@@ -576,10 +599,16 @@ function initDOMElements() {
     elements.closeAnalysisModalButtonFromAnalysis = document.getElementById('closeAnalysisModalButtonFromAnalysis');
     elements.confirmAnalysisModalButtonFromAnalysis = document.getElementById('confirmAnalysisModalButtonFromAnalysis');
 
+    elements.historyModal = document.getElementById('historyModal');
+    elements.historyModalContent = document.getElementById('historyModalContent');
+    elements.historyList = document.getElementById('historyList');
+    elements.closeHistoryModalButton = document.getElementById('closeHistoryModalButton');
+
     elements.guideModalTitle = elements.guideModal ? elements.guideModal.querySelector('h2') : null;
     elements.analysisModalTitle = elements.analysisModal ? elements.analysisModal.querySelector('h3') : null;
     elements.englishFeedbackTitle = elements.analysisModal ? elements.analysisModal.querySelector('#englishAnalysisResult h4') : null;
     elements.koreanSummaryTitle = elements.analysisModal ? elements.analysisModal.querySelector('#koreanAnalysisResult h4') : null;
+    elements.historyModalTitle = elements.historyModal ? elements.historyModal.querySelector('h2') : null;
 
     elements.guideP1 = elements.guideModalContent ? elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(1)') : null;
     elements.guideP2 = elements.guideModalContent ? elements.guideModalContent.querySelector('div.space-y-3 p:nth-of-type(2)') : null;
@@ -724,6 +753,48 @@ function restoreConversationFromLocal() {
         const data = JSON.parse(saved);
         applyConversationData(data);
     } catch (e) { console.error('Failed to restore', e); }
+}
+
+function saveConversationToHistory() {
+    const convo = {
+        timestamp: Date.now(),
+        data: {
+            messages: appState.currentMessages,
+            scenarioId: appState.currentScenario?.id,
+            customScenarioInput: appState.currentCustomScenarioInput,
+            focusTopic: appState.currentFocusTopic,
+            userIsPlayingPrimaryRole: appState.userIsPlayingPrimaryRole,
+        }
+    };
+    const history = JSON.parse(localStorage.getItem('conversationHistory') || '[]');
+    history.push(convo);
+    localStorage.setItem('conversationHistory', JSON.stringify(history));
+    alert(appState.UI_TEXT.conversationSavedAlert);
+}
+
+function showHistoryModal() {
+    if (!elements.historyModal || !elements.historyList) return;
+    const history = JSON.parse(localStorage.getItem('conversationHistory') || '[]');
+    elements.historyList.innerHTML = '';
+    history.slice().reverse().forEach(item => {
+        const li = document.createElement('li');
+        const btn = document.createElement('button');
+        const scenario = findScenarioById(item.data.scenarioId);
+        const title = scenario ? scenario.title : appState.UI_TEXT.scenarioTitleCustom('');
+        btn.textContent = `${new Date(item.timestamp).toLocaleString()} - ${title}`;
+        btn.className = 'block w-full text-left px-4 py-2 hover:bg-slate-100';
+        btn.addEventListener('click', () => {
+            applyConversationData(item.data);
+            closeHistoryModal();
+        });
+        li.appendChild(btn);
+        elements.historyList.appendChild(li);
+    });
+    elements.historyModal.classList.remove('hidden');
+}
+
+function closeHistoryModal() {
+    if (elements.historyModal) elements.historyModal.classList.add('hidden');
 }
 
 // --- UI 렌더링 및 조작 함수 ---
@@ -875,6 +946,9 @@ function updateAllButtonTexts() {
     if (elements.englishFeedbackTitle) elements.englishFeedbackTitle.textContent = appState.UI_TEXT.englishFeedbackTitle;
     if (elements.koreanSummaryTitle) elements.koreanSummaryTitle.textContent = appState.UI_TEXT.koreanSummaryTitle;
     if (elements.confirmAnalysisModalButtonFromAnalysis) elements.confirmAnalysisModalButtonFromAnalysis.textContent = appState.UI_TEXT.analysisConfirmButton;
+    if (elements.saveHistoryButton) elements.saveHistoryButton.title = appState.UI_TEXT.saveConversationButtonTitle;
+    if (elements.historyButton) elements.historyButton.title = appState.UI_TEXT.historyButtonTitle;
+    if (elements.historyModalTitle) elements.historyModalTitle.textContent = appState.UI_TEXT.historyModalTitle;
 
     const langLinks = elements.languageDropdown ? elements.languageDropdown.querySelectorAll('a') : [];
     langLinks.forEach(link => {
@@ -1401,6 +1475,12 @@ function attachEventListeners() {
             }
         });
     }
+    if (elements.saveHistoryButton) {
+        elements.saveHistoryButton.addEventListener('click', saveConversationToHistory);
+    }
+    if (elements.historyButton) {
+        elements.historyButton.addEventListener('click', showHistoryModal);
+    }
     if (elements.helpButton) {
         console.log("도움말 버튼에 이벤트 리스너 연결");
         elements.helpButton.addEventListener('click', (event) => {
@@ -1438,6 +1518,7 @@ function attachEventListeners() {
 
     if (elements.closeAnalysisModalButtonFromAnalysis) elements.closeAnalysisModalButtonFromAnalysis.addEventListener('click', closeAnalysisModal);
     if (elements.confirmAnalysisModalButtonFromAnalysis) elements.confirmAnalysisModalButtonFromAnalysis.addEventListener('click', closeAnalysisModal);
+    if (elements.closeHistoryModalButton) elements.closeHistoryModalButton.addEventListener('click', closeHistoryModal);
 
     if (elements.focusTopicInput) elements.focusTopicInput.addEventListener('change', (e) => { appState.currentFocusTopic = e.target.value; });
     if (elements.customScenarioInputElem) elements.customScenarioInputElem.addEventListener('change', (e) => {
@@ -1475,6 +1556,10 @@ function attachEventListeners() {
         if (elements.guideModalContent && !elements.guideModalContent.contains(event.target) &&
             elements.guideModal && !elements.guideModal.classList.contains('hidden')) {
             closeGuideModal();
+        }
+        if (elements.historyModalContent && !elements.historyModalContent.contains(event.target) &&
+            elements.historyModal && !elements.historyModal.classList.contains('hidden')) {
+            closeHistoryModal();
         }
     });
     console.log("attachEventListeners: 이벤트 리스너 연결 완료");
