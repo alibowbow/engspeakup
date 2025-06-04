@@ -15,8 +15,9 @@
 <body class="flex flex-col items-center justify-center min-h-screen gradient-bg p-2 sm:p-4">
 
     <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col" style="height: calc(100vh - 30px); max-height: 800px;">
-        <header class="header-bg text-white p-4 sm:p-5 rounded-t-2xl flex items-center justify-between relative shadow-md">
-            <div class="flex items-center">
+        <header class="header-bg text-white p-4 sm:p-5 rounded-t-2xl flex flex-wrap items-center justify-between relative shadow-md">
+            <h1 id="headerTitle" class="order-first w-full sm:order-none sm:w-auto text-xl sm:text-2xl font-semibold text-center truncate sm:absolute sm:left-1/2 sm:transform sm:-translate-x-1/2 max-w-full sm:max-w-[80%]" title="SpeakUp AI">SpeakUp AI</h1>
+            <div class="flex items-center order-2 sm:order-none">
                 <div class="relative" id="scenarioPickerContainer">
                     <button id="scenarioPickerButton" class="flex items-center text-sm sm:text-base bg-sky-700 hover:bg-sky-600 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
                         <span id="currentScenarioDisplay">시나리오</span>
@@ -26,8 +27,7 @@
                         </div>
                 </div>
             </div>
-            <h1 id="headerTitle" class="text-xl sm:text-2xl font-semibold text-center absolute left-1/2 transform -translate-x-1/2 truncate max-w-[40%] sm:max-w-[50%]" title="SpeakUp AI">SpeakUp AI</h1>
-            <div class="flex items-center space-x-2">
+            <div class="flex items-center space-x-2 order-3 sm:order-none">
                 <div class="relative" id="languagePickerContainer">
                     <button id="languagePickerButton" class="flex items-center text-sm sm:text-base bg-sky-700 hover:bg-sky-600 px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
                         <span id="currentLanguageDisplay">한국어</span>
