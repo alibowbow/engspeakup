@@ -761,7 +761,7 @@ function restoreConversationFromLocal() {
 function renderMessages() {
     if (!elements.messagesContainer) return;
     elements.messagesContainer.innerHTML = '';
-    appState.currentMessages.forEach(msg => {
+    appState.currentMessages.forEach((msg, idx) => {
         const messageWrapper = document.createElement('div');
         messageWrapper.className = `flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`;
         const messageBubble = document.createElement('div');
@@ -774,11 +774,8 @@ function renderMessages() {
         favButton.className = 'favorite-btn ml-1';
         favButton.textContent = msg.favorite ? '★' : '☆';
         favButton.title = appState.UI_TEXT?.favoriteButtonTitle || 'Favorite';
-        favButton.onclick = () => {
-            msg.favorite = !msg.favorite;
-            renderMessages();
-            saveConversationToLocal();
-        };
+        favButton.dataset.index = idx;
+
         messageWrapper.appendChild(favButton);
         elements.messagesContainer.appendChild(messageWrapper);
     });
@@ -1124,6 +1121,13 @@ function closeAnalysisModal() {
     if (elements.koreanAnalysisResultDiv) elements.koreanAnalysisResultDiv.innerHTML = '';
 }
 
+function toggleFavorite(index) {
+    const msg = appState.currentMessages[index];
+    if (!msg) return;
+    msg.favorite = !msg.favorite;
+    renderMessages();
+    saveConversationToLocal();
+}
 function showFavoritesModal() {
     if (!elements.favoritesModal) return;
     const favs = appState.currentMessages.filter(m => m.favorite);
@@ -1521,6 +1525,15 @@ function attachEventListeners() {
     if (elements.roleSwapButton) {
         console.log("역할 변경 버튼에 이벤트 리스너 연결");
         elements.roleSwapButton.addEventListener('click', handleRoleSwap);
+    }
+
+    if (elements.messagesContainer) {
+        elements.messagesContainer.addEventListener('click', (e) => {
+            const btn = e.target.closest('.favorite-btn');
+            if (btn && btn.dataset.index) {
+                toggleFavorite(parseInt(btn.dataset.index, 10));
+            }
+        });
     }
 
     if (elements.closeAnalysisModalButtonFromAnalysis) elements.closeAnalysisModalButtonFromAnalysis.addEventListener('click', closeAnalysisModal);

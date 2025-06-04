@@ -5,4 +5,3 @@ The main page is `index.html` which loads language files from the `lang` folder
 and uses a small custom stylesheet `style.css` for UI tweaks and animations.
 
 Open `index.html` in a browser to try it out. Click the star next to any message during a conversation to save it as a favorite. Click the star again to remove it. Use the star button in the header to see all of your saved lines in one place.
-
