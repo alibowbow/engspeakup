@@ -644,7 +644,7 @@ function renderMessages() {
         messageWrapper.className = `flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`;
         const messageBubble = document.createElement('div');
         messageBubble.className = `max-w-3/4 sm:max-w-md lg:max-w-lg px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl shadow ${
-            msg.sender === 'user' ? 'user-bubble text-slate-800 rounded-br-none' : 'ai-bubble text-slate-800 rounded-bl-none'
+            msg.sender === 'user' ? 'user-bubble text-white rounded-br-none' : 'ai-bubble text-slate-800 rounded-bl-none'
         }`;
         messageBubble.innerHTML = simpleMarkdownToHtml(msg.text);
         messageWrapper.appendChild(messageBubble);
