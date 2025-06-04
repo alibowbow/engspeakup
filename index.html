@@ -48,6 +48,17 @@
                 <button id="newConversationButton" title="새 대화 시작" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"> <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /> </svg>
                 </button>
+                <button id="exportJsonButton" title="Save JSON" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-8m0 8l3-3m-3 3l-3-3m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
+                    </svg>
+                </button>
+                <button id="importJsonButton" title="Load JSON" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v8m0-8l3 3m-3-3l-3 3m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
+                    </svg>
+                </button>
+                <input type="file" id="importJsonInput" accept="application/json" class="hidden" />
             </div>
         </header>
 
@@ -519,6 +530,9 @@ function initDOMElements() {
     elements.scenarioDropdown = document.getElementById('scenarioDropdown');
     elements.headerTitle = document.getElementById('headerTitle');
     elements.newConversationButton = document.getElementById('newConversationButton');
+    elements.exportJsonButton = document.getElementById('exportJsonButton');
+    elements.importJsonButton = document.getElementById('importJsonButton');
+    elements.importJsonInput = document.getElementById('importJsonInput');
     elements.helpButton = document.getElementById('helpButton');
 
     elements.languagePickerContainer = document.getElementById('languagePickerContainer');
@@ -632,6 +646,82 @@ function getDynamicContext(scenario, customInput, focusTopic, userIsPlayingPrima
     const focusTopicInstruction = (userIsPlayingPrimaryRole && focusTopic && scenario.id !== "custom") ? `\n\nThe user wants to focus on: "${focusTopic}". Try to incorporate this into the conversation.` : '';
 
     return `${scenarioSpecificContext}${focusTopicInstruction}`;
+}
+
+function saveConversationToLocal(dataStr) {
+    try {
+        const toSave = dataStr || JSON.stringify({
+            messages: appState.currentMessages,
+            scenarioId: appState.currentScenario?.id,
+            customScenarioInput: appState.currentCustomScenarioInput,
+            focusTopic: appState.currentFocusTopic,
+            userIsPlayingPrimaryRole: appState.userIsPlayingPrimaryRole
+        });
+        localStorage.setItem('savedConversation', toSave);
+    } catch (e) { console.error('Failed to save conversation', e); }
+}
+
+function exportConversationToJson(returnString = false) {
+    const data = {
+        messages: appState.currentMessages,
+        scenarioId: appState.currentScenario?.id,
+        customScenarioInput: appState.currentCustomScenarioInput,
+        focusTopic: appState.currentFocusTopic,
+        userIsPlayingPrimaryRole: appState.userIsPlayingPrimaryRole
+    };
+    const jsonStr = JSON.stringify(data, null, 2);
+    saveConversationToLocal(jsonStr);
+    if (returnString) return jsonStr;
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'conversation.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function applyConversationData(data) {
+    if (Array.isArray(data.messages)) appState.currentMessages = data.messages;
+    if (data.scenarioId) {
+        const scenario = findScenarioById(data.scenarioId);
+        if (scenario) appState.currentScenario = scenario;
+    }
+    appState.currentCustomScenarioInput = data.customScenarioInput || '';
+    appState.currentFocusTopic = data.focusTopic || '';
+    if (typeof data.userIsPlayingPrimaryRole === 'boolean') {
+        appState.userIsPlayingPrimaryRole = data.userIsPlayingPrimaryRole;
+    }
+    renderMessages();
+    updateScenarioDisplay(false);
+}
+
+function importConversationFromJson(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const data = JSON.parse(reader.result);
+                applyConversationData(data);
+                saveConversationToLocal(JSON.stringify(data));
+                resolve();
+            } catch (e) {
+                alert('Invalid JSON');
+                reject(e);
+            }
+        };
+        reader.onerror = reject;
+        reader.readAsText(file);
+    });
+}
+
+function restoreConversationFromLocal() {
+    const saved = localStorage.getItem('savedConversation');
+    if (!saved) return;
+    try {
+        const data = JSON.parse(saved);
+        applyConversationData(data);
+    } catch (e) { console.error('Failed to restore', e); }
 }
 
 // --- UI 렌더링 및 조작 함수 ---
@@ -1043,6 +1133,7 @@ async function handleSendMessage() {
     const newUserMessage = { sender: 'user', text: elements.userInputElem.value.trim(), timestamp: new Date() };
     appState.currentMessages.push(newUserMessage);
     renderMessages();
+    saveConversationToLocal();
     const currentInputForAPI = elements.userInputElem.value;
     clearInput('userInputElem');
 
@@ -1072,9 +1163,11 @@ async function handleSendMessage() {
         const newAiMessage = { sender: 'ai', text: aiResponseText, timestamp: new Date() };
         appState.currentMessages.push(newAiMessage);
         renderMessages();
+        saveConversationToLocal();
     } catch (error) {
         appState.currentMessages.push({ sender: 'ai', text: `${appState.UI_TEXT.aiResponseError} ${error.message}`, timestamp: new Date() });
         renderMessages();
+        saveConversationToLocal();
     } finally {
         appState.isLoading = false;
         setSendMessageLoadingState(false);
@@ -1188,6 +1281,7 @@ function handleRoleSwap() {
     appState.userIsPlayingPrimaryRole = !appState.userIsPlayingPrimaryRole;
     appState.currentMessages = [];
     renderMessages();
+    saveConversationToLocal();
     clearInput('userInputElem');
     hideSuggestedReplies();
     closeAnalysisModal();
@@ -1241,6 +1335,7 @@ function handleScenarioSelect(scenarioItem) {
     }
     updateScenarioDisplay(false);
     renderMessages();
+    saveConversationToLocal();
     toggleScenarioPicker();
 }
 
@@ -1281,6 +1376,18 @@ function attachEventListeners() {
     if (elements.newConversationButton) {
         console.log("새 대화 버튼에 이벤트 리스너 연결");
         elements.newConversationButton.addEventListener('click', handleNewConversation);
+    }
+    if (elements.exportJsonButton) {
+        elements.exportJsonButton.addEventListener('click', () => exportConversationToJson());
+    }
+    if (elements.importJsonButton && elements.importJsonInput) {
+        elements.importJsonButton.addEventListener('click', () => elements.importJsonInput.click());
+        elements.importJsonInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                importConversationFromJson(e.target.files[0]);
+                e.target.value = '';
+            }
+        });
     }
     if (elements.helpButton) {
         console.log("도움말 버튼에 이벤트 리스너 연결");
@@ -1371,9 +1478,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     setLanguage(savedLang);
 
     appState.currentScenario = findScenarioById("cafe");
-    
+
     updateScenarioDisplay(false);
     renderMessages();
+    restoreConversationFromLocal();
 
     if (!localStorage.getItem(`guideShown_${APP_ID}`)) {
         showGuideModal();
