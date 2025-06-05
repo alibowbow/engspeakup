@@ -30,7 +30,7 @@
             <h1 id="headerTitle" class="order-first w-full sm:order-2 sm:w-auto text-xl sm:text-2xl font-semibold text-center truncate sm:flex-1 sm:mx-4" title="SpeakUp AI">SpeakUp AI</h1>
             <div class="flex items-center space-x-2 order-3 sm:order-3">
                 <div class="relative" id="languagePickerContainer">
-                    <button id="languagePickerButton" class="flex items-center text-sm sm:text-base bg-sky-700 hover:bg-sky-600 px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
+                    <button id="languagePickerButton" class="flex items-center text-xs sm:text-sm bg-sky-700 hover:bg-sky-600 px-2 py-1 sm:px-2 sm:py-1.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
                         <span id="currentLanguageDisplay">한국어</span>
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 ml-1.5 opacity-80"> <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" /> </svg>
                     </button>
@@ -75,6 +75,11 @@
                 <button id="viewFavoritesButton" title="즐겨찾기 모아보기" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
                         <path d="M11.48 3.5a.75.75 0 011.04 0l2.42 2.45 3.4.53a.75.75 0 01.42 1.28l-2.46 2.43.58 3.38a.75.75 0 01-1.08.79L12 13.34l-3.38 1.42a.75.75 0 01-1.08-.79l.58-3.38L5.66 8.26a.75.75 0 01.42-1.28l3.4-.53 2.42-2.45z" />
+                    </svg>
+                </button>
+                <button id="viewSavedAnalysesButton" title="저장된 분석 보기" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25M9 16.5v.75m3-3v3M15 12v5.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                     </svg>
                 </button>
                 <input type="file" id="importJsonInput" accept="application/json" class="hidden" />
@@ -171,9 +176,14 @@
                 <h4 class="text-lg font-medium text-slate-800 mb-1.5">🇰🇷 한국어 요약:</h4>
                 <div class="text-base text-slate-700 whitespace-pre-wrap leading-relaxed p-3 bg-sky-50 rounded-md border border-sky-200"></div>
             </div>
-            <button id="confirmAnalysisModalButtonFromAnalysis" class="mt-6 w-full bg-sky-600 hover:bg-sky-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-sky-400">
-                확인했어요!
-            </button>
+            <div class="mt-6 flex space-x-3">
+                <button id="saveAnalysisButton" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-teal-400">
+                    📚 분석 저장
+                </button>
+                <button id="confirmAnalysisModalButtonFromAnalysis" class="flex-1 bg-sky-600 hover:bg-sky-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-sky-400">
+                    확인했어요!
+                </button>
+            </div>
         </div>
     </div>
 
@@ -185,6 +195,19 @@
             </div>
             <div id="favoritesList" class="space-y-2 text-base text-slate-700"></div>
             <button id="confirmFavoritesModalButton" class="mt-6 w-full bg-sky-600 hover:bg-sky-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-sky-400">
+                확인했어요!
+            </button>
+        </div>
+    </div>
+
+    <div id="savedAnalysesModal" class="hidden fixed inset-0 modal-bg-overlay flex items-center justify-center p-4 z-50 fade-in">
+        <div id="savedAnalysesModalContent" class="bg-white p-6 sm:p-8 rounded-xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto custom-scrollbar">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl sm:text-2xl font-semibold text-sky-700">📚 저장된 문장 분석</h3>
+                <button id="closeSavedAnalysesModalButton" class="text-slate-400 hover:text-slate-600 text-3xl transition-colors">×</button>
+            </div>
+            <div id="savedAnalysesList" class="space-y-4 text-base text-slate-700"></div>
+            <button id="confirmSavedAnalysesModalButton" class="mt-6 w-full bg-sky-600 hover:bg-sky-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-sky-400">
                 확인했어요!
             </button>
         </div>
@@ -553,6 +576,7 @@ const appState = {
     UI_TEXT: null,
     showLanguagePicker: false,
     showJsonMenu: false,
+    savedAnalyses: [],
 };
 
 // --- DOM 요소 캐싱 ---
@@ -573,6 +597,7 @@ function initDOMElements() {
     elements.jsonMenuSave = document.getElementById('jsonMenuSave');
     elements.jsonMenuLoad = document.getElementById('jsonMenuLoad');
     elements.viewFavoritesButton = document.getElementById('viewFavoritesButton');
+    elements.viewSavedAnalysesButton = document.getElementById('viewSavedAnalysesButton');
     elements.importJsonInput = document.getElementById('importJsonInput');
     elements.helpButton = document.getElementById('helpButton');
 
@@ -616,12 +641,19 @@ function initDOMElements() {
     elements.koreanAnalysisResultDiv = document.querySelector('#koreanAnalysisResult div');
     elements.closeAnalysisModalButtonFromAnalysis = document.getElementById('closeAnalysisModalButtonFromAnalysis');
     elements.confirmAnalysisModalButtonFromAnalysis = document.getElementById('confirmAnalysisModalButtonFromAnalysis');
+    elements.saveAnalysisButton = document.getElementById('saveAnalysisButton');
 
     elements.favoritesModal = document.getElementById('favoritesModal');
     elements.favoritesModalContent = document.getElementById('favoritesModalContent');
     elements.closeFavoritesModalButton = document.getElementById('closeFavoritesModalButton');
     elements.confirmFavoritesModalButton = document.getElementById('confirmFavoritesModalButton');
     elements.favoritesList = document.getElementById('favoritesList');
+    
+    elements.savedAnalysesModal = document.getElementById('savedAnalysesModal');
+    elements.savedAnalysesModalContent = document.getElementById('savedAnalysesModalContent');
+    elements.closeSavedAnalysesModalButton = document.getElementById('closeSavedAnalysesModalButton');
+    elements.confirmSavedAnalysesModalButton = document.getElementById('confirmSavedAnalysesModalButton');
+    elements.savedAnalysesList = document.getElementById('savedAnalysesList');
 
     elements.guideModalTitle = elements.guideModal ? elements.guideModal.querySelector('h2') : null;
     elements.analysisModalTitle = elements.analysisModal ? elements.analysisModal.querySelector('h3') : null;
@@ -703,7 +735,8 @@ function saveConversationToLocal(dataStr) {
             scenarioId: appState.currentScenario?.id,
             customScenarioInput: appState.currentCustomScenarioInput,
             focusTopic: appState.currentFocusTopic,
-            userIsPlayingPrimaryRole: appState.userIsPlayingPrimaryRole
+            userIsPlayingPrimaryRole: appState.userIsPlayingPrimaryRole,
+            savedAnalyses: appState.savedAnalyses
         });
         localStorage.setItem('savedConversation', toSave);
     } catch (e) { console.error('Failed to save conversation', e); }
@@ -742,6 +775,9 @@ function applyConversationData(data) {
     appState.currentFocusTopic = data.focusTopic || '';
     if (typeof data.userIsPlayingPrimaryRole === 'boolean') {
         appState.userIsPlayingPrimaryRole = data.userIsPlayingPrimaryRole;
+    }
+    if (Array.isArray(data.savedAnalyses)) {
+        appState.savedAnalyses = data.savedAnalyses;
     }
     renderMessages();
     updateScenarioDisplay(false);
@@ -1113,7 +1149,7 @@ function closeGuideModal() {
     localStorage.setItem(`guideShown_${APP_ID}`, 'true');
 }
 
-function showAnalysisModal(combinedAnalysisText) {
+function showAnalysisModal(combinedAnalysisText, userMessage = "", scenario = "") {
     const koreanSummaryMarker = appState.UI_TEXT.koreanSummaryTitle;
     const koreanSummaryIndex = combinedAnalysisText.indexOf(koreanSummaryMarker);
 
@@ -1127,6 +1163,14 @@ function showAnalysisModal(combinedAnalysisText) {
         engAnalysis = combinedAnalysisText.trim();
         korSummary = "한국어 요약을 생성할 수 없습니다.";
     }
+
+    // 현재 분석 데이터 저장
+    currentAnalysisData = {
+        userMessage,
+        scenario,
+        engAnalysis,
+        korSummary
+    };
 
     if (elements.englishAnalysisResultDiv) elements.englishAnalysisResultDiv.innerHTML = simpleMarkdownToHtml(engAnalysis);
     if (elements.koreanAnalysisResultDiv) elements.koreanAnalysisResultDiv.innerHTML = simpleMarkdownToHtml(korSummary);
@@ -1152,6 +1196,9 @@ function toggleFavorite(index) {
     saveConversationToLocal();
 }
 function showFavoritesModal() {
+    console.log("showFavoritesModal 호출됨");
+    console.log("현재 메시지 수:", appState.currentMessages.length);
+    
     // Attempt to re-fetch if elements.favoritesModal is null or not a valid element
     // This is a defensive measure; ideally, initDOMElements should always succeed.
     if (!elements.favoritesModal || !(elements.favoritesModal instanceof Element)) {
@@ -1166,6 +1213,7 @@ function showFavoritesModal() {
     }
 
     const favs = appState.currentMessages.filter(m => m.favorite);
+    console.log("즐겨찾기된 메시지 수:", favs.length);
 
     // It's also good practice to ensure favoritesList is valid or re-query it too if needed.
     if (!elements.favoritesList || !(elements.favoritesList instanceof Element)) {
@@ -1195,6 +1243,102 @@ function showFavoritesModal() {
 
 function closeFavoritesModal() {
     if (elements.favoritesModal) elements.favoritesModal.classList.add('hidden');
+}
+
+let currentAnalysisData = null;
+
+function saveCurrentAnalysis() {
+    if (!currentAnalysisData) {
+        alert("저장할 분석 결과가 없습니다.");
+        return;
+    }
+    
+    const analysisItem = {
+        id: Date.now(),
+        timestamp: new Date(),
+        userMessage: currentAnalysisData.userMessage,
+        scenario: currentAnalysisData.scenario,
+        engAnalysis: currentAnalysisData.engAnalysis,
+        korSummary: currentAnalysisData.korSummary
+    };
+    
+    appState.savedAnalyses.push(analysisItem);
+    saveConversationToLocal();
+    alert("분석이 저장되었습니다!");
+}
+
+function showSavedAnalysesModal() {
+    console.log("showSavedAnalysesModal 호출됨");
+    console.log("저장된 분석 수:", appState.savedAnalyses.length);
+    
+    if (!elements.savedAnalysesModal || !(elements.savedAnalysesModal instanceof Element)) {
+        console.warn("elements.savedAnalysesModal was not valid. Re-querying from DOM...");
+        elements.savedAnalysesModal = document.getElementById('savedAnalysesModal');
+        if (!elements.savedAnalysesModal) {
+            console.error("CRITICAL: Re-query for 'savedAnalysesModal' failed. Modal cannot be shown.");
+            alert("Error: The saved analyses modal component could not be found in the page.");
+            return;
+        }
+    }
+
+    if (!elements.savedAnalysesList || !(elements.savedAnalysesList instanceof Element)) {
+        console.warn("elements.savedAnalysesList was not valid. Re-querying from DOM...");
+        elements.savedAnalysesList = document.getElementById('savedAnalysesList');
+    }
+
+    if (elements.savedAnalysesList) {
+        elements.savedAnalysesList.innerHTML = '';
+        if (appState.savedAnalyses.length === 0) {
+            elements.savedAnalysesList.textContent = "저장된 분석이 없습니다.";
+        } else {
+            appState.savedAnalyses.forEach((analysis, index) => {
+                const analysisDiv = document.createElement('div');
+                analysisDiv.className = 'p-4 bg-slate-50 rounded-lg border border-slate-200';
+                
+                const timestamp = new Date(analysis.timestamp).toLocaleString('ko-KR');
+                
+                analysisDiv.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="text-sm text-slate-500">
+                            <span class="font-medium">${timestamp}</span> | ${analysis.scenario}
+                        </div>
+                        <button onclick="deleteSavedAnalysis(${index})" class="text-red-500 hover:text-red-700 text-sm">삭제</button>
+                    </div>
+                    <div class="mb-3">
+                        <div class="text-sm font-medium text-sky-700 mb-1">📝 분석한 문장:</div>
+                        <div class="text-sm bg-white p-2 rounded border">${analysis.userMessage}</div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="text-sm font-medium text-slate-800 mb-1">📝 영어 피드백:</div>
+                        <div class="text-sm text-slate-700 bg-white p-2 rounded border">${analysis.engAnalysis}</div>
+                    </div>
+                    <div>
+                        <div class="text-sm font-medium text-slate-800 mb-1">🇰🇷 한국어 요약:</div>
+                        <div class="text-sm text-slate-700 bg-sky-50 p-2 rounded border border-sky-200">${analysis.korSummary}</div>
+                    </div>
+                `;
+                
+                elements.savedAnalysesList.appendChild(analysisDiv);
+            });
+        }
+    } else {
+        console.error("Error: elements.savedAnalysesList is null even after re-query attempt. Cannot display saved analyses.");
+    }
+
+    elements.savedAnalysesModal.classList.remove('hidden');
+    elements.savedAnalysesModal.classList.add('fade-in');
+}
+
+function closeSavedAnalysesModal() {
+    if (elements.savedAnalysesModal) elements.savedAnalysesModal.classList.add('hidden');
+}
+
+function deleteSavedAnalysis(index) {
+    if (confirm("이 분석을 삭제하시겠습니까?")) {
+        appState.savedAnalyses.splice(index, 1);
+        saveConversationToLocal();
+        showSavedAnalysesModal(); // 목록 새로고침
+    }
 }
 
 // --- 외부API통신함수 ---
@@ -1392,7 +1536,7 @@ async function handleAnalyzeSentence() {
 
         const analysisPrompt = `The user (learning English) said: "${lastUserMessage.text}" in the context of "${scenarioTitleForPrompt}" scenario. ${focusTopicForPrompt} Provide a structured analysis in English: **⭐ Overall Impression:** (Brief positive comment or general feel) **👍 Strengths:** (What was good about the sentence) **💡 Areas for Improvement:** **Grammar:** (Specific errors & corrections. If none, say "Grammar is good.") **Vocabulary:** (Word choice suggestions, better alternatives. If good, say "Vocabulary is appropriate.") **Naturalness/Fluency:** (Tips to sound more natural. If good, say "Sounds natural.") **✨ Suggested Revision (if any):** (Offer a revised version of the sentence if significant improvements can be made) Keep feedback constructive and easy for an English learner. After the English analysis, provide a concise summary of the feedback in Korean, under a heading "${appState.UI_TEXT.koreanSummaryTitle}". This summary should highlight the main points of the feedback for a beginner to understand easily.`;
         const combinedAnalysisText = await callGeminiAPI(analysisPrompt);
-        showAnalysisModal(combinedAnalysisText);
+        showAnalysisModal(combinedAnalysisText, lastUserMessage.text, scenarioTitleForPrompt);
     } catch (error) {
         if (elements.englishAnalysisResultDiv) elements.englishAnalysisResultDiv.textContent = `${appState.UI_TEXT.errorMessageAnalysis} ${error.message}`;
         if (elements.koreanAnalysisResultDiv) elements.koreanAnalysisResultDiv.textContent = "";
@@ -1540,6 +1684,9 @@ function attachEventListeners() {
     if (elements.viewFavoritesButton) {
         elements.viewFavoritesButton.addEventListener('click', showFavoritesModal);
     }
+    if (elements.viewSavedAnalysesButton) {
+        elements.viewSavedAnalysesButton.addEventListener('click', showSavedAnalysesModal);
+    }
     if (elements.helpButton) {
         console.log("도움말 버튼에 이벤트 리스너 연결");
         elements.helpButton.addEventListener('click', (event) => {
@@ -1550,6 +1697,10 @@ function attachEventListeners() {
 
     if (elements.closeGuideModalButton) elements.closeGuideModalButton.addEventListener('click', closeGuideModal);
     if (elements.confirmGuideModalButton) elements.confirmGuideModalButton.addEventListener('click', closeGuideModal);
+    
+    if (elements.saveAnalysisButton) elements.saveAnalysisButton.addEventListener('click', saveCurrentAnalysis);
+    if (elements.closeSavedAnalysesModalButton) elements.closeSavedAnalysesModalButton.addEventListener('click', closeSavedAnalysesModal);
+    if (elements.confirmSavedAnalysesModalButton) elements.confirmSavedAnalysesModalButton.addEventListener('click', closeSavedAnalysesModal);
 
     if (elements.sendMessageButton) {
         console.log("메시지 전송 버튼에 이벤트 리스너 연결");
@@ -1632,6 +1783,10 @@ function attachEventListeners() {
         if (elements.favoritesModalContent && !elements.favoritesModalContent.contains(event.target) &&
             elements.favoritesModal && !elements.favoritesModal.classList.contains('hidden')) {
             closeFavoritesModal();
+        }
+        if (elements.savedAnalysesModalContent && !elements.savedAnalysesModalContent.contains(event.target) &&
+            elements.savedAnalysesModal && !elements.savedAnalysesModal.classList.contains('hidden')) {
+            closeSavedAnalysesModal();
         }
     });
     console.log("attachEventListeners: 이벤트 리스너 연결 완료");
