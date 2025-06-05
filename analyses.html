@@ -22,28 +22,29 @@
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
-    <div class="container mx-auto px-4 py-8 max-w-6xl">
+    <div class="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-6xl">
         <!-- Header -->
-        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <div class="flex items-center justify-between">
+        <div class="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div class="flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-blue-600 mr-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 mr-2 sm:mr-3 flex-shrink-0">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25M9 16.5v.75m3-3v3M15 12v5.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                     </svg>
-                    <h1 class="text-2xl font-bold text-gray-800">저장된 분석 보기</h1>
+                    <h1 class="text-xl sm:text-2xl font-bold text-gray-800">분석 보관함</h1>
                 </div>
-                <a href="index.html" class="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-lg transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 inline mr-2">
+                <a href="index.html" class="bg-sky-600 hover:bg-sky-700 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-colors text-sm flex items-center justify-center sm:w-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 mr-1">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
                     </svg>
-                    메인으로 돌아가기
+                    <span class="hidden sm:inline">메인으로</span>
+                    <span class="sm:hidden">홈</span>
                 </a>
             </div>
-            <p class="text-gray-600 mt-2">저장된 문장 분석 결과를 모아보고 관리할 수 있습니다.</p>
+            <p class="text-gray-600 mt-3 text-sm sm:text-base">저장된 문장 분석 결과를 모아보고 관리할 수 있습니다.</p>
         </div>
 
         <!-- Stats -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
             <div class="bg-white rounded-lg shadow-sm p-4">
                 <div class="flex items-center">
                     <div class="p-2 bg-blue-100 rounded-lg">
@@ -100,21 +101,25 @@
 
         <!-- Search and Filter -->
         <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-            <div class="flex flex-col md:flex-row gap-4">
+            <div class="flex flex-col gap-3">
                 <div class="flex-1">
-                    <input type="text" id="searchInput" placeholder="분석 내용 검색..." 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent">
+                    <input type="text" id="searchInput" placeholder="검색..." 
+                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent">
                 </div>
-                <select id="sortSelect" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500">
-                    <option value="newest">최신 순</option>
-                    <option value="oldest">오래된 순</option>
-                </select>
-                <button id="exportBtn" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">
-                    내보내기
-                </button>
-                <button id="clearAllBtn" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">
-                    전체 삭제
-                </button>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <select id="sortSelect" class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 flex-1 sm:flex-none">
+                        <option value="newest">최신 순</option>
+                        <option value="oldest">오래된 순</option>
+                    </select>
+                    <div class="flex gap-2">
+                        <button id="exportBtn" class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm flex-1 sm:flex-none whitespace-nowrap">
+                            내보내기
+                        </button>
+                        <button id="clearAllBtn" class="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm flex-1 sm:flex-none whitespace-nowrap">
+                            전체 삭제
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
