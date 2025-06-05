@@ -127,9 +127,9 @@
             if (savedConversation) {
                 try {
                     const data = JSON.parse(savedConversation);
-                    if (data.currentMessages) {
-                        favorites = data.currentMessages.filter(msg => msg.favorite);
-                    }
+                    // Check both possible keys for compatibility
+                    const messages = data.messages || data.currentMessages || [];
+                    favorites = messages.filter(msg => msg.favorite);
                 } catch (e) {
                     console.error('Failed to load favorites:', e);
                 }
@@ -193,19 +193,27 @@
             if (savedConversation) {
                 try {
                     const data = JSON.parse(savedConversation);
-                    if (data.currentMessages) {
-                        const favorites = data.currentMessages.filter(msg => msg.favorite);
-                        if (favorites[index]) {
-                            // Find the original message and remove favorite
-                            const targetMessage = favorites[index];
-                            data.currentMessages.forEach(msg => {
-                                if (msg.timestamp === targetMessage.timestamp && msg.text === targetMessage.text) {
-                                    msg.favorite = false;
-                                }
-                            });
-                            localStorage.setItem('savedConversation', JSON.stringify(data));
-                            renderFavorites();
+                    const messages = data.messages || data.currentMessages || [];
+                    const favorites = messages.filter(msg => msg.favorite);
+                    
+                    if (favorites[index]) {
+                        // Find the original message and remove favorite
+                        const targetMessage = favorites[index];
+                        messages.forEach(msg => {
+                            if (msg.timestamp === targetMessage.timestamp && msg.text === targetMessage.text) {
+                                msg.favorite = false;
+                            }
+                        });
+                        
+                        // Update the correct key
+                        if (data.messages) {
+                            data.messages = messages;
+                        } else {
+                            data.currentMessages = messages;
                         }
+                        
+                        localStorage.setItem('savedConversation', JSON.stringify(data));
+                        renderFavorites();
                     }
                 } catch (e) {
                     console.error('Failed to remove favorite:', e);
@@ -220,13 +228,21 @@
             if (savedConversation) {
                 try {
                     const data = JSON.parse(savedConversation);
-                    if (data.currentMessages) {
-                        data.currentMessages.forEach(msg => {
-                            msg.favorite = false;
-                        });
-                        localStorage.setItem('savedConversation', JSON.stringify(data));
-                        renderFavorites();
+                    const messages = data.messages || data.currentMessages || [];
+                    
+                    messages.forEach(msg => {
+                        msg.favorite = false;
+                    });
+                    
+                    // Update the correct key
+                    if (data.messages) {
+                        data.messages = messages;
+                    } else {
+                        data.currentMessages = messages;
                     }
+                    
+                    localStorage.setItem('savedConversation', JSON.stringify(data));
+                    renderFavorites();
                 } catch (e) {
                     console.error('Failed to clear favorites:', e);
                 }

@@ -164,19 +164,45 @@
 
         // Load analyses from localStorage
         function loadAnalyses() {
-            const savedAnalyses = localStorage.getItem('savedAnalyses');
+            // First try the new standalone key
+            let savedAnalyses = localStorage.getItem('savedAnalyses');
             if (savedAnalyses) {
                 try {
                     return JSON.parse(savedAnalyses);
                 } catch (e) {
-                    console.error('Failed to load analyses:', e);
+                    console.error('Failed to load standalone analyses:', e);
                 }
             }
+            
+            // Then try the conversation data
+            const savedConversation = localStorage.getItem('savedConversation');
+            if (savedConversation) {
+                try {
+                    const data = JSON.parse(savedConversation);
+                    return data.savedAnalyses || [];
+                } catch (e) {
+                    console.error('Failed to load analyses from conversation:', e);
+                }
+            }
+            
             return [];
         }
 
         function saveAnalyses(analyses) {
+            // Save both ways for compatibility
             localStorage.setItem('savedAnalyses', JSON.stringify(analyses));
+            
+            // Also update the conversation data if it exists
+            const savedConversation = localStorage.getItem('savedConversation');
+            if (savedConversation) {
+                try {
+                    const data = JSON.parse(savedConversation);
+                    data.savedAnalyses = analyses;
+                    localStorage.setItem('savedConversation', JSON.stringify(data));
+                } catch (e) {
+                    console.error('Failed to update conversation with analyses:', e);
+                }
+            }
         }
 
         function renderAnalyses(analyses = null) {
