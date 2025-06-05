@@ -17,8 +17,7 @@
 
     <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col" style="height: calc(100vh - 30px); max-height: 800px;">
         <header class="header-bg text-white p-4 sm:p-5 rounded-t-2xl flex flex-wrap items-center justify-between relative shadow-md">
-            <h1 id="headerTitle" class="order-first w-full sm:order-none sm:w-auto text-xl sm:text-2xl font-semibold text-center truncate sm:absolute sm:left-1/2 sm:transform sm:-translate-x-1/2 max-w-full sm:max-w-[80%]" title="SpeakUp AI">SpeakUp AI</h1>
-            <div class="flex items-center order-2 sm:order-none">
+            <div class="flex items-center order-2 sm:order-1">
                 <div class="relative" id="scenarioPickerContainer">
                     <button id="scenarioPickerButton" class="flex items-center text-sm sm:text-base bg-sky-700 hover:bg-sky-600 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
                         <span id="currentScenarioDisplay">시나리오</span>
@@ -28,7 +27,8 @@
                         </div>
                 </div>
             </div>
-            <div class="flex items-center space-x-2 order-3 sm:order-none">
+            <h1 id="headerTitle" class="order-first w-full sm:order-2 sm:w-auto text-xl sm:text-2xl font-semibold text-center truncate sm:flex-1 sm:mx-4" title="SpeakUp AI">SpeakUp AI</h1>
+            <div class="flex items-center space-x-2 order-3 sm:order-3">
                 <div class="relative" id="languagePickerContainer">
                     <button id="languagePickerButton" class="flex items-center text-sm sm:text-base bg-sky-700 hover:bg-sky-600 px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
                         <span id="currentLanguageDisplay">한국어</span>
@@ -49,17 +49,30 @@
                 <button id="newConversationButton" title="새 대화 시작" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"> <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /> </svg>
                 </button>
-                <button id="exportJsonButton" title="Save JSON" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-8m0 8l3-3m-3 3l-3-3m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
-                    </svg>
-                </button>
-                <button id="importJsonButton" title="Load JSON" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v8m0-8l3 3m-3-3l-3 3m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
-                    </svg>
-                </button>
-                <button id="viewFavoritesButton" title="Favorites" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
+                <div class="relative" id="jsonMenuContainer">
+                    <button id="jsonMenuButton" title="대화 저장/불러오기" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                        </svg>
+                    </button>
+                    <div id="jsonMenuDropdown" class="hidden absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-xl z-20 border border-slate-200 fade-in">
+                        <div class="py-1">
+                            <a href="#" id="jsonMenuSave" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 inline mr-2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-8m0 8l3-3m-3 3l-3-3m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
+                                </svg>
+                                대화 저장
+                            </a>
+                            <a href="#" id="jsonMenuLoad" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 inline mr-2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v8m0-8l3 3m-3-3l-3 3m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
+                                </svg>
+                                대화 불러오기
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <button id="viewFavoritesButton" title="즐겨찾기 모아보기" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
                         <path d="M11.48 3.5a.75.75 0 011.04 0l2.42 2.45 3.4.53a.75.75 0 01.42 1.28l-2.46 2.43.58 3.38a.75.75 0 01-1.08.79L12 13.34l-3.38 1.42a.75.75 0 01-1.08-.79l.58-3.38L5.66 8.26a.75.75 0 01.42-1.28l3.4-.53 2.42-2.45z" />
                     </svg>
@@ -554,8 +567,11 @@ function initDOMElements() {
     elements.headerTitle = document.getElementById('headerTitle');
     elements.newConversationButton = document.getElementById('newConversationButton');
 
-    elements.exportJsonButton = document.getElementById('exportJsonButton');
-    elements.importJsonButton = document.getElementById('importJsonButton');
+    elements.jsonMenuContainer = document.getElementById('jsonMenuContainer');
+    elements.jsonMenuButton = document.getElementById('jsonMenuButton');
+    elements.jsonMenuDropdown = document.getElementById('jsonMenuDropdown');
+    elements.jsonMenuSave = document.getElementById('jsonMenuSave');
+    elements.jsonMenuLoad = document.getElementById('jsonMenuLoad');
     elements.viewFavoritesButton = document.getElementById('viewFavoritesButton');
     elements.importJsonInput = document.getElementById('importJsonInput');
     elements.helpButton = document.getElementById('helpButton');
@@ -792,7 +808,7 @@ function updateScenarioDisplay(isConversationStarting = false) {
         ? (appState.currentCustomScenarioInput ? `${appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput).split(':')[0]}: ${appState.currentCustomScenarioInput.substring(0, 10)}...` : appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput))
         : (appState.currentScenario.categoryTitle ? `${appState.currentScenario.title.split(" ")[0]}` : appState.currentScenario.title.split(" ")[0]);
 
-    if (elements.currentScenarioDisplay) elements.currentScenarioDisplay.textContent = displayTitle;
+    if (elements.currentScenarioDisplay) elements.currentScenarioDisplay.textContent = "시나리오";
     if (elements.headerTitle) elements.headerTitle.title = appState.currentScenario.title;
 
     const elementsToHide = document.querySelectorAll('.hide-after-conversation-start');
@@ -1054,9 +1070,28 @@ function toggleLanguagePicker() {
         if (appState.showScenarioPicker) {
             toggleScenarioPicker();
         }
+        if (appState.showJsonMenu) {
+            toggleJsonMenu();
+        }
     } else {
         if (elements.languageDropdown) {
             elements.languageDropdown.classList.add('hidden');
+        }
+    }
+}
+
+function toggleJsonMenu() {
+    appState.showJsonMenu = !appState.showJsonMenu;
+    if (appState.showJsonMenu) {
+        if (elements.jsonMenuDropdown) {
+            elements.jsonMenuDropdown.classList.remove('hidden');
+            elements.jsonMenuDropdown.classList.add('fade-in');
+        }
+        if (appState.showScenarioPicker) toggleScenarioPicker();
+        if (appState.showLanguagePicker) toggleLanguagePicker();
+    } else {
+        if (elements.jsonMenuDropdown) {
+            elements.jsonMenuDropdown.classList.add('hidden');
         }
     }
 }
@@ -1461,6 +1496,9 @@ function setLanguage(langCode) {
     if (elements.currentLanguageDisplay) {
         elements.currentLanguageDisplay.textContent = langPacks[langCode].displayName;
     }
+    if (elements.viewFavoritesButton) {
+        elements.viewFavoritesButton.title = appState.UI_TEXT.viewFavoritesButtonTitle || "즐겨찾기 모아보기";
+    }
 }
 
 // --- 모든이벤트리스너설정함수 ---
@@ -1476,11 +1514,19 @@ function attachEventListeners() {
         console.log("새 대화 버튼에 이벤트 리스너 연결");
         elements.newConversationButton.addEventListener('click', handleNewConversation);
     }
-    if (elements.exportJsonButton) {
-        elements.exportJsonButton.addEventListener('click', exportConversationToJson);
+    if (elements.jsonMenuButton) {
+        elements.jsonMenuButton.addEventListener('click', toggleJsonMenu);
     }
-    if (elements.importJsonButton && elements.importJsonInput) {
-        elements.importJsonButton.addEventListener('click', () => {
+    if (elements.jsonMenuSave) {
+        elements.jsonMenuSave.addEventListener('click', (e) => {
+            e.preventDefault();
+            exportConversationToJson();
+            toggleJsonMenu();
+        });
+    }
+    if (elements.jsonMenuLoad && elements.importJsonInput) {
+        elements.jsonMenuLoad.addEventListener('click', (e) => {
+            e.preventDefault();
             elements.importJsonInput.click();
         });
         elements.importJsonInput.addEventListener('change', (e) => {
@@ -1488,6 +1534,7 @@ function attachEventListeners() {
                 importConversationFromJson(e.target.files[0]);
                 e.target.value = '';
             }
+            toggleJsonMenu();
         });
     }
     if (elements.viewFavoritesButton) {
@@ -1570,6 +1617,9 @@ function attachEventListeners() {
         }
         if (elements.languagePickerContainer && !elements.languagePickerContainer.contains(event.target) && appState.showLanguagePicker) {
             toggleLanguagePicker();
+        }
+        if (elements.jsonMenuContainer && !elements.jsonMenuContainer.contains(event.target) && appState.showJsonMenu) {
+            toggleJsonMenu();
         }
         if (elements.analysisModalContent && !elements.analysisModalContent.contains(event.target) &&
             elements.analysisModal && !elements.analysisModal.classList.contains('hidden')) {
