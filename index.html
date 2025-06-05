@@ -1164,20 +1164,16 @@ function showAnalysisModal(combinedAnalysisText, userMessage = "", scenario = ""
         korSummary = "한국어 요약을 생성할 수 없습니다.";
     }
 
-    // 현재 분석 데이터 저장
-    currentAnalysisData = {
-        userMessage,
-        scenario,
-        engAnalysis,
-        korSummary
-    };
+    const engDiv = document.querySelector('#englishAnalysisResult div');
+    const korDiv = document.querySelector('#koreanAnalysisResult div');
+    const modal = document.getElementById('analysisModal');
 
-    if (elements.englishAnalysisResultDiv) elements.englishAnalysisResultDiv.innerHTML = simpleMarkdownToHtml(engAnalysis);
-    if (elements.koreanAnalysisResultDiv) elements.koreanAnalysisResultDiv.innerHTML = simpleMarkdownToHtml(korSummary);
+    if (engDiv) engDiv.innerHTML = simpleMarkdownToHtml(engAnalysis);
+    if (korDiv) korDiv.innerHTML = simpleMarkdownToHtml(korSummary);
 
-    if (elements.analysisModal) {
-        elements.analysisModal.classList.remove('hidden');
-        elements.analysisModal.classList.add('fade-in');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('fade-in');
     }
 }
 
@@ -1196,145 +1192,188 @@ function toggleFavorite(index) {
     saveConversationToLocal();
 }
 function showFavoritesModal() {
-    console.log("showFavoritesModal 호출됨");
-    console.log("현재 메시지 수:", appState.currentMessages.length);
+    console.log("즐겨찾기 모달 열기 시도");
     
-    // Attempt to re-fetch if elements.favoritesModal is null or not a valid element
-    // This is a defensive measure; ideally, initDOMElements should always succeed.
-    if (!elements.favoritesModal || !(elements.favoritesModal instanceof Element)) {
-        console.warn("elements.favoritesModal was not valid. Re-querying from DOM...");
-        elements.favoritesModal = document.getElementById('favoritesModal');
-        // If still not found, then there's a more fundamental issue.
-        if (!elements.favoritesModal) {
-            console.error("CRITICAL: Re-query for 'favoritesModal' failed. Modal cannot be shown.");
-            alert("Error: The favorites modal component could not be found in the page."); // User-facing alert
-            return;
-        }
+    // 즉시 DOM에서 직접 가져오기
+    const modal = document.getElementById('favoritesModal');
+    const list = document.getElementById('favoritesList');
+    
+    if (!modal) {
+        alert("즐겨찾기 모달을 찾을 수 없습니다.");
+        return;
+    }
+    
+    if (!list) {
+        alert("즐겨찾기 목록을 찾을 수 없습니다.");
+        return;
     }
 
-    const favs = appState.currentMessages.filter(m => m.favorite);
-    console.log("즐겨찾기된 메시지 수:", favs.length);
+    // 즐겨찾기된 메시지 필터링
+    const favoriteMessages = appState.currentMessages.filter(msg => msg.favorite === true);
+    console.log("즐겨찾기 메시지 개수:", favoriteMessages.length);
 
-    // It's also good practice to ensure favoritesList is valid or re-query it too if needed.
-    if (!elements.favoritesList || !(elements.favoritesList instanceof Element)) {
-        console.warn("elements.favoritesList was not valid. Re-querying from DOM...");
-        elements.favoritesList = document.getElementById('favoritesList');
-    }
-
-    if (elements.favoritesList) {
-        elements.favoritesList.innerHTML = '';
-        if (favs.length === 0) {
-            elements.favoritesList.textContent = appState.UI_TEXT.noFavoritesMessage || "No favorite messages."; // Fallback for UI_TEXT
-        } else {
-            favs.forEach(msg => {
-                const p = document.createElement('p');
-                p.className = 'p-2 bg-slate-50 rounded border border-slate-200';
-                p.textContent = msg.text;
-                elements.favoritesList.appendChild(p);
-            });
-        }
+    // 목록 초기화 및 채우기
+    list.innerHTML = '';
+    
+    if (favoriteMessages.length === 0) {
+        list.innerHTML = '<p class="text-center text-gray-500 py-4">즐겨찾기한 문장이 없습니다.</p>';
     } else {
-        console.error("Error: elements.favoritesList is null even after re-query attempt. Cannot display favorite messages.");
+        favoriteMessages.forEach((msg, index) => {
+            const div = document.createElement('div');
+            div.className = 'p-3 bg-slate-50 rounded-lg border border-slate-200 mb-2';
+            div.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <p class="text-sm text-slate-700">${msg.text}</p>
+                    <button onclick="removeFavorite(${appState.currentMessages.indexOf(msg)})" class="text-red-500 hover:text-red-700 ml-2">×</button>
+                </div>
+            `;
+            list.appendChild(div);
+        });
     }
 
-    elements.favoritesModal.classList.remove('hidden');
-    elements.favoritesModal.classList.add('fade-in');
+    // 모달 표시
+    modal.classList.remove('hidden');
+    modal.classList.add('fade-in');
+    console.log("즐겨찾기 모달 표시됨");
 }
 
 function closeFavoritesModal() {
-    if (elements.favoritesModal) elements.favoritesModal.classList.add('hidden');
+    const modal = document.getElementById('favoritesModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+function removeFavorite(messageIndex) {
+    if (appState.currentMessages[messageIndex]) {
+        appState.currentMessages[messageIndex].favorite = false;
+        renderMessages();
+        saveConversationToLocal();
+        showFavoritesModal(); // 목록 새로고침
+    }
 }
 
 let currentAnalysisData = null;
 
 function saveCurrentAnalysis() {
-    if (!currentAnalysisData) {
-        alert("저장할 분석 결과가 없습니다.");
+    console.log("분석 저장 시도");
+    
+    // 현재 분석 모달에서 데이터 직접 가져오기
+    const engDiv = document.querySelector('#englishAnalysisResult div');
+    const korDiv = document.querySelector('#koreanAnalysisResult div');
+    
+    if (!engDiv || !korDiv || !engDiv.innerHTML.trim() || !korDiv.innerHTML.trim()) {
+        alert("저장할 분석 결과가 없습니다. 먼저 문장 분석을 실행해주세요.");
         return;
     }
     
+    // 분석한 마지막 사용자 메시지 찾기
+    const userMessages = appState.currentMessages.filter(msg => msg.sender === 'user');
+    if (userMessages.length === 0) {
+        alert("분석할 사용자 메시지가 없습니다.");
+        return;
+    }
+    
+    const lastUserMessage = userMessages[userMessages.length - 1];
+    const currentScenario = appState.currentScenario ? appState.currentScenario.title : "알 수 없음";
+    
     const analysisItem = {
         id: Date.now(),
-        timestamp: new Date(),
-        userMessage: currentAnalysisData.userMessage,
-        scenario: currentAnalysisData.scenario,
-        engAnalysis: currentAnalysisData.engAnalysis,
-        korSummary: currentAnalysisData.korSummary
+        timestamp: new Date().toISOString(),
+        userMessage: lastUserMessage.text,
+        scenario: currentScenario,
+        engAnalysis: engDiv.innerHTML,
+        korSummary: korDiv.innerHTML
     };
+    
+    // savedAnalyses 배열이 없으면 초기화
+    if (!appState.savedAnalyses) {
+        appState.savedAnalyses = [];
+    }
     
     appState.savedAnalyses.push(analysisItem);
     saveConversationToLocal();
+    
     alert("분석이 저장되었습니다!");
+    console.log("분석 저장 완료, 총 저장된 분석:", appState.savedAnalyses.length);
 }
 
 function showSavedAnalysesModal() {
-    console.log("showSavedAnalysesModal 호출됨");
-    console.log("저장된 분석 수:", appState.savedAnalyses.length);
+    console.log("저장된 분석 모달 열기");
     
-    if (!elements.savedAnalysesModal || !(elements.savedAnalysesModal instanceof Element)) {
-        console.warn("elements.savedAnalysesModal was not valid. Re-querying from DOM...");
-        elements.savedAnalysesModal = document.getElementById('savedAnalysesModal');
-        if (!elements.savedAnalysesModal) {
-            console.error("CRITICAL: Re-query for 'savedAnalysesModal' failed. Modal cannot be shown.");
-            alert("Error: The saved analyses modal component could not be found in the page.");
-            return;
-        }
+    const modal = document.getElementById('savedAnalysesModal');
+    const list = document.getElementById('savedAnalysesList');
+    
+    if (!modal) {
+        alert("저장된 분석 모달을 찾을 수 없습니다.");
+        return;
+    }
+    
+    if (!list) {
+        alert("저장된 분석 목록을 찾을 수 없습니다.");
+        return;
     }
 
-    if (!elements.savedAnalysesList || !(elements.savedAnalysesList instanceof Element)) {
-        console.warn("elements.savedAnalysesList was not valid. Re-querying from DOM...");
-        elements.savedAnalysesList = document.getElementById('savedAnalysesList');
+    // savedAnalyses 배열이 없으면 초기화
+    if (!appState.savedAnalyses) {
+        appState.savedAnalyses = [];
     }
 
-    if (elements.savedAnalysesList) {
-        elements.savedAnalysesList.innerHTML = '';
-        if (appState.savedAnalyses.length === 0) {
-            elements.savedAnalysesList.textContent = "저장된 분석이 없습니다.";
-        } else {
-            appState.savedAnalyses.forEach((analysis, index) => {
-                const analysisDiv = document.createElement('div');
-                analysisDiv.className = 'p-4 bg-slate-50 rounded-lg border border-slate-200';
-                
-                const timestamp = new Date(analysis.timestamp).toLocaleString('ko-KR');
-                
-                analysisDiv.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
-                        <div class="text-sm text-slate-500">
-                            <span class="font-medium">${timestamp}</span> | ${analysis.scenario}
-                        </div>
-                        <button onclick="deleteSavedAnalysis(${index})" class="text-red-500 hover:text-red-700 text-sm">삭제</button>
-                    </div>
-                    <div class="mb-3">
-                        <div class="text-sm font-medium text-sky-700 mb-1">📝 분석한 문장:</div>
-                        <div class="text-sm bg-white p-2 rounded border">${analysis.userMessage}</div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="text-sm font-medium text-slate-800 mb-1">📝 영어 피드백:</div>
-                        <div class="text-sm text-slate-700 bg-white p-2 rounded border">${analysis.engAnalysis}</div>
-                    </div>
-                    <div>
-                        <div class="text-sm font-medium text-slate-800 mb-1">🇰🇷 한국어 요약:</div>
-                        <div class="text-sm text-slate-700 bg-sky-50 p-2 rounded border border-sky-200">${analysis.korSummary}</div>
-                    </div>
-                `;
-                
-                elements.savedAnalysesList.appendChild(analysisDiv);
-            });
-        }
+    console.log("저장된 분석 개수:", appState.savedAnalyses.length);
+    
+    list.innerHTML = '';
+    
+    if (appState.savedAnalyses.length === 0) {
+        list.innerHTML = '<p class="text-center text-gray-500 py-4">저장된 분석이 없습니다.</p>';
     } else {
-        console.error("Error: elements.savedAnalysesList is null even after re-query attempt. Cannot display saved analyses.");
+        appState.savedAnalyses.forEach((analysis, index) => {
+            const div = document.createElement('div');
+            div.className = 'p-4 bg-slate-50 rounded-lg border border-slate-200 mb-4';
+            
+            const timestamp = new Date(analysis.timestamp).toLocaleString('ko-KR');
+            
+            div.innerHTML = `
+                <div class="flex justify-between items-start mb-3">
+                    <div class="text-sm text-slate-500">
+                        <span class="font-medium">${timestamp}</span> | ${analysis.scenario}
+                    </div>
+                    <button onclick="deleteSavedAnalysis(${index})" class="text-red-500 hover:text-red-700 text-sm font-medium">삭제</button>
+                </div>
+                <div class="mb-3">
+                    <div class="text-sm font-medium text-sky-700 mb-1">📝 분석한 문장:</div>
+                    <div class="text-sm bg-white p-2 rounded border">${analysis.userMessage}</div>
+                </div>
+                <div class="mb-3">
+                    <div class="text-sm font-medium text-slate-800 mb-1">📝 영어 피드백:</div>
+                    <div class="text-sm text-slate-700 bg-white p-2 rounded border" style="white-space: pre-wrap;">${analysis.engAnalysis}</div>
+                </div>
+                <div>
+                    <div class="text-sm font-medium text-slate-800 mb-1">🇰🇷 한국어 요약:</div>
+                    <div class="text-sm text-slate-700 bg-sky-50 p-2 rounded border border-sky-200" style="white-space: pre-wrap;">${analysis.korSummary}</div>
+                </div>
+            `;
+            
+            list.appendChild(div);
+        });
     }
 
-    elements.savedAnalysesModal.classList.remove('hidden');
-    elements.savedAnalysesModal.classList.add('fade-in');
+    modal.classList.remove('hidden');
+    modal.classList.add('fade-in');
+    console.log("저장된 분석 모달 표시됨");
 }
 
 function closeSavedAnalysesModal() {
-    if (elements.savedAnalysesModal) elements.savedAnalysesModal.classList.add('hidden');
+    const modal = document.getElementById('savedAnalysesModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
 }
 
 function deleteSavedAnalysis(index) {
     if (confirm("이 분석을 삭제하시겠습니까?")) {
+        if (!appState.savedAnalyses) {
+            appState.savedAnalyses = [];
+        }
         appState.savedAnalyses.splice(index, 1);
         saveConversationToLocal();
         showSavedAnalysesModal(); // 목록 새로고침
@@ -1681,11 +1720,21 @@ function attachEventListeners() {
             toggleJsonMenu();
         });
     }
-    if (elements.viewFavoritesButton) {
-        elements.viewFavoritesButton.addEventListener('click', showFavoritesModal);
+    // 즐겨찾기 버튼 이벤트 - 단순하게 직접 처리
+    const favoritesBtn = document.getElementById('viewFavoritesButton');
+    if (favoritesBtn) {
+        favoritesBtn.addEventListener('click', function() {
+            console.log("즐겨찾기 버튼 클릭됨");
+            showFavoritesModal();
+        });
     }
-    if (elements.viewSavedAnalysesButton) {
-        elements.viewSavedAnalysesButton.addEventListener('click', showSavedAnalysesModal);
+    // 저장된 분석 보기 버튼 - 직접 연결
+    const savedAnalysesBtn = document.getElementById('viewSavedAnalysesButton');
+    if (savedAnalysesBtn) {
+        savedAnalysesBtn.addEventListener('click', function() {
+            console.log("저장된 분석 보기 버튼 클릭됨");
+            showSavedAnalysesModal();
+        });
     }
     if (elements.helpButton) {
         console.log("도움말 버튼에 이벤트 리스너 연결");
@@ -1698,9 +1747,25 @@ function attachEventListeners() {
     if (elements.closeGuideModalButton) elements.closeGuideModalButton.addEventListener('click', closeGuideModal);
     if (elements.confirmGuideModalButton) elements.confirmGuideModalButton.addEventListener('click', closeGuideModal);
     
-    if (elements.saveAnalysisButton) elements.saveAnalysisButton.addEventListener('click', saveCurrentAnalysis);
-    if (elements.closeSavedAnalysesModalButton) elements.closeSavedAnalysesModalButton.addEventListener('click', closeSavedAnalysesModal);
-    if (elements.confirmSavedAnalysesModalButton) elements.confirmSavedAnalysesModalButton.addEventListener('click', closeSavedAnalysesModal);
+    // 즐겨찾기 모달 닫기 버튼들 - 직접 연결
+    const closeFavBtn = document.getElementById('closeFavoritesModalButton');
+    const confirmFavBtn = document.getElementById('confirmFavoritesModalButton');
+    if (closeFavBtn) closeFavBtn.addEventListener('click', closeFavoritesModal);
+    if (confirmFavBtn) confirmFavBtn.addEventListener('click', closeFavoritesModal);
+    
+    // 분석 저장 및 저장된 분석 모달 버튼들 - 직접 연결
+    const saveAnalysisBtn = document.getElementById('saveAnalysisButton');
+    const closeSavedAnalysesBtn = document.getElementById('closeSavedAnalysesModalButton');
+    const confirmSavedAnalysesBtn = document.getElementById('confirmSavedAnalysesModalButton');
+    
+    if (saveAnalysisBtn) {
+        saveAnalysisBtn.addEventListener('click', function() {
+            console.log("분석 저장 버튼 클릭됨");
+            saveCurrentAnalysis();
+        });
+    }
+    if (closeSavedAnalysesBtn) closeSavedAnalysesBtn.addEventListener('click', closeSavedAnalysesModal);
+    if (confirmSavedAnalysesBtn) confirmSavedAnalysesBtn.addEventListener('click', closeSavedAnalysesModal);
 
     if (elements.sendMessageButton) {
         console.log("메시지 전송 버튼에 이벤트 리스너 연결");
