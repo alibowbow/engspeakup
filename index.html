@@ -72,16 +72,29 @@
                         </div>
                     </div>
                 </div>
-                <button id="viewFavoritesButton" title="즐겨찾기 모아보기" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
-                        <path d="M11.48 3.5a.75.75 0 011.04 0l2.42 2.45 3.4.53a.75.75 0 01.42 1.28l-2.46 2.43.58 3.38a.75.75 0 01-1.08.79L12 13.34l-3.38 1.42a.75.75 0 01-1.08-.79l.58-3.38L5.66 8.26a.75.75 0 01.42-1.28l3.4-.53 2.42-2.45z" />
-                    </svg>
-                </button>
-                <button id="viewSavedAnalysesButton" title="저장된 분석 보기" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25M9 16.5v.75m3-3v3M15 12v5.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                    </svg>
-                </button>
+                <div class="relative" id="savedDataMenuContainer">
+                    <button id="savedDataMenuButton" title="저장된 데이터 보기" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
+                        </svg>
+                    </button>
+                    <div id="savedDataMenuDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-20 border border-slate-200 fade-in">
+                        <div class="py-1">
+                            <a href="#" id="savedDataMenuFavorites" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 inline mr-2">
+                                    <path d="M11.48 3.5a.75.75 0 011.04 0l2.42 2.45 3.4.53a.75.75 0 01.42 1.28l-2.46 2.43.58 3.38a.75.75 0 01-1.08.79L12 13.34l-3.38 1.42a.75.75 0 01-1.08-.79l.58-3.38L5.66 8.26a.75.75 0 01.42-1.28l3.4-.53 2.42-2.45z" />
+                                </svg>
+                                즐겨찾기 모아보기
+                            </a>
+                            <a href="#" id="savedDataMenuAnalyses" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 inline mr-2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25M9 16.5v.75m3-3v3M15 12v5.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                                </svg>
+                                저장된 분석 보기
+                            </a>
+                        </div>
+                    </div>
+                </div>
                 <input type="file" id="importJsonInput" accept="application/json" class="hidden" />
             </div>
         </header>
@@ -576,6 +589,7 @@ const appState = {
     UI_TEXT: null,
     showLanguagePicker: false,
     showJsonMenu: false,
+    showSavedDataMenu: false,
     savedAnalyses: [],
 };
 
@@ -596,8 +610,11 @@ function initDOMElements() {
     elements.jsonMenuDropdown = document.getElementById('jsonMenuDropdown');
     elements.jsonMenuSave = document.getElementById('jsonMenuSave');
     elements.jsonMenuLoad = document.getElementById('jsonMenuLoad');
-    elements.viewFavoritesButton = document.getElementById('viewFavoritesButton');
-    elements.viewSavedAnalysesButton = document.getElementById('viewSavedAnalysesButton');
+    elements.savedDataMenuContainer = document.getElementById('savedDataMenuContainer');
+    elements.savedDataMenuButton = document.getElementById('savedDataMenuButton');
+    elements.savedDataMenuDropdown = document.getElementById('savedDataMenuDropdown');
+    elements.savedDataMenuFavorites = document.getElementById('savedDataMenuFavorites');
+    elements.savedDataMenuAnalyses = document.getElementById('savedDataMenuAnalyses');
     elements.importJsonInput = document.getElementById('importJsonInput');
     elements.helpButton = document.getElementById('helpButton');
 
@@ -1125,9 +1142,27 @@ function toggleJsonMenu() {
         }
         if (appState.showScenarioPicker) toggleScenarioPicker();
         if (appState.showLanguagePicker) toggleLanguagePicker();
+        if (appState.showSavedDataMenu) toggleSavedDataMenu();
     } else {
         if (elements.jsonMenuDropdown) {
             elements.jsonMenuDropdown.classList.add('hidden');
+        }
+    }
+}
+
+function toggleSavedDataMenu() {
+    appState.showSavedDataMenu = !appState.showSavedDataMenu;
+    if (appState.showSavedDataMenu) {
+        if (elements.savedDataMenuDropdown) {
+            elements.savedDataMenuDropdown.classList.remove('hidden');
+            elements.savedDataMenuDropdown.classList.add('fade-in');
+        }
+        if (appState.showScenarioPicker) toggleScenarioPicker();
+        if (appState.showLanguagePicker) toggleLanguagePicker();
+        if (appState.showJsonMenu) toggleJsonMenu();
+    } else {
+        if (elements.savedDataMenuDropdown) {
+            elements.savedDataMenuDropdown.classList.add('hidden');
         }
     }
 }
@@ -1720,20 +1755,28 @@ function attachEventListeners() {
             toggleJsonMenu();
         });
     }
-    // 즐겨찾기 버튼 이벤트 - 단순하게 직접 처리
-    const favoritesBtn = document.getElementById('viewFavoritesButton');
-    if (favoritesBtn) {
-        favoritesBtn.addEventListener('click', function() {
-            console.log("즐겨찾기 버튼 클릭됨");
+    // 저장된 데이터 메뉴 버튼 이벤트
+    if (elements.savedDataMenuButton) {
+        console.log("저장된 데이터 메뉴 버튼에 이벤트 리스너 연결");
+        elements.savedDataMenuButton.addEventListener('click', toggleSavedDataMenu);
+    }
+    
+    // 저장된 데이터 메뉴 드롭다운 내부 버튼들
+    if (elements.savedDataMenuFavorites) {
+        elements.savedDataMenuFavorites.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log("즐겨찾기 메뉴 항목 클릭됨");
             showFavoritesModal();
+            toggleSavedDataMenu(); // 메뉴 닫기
         });
     }
-    // 저장된 분석 보기 버튼 - 직접 연결
-    const savedAnalysesBtn = document.getElementById('viewSavedAnalysesButton');
-    if (savedAnalysesBtn) {
-        savedAnalysesBtn.addEventListener('click', function() {
-            console.log("저장된 분석 보기 버튼 클릭됨");
+    
+    if (elements.savedDataMenuAnalyses) {
+        elements.savedDataMenuAnalyses.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log("저장된 분석 메뉴 항목 클릭됨");
             showSavedAnalysesModal();
+            toggleSavedDataMenu(); // 메뉴 닫기
         });
     }
     if (elements.helpButton) {
@@ -1836,6 +1879,9 @@ function attachEventListeners() {
         }
         if (elements.jsonMenuContainer && !elements.jsonMenuContainer.contains(event.target) && appState.showJsonMenu) {
             toggleJsonMenu();
+        }
+        if (elements.savedDataMenuContainer && !elements.savedDataMenuContainer.contains(event.target) && appState.showSavedDataMenu) {
+            toggleSavedDataMenu();
         }
         if (elements.analysisModalContent && !elements.analysisModalContent.contains(event.target) &&
             elements.analysisModal && !elements.analysisModal.classList.contains('hidden')) {
