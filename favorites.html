@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>즐겨찾기 모아보기 - SpeakUp AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .fade-in { animation: fadeIn 0.15s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+        .favorite-item { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .favorite-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- Header -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-yellow-500 mr-3">
+                        <path d="M11.48 3.5a.75.75 0 011.04 0l2.42 2.45 3.4.53a.75.75 0 01.42 1.28l-2.46 2.43.58 3.38a.75.75 0 01-1.08.79L12 13.34l-3.38 1.42a.75.75 0 01-1.08-.79l.58-3.38L5.66 8.26a.75.75 0 01.42-1.28l3.4-.53 2.42-2.45z" />
+                    </svg>
+                    <h1 class="text-2xl font-bold text-gray-800">즐겨찾기 모아보기</h1>
+                </div>
+                <a href="index.html" class="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-lg transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 inline mr-2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                    </svg>
+                    메인으로 돌아가기
+                </a>
+            </div>
+            <p class="text-gray-600 mt-2">즐겨찾기로 저장된 문장들을 모아보고 관리할 수 있습니다.</p>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white rounded-lg shadow-sm p-4">
+                <div class="flex items-center">
+                    <div class="p-2 bg-yellow-100 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-yellow-600">
+                            <path d="M11.48 3.5a.75.75 0 011.04 0l2.42 2.45 3.4.53a.75.75 0 01.42 1.28l-2.46 2.43.58 3.38a.75.75 0 01-1.08.79L12 13.34l-3.38 1.42a.75.75 0 01-1.08-.79l.58-3.38L5.66 8.26a.75.75 0 01.42-1.28l3.4-.53 2.42-2.45z" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-gray-500">총 즐겨찾기</p>
+                        <p class="text-2xl font-semibold text-gray-800" id="totalFavorites">0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-sm p-4">
+                <div class="flex items-center">
+                    <div class="p-2 bg-blue-100 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-blue-600">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-gray-500">내 문장</p>
+                        <p class="text-2xl font-semibold text-gray-800" id="userFavorites">0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-sm p-4">
+                <div class="flex items-center">
+                    <div class="p-2 bg-green-100 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-green-600">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-gray-500">AI 문장</p>
+                        <p class="text-2xl font-semibold text-gray-800" id="aiFavorites">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search and Filter -->
+        <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex-1">
+                    <input type="text" id="searchInput" placeholder="즐겨찾기 검색..." 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent">
+                </div>
+                <select id="filterSelect" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500">
+                    <option value="all">전체</option>
+                    <option value="user">내 문장</option>
+                    <option value="ai">AI 문장</option>
+                </select>
+                <button id="clearAllBtn" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">
+                    전체 삭제
+                </button>
+            </div>
+        </div>
+
+        <!-- Favorites List -->
+        <div id="favoritesContainer" class="space-y-4">
+            <!-- Favorites will be loaded here -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden text-center py-12">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-gray-400 mb-4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.5a.75.75 0 011.04 0l2.42 2.45 3.4.53a.75.75 0 01.42 1.28l-2.46 2.43.58 3.38a.75.75 0 01-1.08.79L12 13.34l-3.38 1.42a.75.75 0 01-1.08-.79l.58-3.38L5.66 8.26a.75.75 0 01.42-1.28l3.4-.53 2.42-2.45z" />
+            </svg>
+            <h3 class="text-lg font-medium text-gray-800 mb-2">아직 즐겨찾기가 없습니다</h3>
+            <p class="text-gray-600 mb-4">대화 중에 문장 옆의 ⭐ 버튼을 클릭해서 즐겨찾기를 추가해보세요.</p>
+            <a href="index.html" class="inline-flex items-center px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+                </svg>
+                대화 시작하기
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Load favorites from localStorage
+        function loadFavorites() {
+            const savedConversation = localStorage.getItem('savedConversation');
+            let favorites = [];
+            
+            if (savedConversation) {
+                try {
+                    const data = JSON.parse(savedConversation);
+                    if (data.currentMessages) {
+                        favorites = data.currentMessages.filter(msg => msg.favorite);
+                    }
+                } catch (e) {
+                    console.error('Failed to load favorites:', e);
+                }
+            }
+            
+            return favorites;
+        }
+
+        function renderFavorites(favorites = null) {
+            if (favorites === null) {
+                favorites = loadFavorites();
+            }
+            
+            const container = document.getElementById('favoritesContainer');
+            const emptyState = document.getElementById('emptyState');
+            
+            // Update stats
+            const userFavs = favorites.filter(f => f.sender === 'user').length;
+            const aiFavs = favorites.filter(f => f.sender === 'ai').length;
+            
+            document.getElementById('totalFavorites').textContent = favorites.length;
+            document.getElementById('userFavorites').textContent = userFavs;
+            document.getElementById('aiFavorites').textContent = aiFavs;
+            
+            if (favorites.length === 0) {
+                container.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            
+            emptyState.classList.add('hidden');
+            
+            container.innerHTML = favorites.map((fav, index) => `
+                <div class="favorite-item bg-white rounded-lg shadow-sm p-6 border-l-4 ${fav.sender === 'user' ? 'border-blue-500' : 'border-green-500'}">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center mb-2">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${fav.sender === 'user' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">
+                                    ${fav.sender === 'user' ? '👤 내 문장' : '🤖 AI 문장'}
+                                </span>
+                                <span class="ml-2 text-sm text-gray-500">
+                                    ${new Date(fav.timestamp).toLocaleString()}
+                                </span>
+                            </div>
+                            <p class="text-gray-800 leading-relaxed">${fav.text}</p>
+                        </div>
+                        <button onclick="removeFavorite(${index})" class="ml-4 p-2 text-gray-400 hover:text-red-500 transition-colors" title="즐겨찾기 제거">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function removeFavorite(index) {
+            if (!confirm('이 즐겨찾기를 삭제하시겠습니까?')) return;
+            
+            const savedConversation = localStorage.getItem('savedConversation');
+            if (savedConversation) {
+                try {
+                    const data = JSON.parse(savedConversation);
+                    if (data.currentMessages) {
+                        const favorites = data.currentMessages.filter(msg => msg.favorite);
+                        if (favorites[index]) {
+                            // Find the original message and remove favorite
+                            const targetMessage = favorites[index];
+                            data.currentMessages.forEach(msg => {
+                                if (msg.timestamp === targetMessage.timestamp && msg.text === targetMessage.text) {
+                                    msg.favorite = false;
+                                }
+                            });
+                            localStorage.setItem('savedConversation', JSON.stringify(data));
+                            renderFavorites();
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to remove favorite:', e);
+                }
+            }
+        }
+
+        function clearAllFavorites() {
+            if (!confirm('모든 즐겨찾기를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
+            
+            const savedConversation = localStorage.getItem('savedConversation');
+            if (savedConversation) {
+                try {
+                    const data = JSON.parse(savedConversation);
+                    if (data.currentMessages) {
+                        data.currentMessages.forEach(msg => {
+                            msg.favorite = false;
+                        });
+                        localStorage.setItem('savedConversation', JSON.stringify(data));
+                        renderFavorites();
+                    }
+                } catch (e) {
+                    console.error('Failed to clear favorites:', e);
+                }
+            }
+        }
+
+        function filterFavorites() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const filterType = document.getElementById('filterSelect').value;
+            let favorites = loadFavorites();
+            
+            // Apply search filter
+            if (searchTerm) {
+                favorites = favorites.filter(fav => 
+                    fav.text.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            // Apply type filter
+            if (filterType !== 'all') {
+                favorites = favorites.filter(fav => fav.sender === filterType);
+            }
+            
+            renderFavorites(favorites);
+        }
+
+        // Event listeners
+        document.getElementById('searchInput').addEventListener('input', filterFavorites);
+        document.getElementById('filterSelect').addEventListener('change', filterFavorites);
+        document.getElementById('clearAllBtn').addEventListener('click', clearAllFavorites);
+
+        // Initialize
+        renderFavorites();
+    </script>
+</body>
+</html>

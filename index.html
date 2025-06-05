@@ -1766,8 +1766,7 @@ function attachEventListeners() {
         elements.savedDataMenuFavorites.addEventListener('click', function(e) {
             e.preventDefault();
             console.log("즐겨찾기 메뉴 항목 클릭됨");
-            showFavoritesModal();
-            toggleSavedDataMenu(); // 메뉴 닫기
+            window.location.href = 'favorites.html';
         });
     }
     
@@ -1775,8 +1774,7 @@ function attachEventListeners() {
         elements.savedDataMenuAnalyses.addEventListener('click', function(e) {
             e.preventDefault();
             console.log("저장된 분석 메뉴 항목 클릭됨");
-            showSavedAnalysesModal();
-            toggleSavedDataMenu(); // 메뉴 닫기
+            window.location.href = 'analyses.html';
         });
     }
     if (elements.helpButton) {
