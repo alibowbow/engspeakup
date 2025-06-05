@@ -49,7 +49,6 @@
                 <button id="newConversationButton" title="새 대화 시작" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"> <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /> </svg>
                 </button>
-<<
                 <button id="exportJsonButton" title="Save JSON" class="text-sm sm:text-base bg-sky-700 hover:bg-sky-600 p-2 sm:p-2.5 rounded-lg transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-400">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-8m0 8l3-3m-3 3l-3-3m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
@@ -1062,21 +1061,6 @@ function toggleLanguagePicker() {
     }
 }
 
-function toggleJsonMenu() {
-    appState.showJsonMenu = !appState.showJsonMenu;
-    if (appState.showJsonMenu) {
-        if (elements.jsonMenuDropdown) {
-            elements.jsonMenuDropdown.classList.remove('hidden');
-            elements.jsonMenuDropdown.classList.add('fade-in');
-        }
-        if (appState.showScenarioPicker) toggleScenarioPicker();
-        if (appState.showLanguagePicker) toggleLanguagePicker();
-    } else {
-        if (elements.jsonMenuDropdown) {
-            elements.jsonMenuDropdown.classList.add('hidden');
-        }
-    }
-}
 
 // --- 모달 관련 함수 ---
 
@@ -1492,19 +1476,11 @@ function attachEventListeners() {
         console.log("새 대화 버튼에 이벤트 리스너 연결");
         elements.newConversationButton.addEventListener('click', handleNewConversation);
     }
-    if (elements.jsonMenuButton) {
-        elements.jsonMenuButton.addEventListener('click', toggleJsonMenu);
+    if (elements.exportJsonButton) {
+        elements.exportJsonButton.addEventListener('click', exportConversationToJson);
     }
-    if (elements.jsonMenuSave) {
-        elements.jsonMenuSave.addEventListener('click', (e) => {
-            e.preventDefault();
-            exportConversationToJson();
-            toggleJsonMenu();
-        });
-    }
-    if (elements.jsonMenuLoad && elements.importJsonInput) {
-        elements.jsonMenuLoad.addEventListener('click', (e) => {
-            e.preventDefault();
+    if (elements.importJsonButton && elements.importJsonInput) {
+        elements.importJsonButton.addEventListener('click', () => {
             elements.importJsonInput.click();
         });
         elements.importJsonInput.addEventListener('change', (e) => {
@@ -1512,7 +1488,6 @@ function attachEventListeners() {
                 importConversationFromJson(e.target.files[0]);
                 e.target.value = '';
             }
-            toggleJsonMenu();
         });
     }
     if (elements.viewFavoritesButton) {
@@ -1595,9 +1570,6 @@ function attachEventListeners() {
         }
         if (elements.languagePickerContainer && !elements.languagePickerContainer.contains(event.target) && appState.showLanguagePicker) {
             toggleLanguagePicker();
-        }
-        if (elements.jsonMenuContainer && !elements.jsonMenuContainer.contains(event.target) && appState.showJsonMenu) {
-            toggleJsonMenu();
         }
         if (elements.analysisModalContent && !elements.analysisModalContent.contains(event.target) &&
             elements.analysisModal && !elements.analysisModal.classList.contains('hidden')) {
