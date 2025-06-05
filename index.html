@@ -1185,26 +1185,38 @@ function closeGuideModal() {
 }
 
 function showAnalysisModal(combinedAnalysisText, userMessage = "", scenario = "") {
-    const koreanSummaryMarker = appState.UI_TEXT.koreanSummaryTitle;
-    const koreanSummaryIndex = combinedAnalysisText.indexOf(koreanSummaryMarker);
-
-    let engAnalysis = "";
-    let korSummary = "";
-
-    if (koreanSummaryIndex !== -1) {
-        engAnalysis = combinedAnalysisText.substring(0, koreanSummaryIndex).trim();
-        korSummary = combinedAnalysisText.substring(koreanSummaryIndex + koreanSummaryMarker.length).trim();
-    } else {
-        engAnalysis = combinedAnalysisText.trim();
-        korSummary = "한국어 요약을 생성할 수 없습니다.";
-    }
-
     const engDiv = document.querySelector('#englishAnalysisResult div');
     const korDiv = document.querySelector('#koreanAnalysisResult div');
+    const engTitle = document.querySelector('#englishAnalysisResult h4');
+    const korSection = document.getElementById('koreanAnalysisResult');
     const modal = document.getElementById('analysisModal');
 
-    if (engDiv) engDiv.innerHTML = simpleMarkdownToHtml(engAnalysis);
-    if (korDiv) korDiv.innerHTML = simpleMarkdownToHtml(korSummary);
+    if (appState.currentLangCode === 'ja') {
+        // 일본어 모드: 한국어 분석만 표시
+        if (engTitle) engTitle.textContent = '📝 일본어 피드백:';
+        if (engDiv) engDiv.innerHTML = simpleMarkdownToHtml(combinedAnalysisText);
+        if (korSection) korSection.style.display = 'none';
+    } else {
+        // 영어 모드: 영어 분석 + 한국어 요약
+        const koreanSummaryMarker = appState.UI_TEXT.koreanSummaryTitle;
+        const koreanSummaryIndex = combinedAnalysisText.indexOf(koreanSummaryMarker);
+
+        let engAnalysis = "";
+        let korSummary = "";
+
+        if (koreanSummaryIndex !== -1) {
+            engAnalysis = combinedAnalysisText.substring(0, koreanSummaryIndex).trim();
+            korSummary = combinedAnalysisText.substring(koreanSummaryIndex + koreanSummaryMarker.length).trim();
+        } else {
+            engAnalysis = combinedAnalysisText.trim();
+            korSummary = "한국어 요약을 생성할 수 없습니다.";
+        }
+
+        if (engTitle) engTitle.textContent = '📝 영어 피드백:';
+        if (engDiv) engDiv.innerHTML = simpleMarkdownToHtml(engAnalysis);
+        if (korDiv) korDiv.innerHTML = simpleMarkdownToHtml(korSummary);
+        if (korSection) korSection.style.display = 'block';
+    }
 
     if (modal) {
         modal.classList.remove('hidden');
@@ -1543,7 +1555,14 @@ async function handleSuggestReplies() {
         const scenarioTitleForPrompt = appState.currentScenario.id === "custom" ? (appState.currentCustomScenarioInput || appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput)) : appState.currentScenario.title;
         const focusTopicForPrompt = appState.currentScenario.id === "custom" ? "" : (appState.currentFocusTopic ? `The user wants to focus on: "${appState.currentFocusTopic}".` : '');
 
-        const prompt = `Based on the AI tutor's last message: "${lastMessage.text}", provide exactly 3 different, natural-sounding replies the user (an English learner) could say next (short to medium length) in the "${scenarioTitleForPrompt}" scenario. ${focusTopicForPrompt} Use strictly numbered list format, with each item starting with a number and period (e.g., 1. Suggestion 1). Do not include any introduction or explanation before or after the list. Consider the user's current role: ${appState.userIsPlayingPrimaryRole ? 'they are the primary actor in the scenario (e.g., customer, patient)' : 'they are playing the AI tutor/staff role'}`;
+        let prompt;
+        if (appState.currentLangCode === 'ja') {
+            // 일본어 학습자를 위한 프롬프트
+            prompt = `AIチューターの最後のメッセージ「${lastMessage.text}」に基づいて、「${scenarioTitleForPrompt}」シナリオでユーザー（日本語学習者）が次に言えそうな自然な返答を正確に3つ提供してください（短〜中程度の長さ）。${focusTopicForPrompt} 厳密に番号付きリスト形式を使用し、各項目は番号とピリオドで始めてください（例：1. 提案1）。リストの前後に紹介や説明を含めないでください。ユーザーの現在の役割を考慮してください：${appState.userIsPlayingPrimaryRole ? '彼らはシナリオの主要アクター（例：客、患者）です' : '彼らはAIチューター/スタッフの役割を演じています'}`;
+        } else {
+            // 영어 학습자를 위한 프롬프트 (기존)
+            prompt = `Based on the AI tutor's last message: "${lastMessage.text}", provide exactly 3 different, natural-sounding replies the user (an English learner) could say next (short to medium length) in the "${scenarioTitleForPrompt}" scenario. ${focusTopicForPrompt} Use strictly numbered list format, with each item starting with a number and period (e.g., 1. Suggestion 1). Do not include any introduction or explanation before or after the list. Consider the user's current role: ${appState.userIsPlayingPrimaryRole ? 'they are the primary actor in the scenario (e.g., customer, patient)' : 'they are playing the AI tutor/staff role'}`;
+        }
         const suggestionsText = await callGeminiAPI(prompt);
 
         let parsedSuggestions = suggestionsText.split('\n')
@@ -1608,7 +1627,14 @@ async function handleAnalyzeSentence() {
         const scenarioTitleForPrompt = appState.currentScenario.id === "custom" ? (appState.currentCustomScenarioInput || appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput)) : appState.currentScenario.title;
         const focusTopicForPrompt = appState.currentScenario.id === "custom" ? "" : (appState.currentFocusTopic ? `The user wants to focus on: "${appState.currentFocusTopic}".` : '');
 
-        const analysisPrompt = `The user (learning English) said: "${lastUserMessage.text}" in the context of "${scenarioTitleForPrompt}" scenario. ${focusTopicForPrompt} Provide a structured analysis in English: **⭐ Overall Impression:** (Brief positive comment or general feel) **👍 Strengths:** (What was good about the sentence) **💡 Areas for Improvement:** **Grammar:** (Specific errors & corrections. If none, say "Grammar is good.") **Vocabulary:** (Word choice suggestions, better alternatives. If good, say "Vocabulary is appropriate.") **Naturalness/Fluency:** (Tips to sound more natural. If good, say "Sounds natural.") **✨ Suggested Revision (if any):** (Offer a revised version of the sentence if significant improvements can be made) Keep feedback constructive and easy for an English learner. After the English analysis, provide a concise summary of the feedback in Korean, under a heading "${appState.UI_TEXT.koreanSummaryTitle}". This summary should highlight the main points of the feedback for a beginner to understand easily.`;
+        let analysisPrompt;
+        if (appState.currentLangCode === 'ja') {
+            // 일본어 학습자를 위한 한국어 분석
+            analysisPrompt = `사용자(일본어 학습자)가 "${scenarioTitleForPrompt}" 시나리오에서 다음과 같이 말했습니다: "${lastUserMessage.text}" ${focusTopicForPrompt} 한국어로 구조화된 분석을 제공해주세요: **⭐ 전체적인 인상:** (긍정적인 평가나 전반적인 느낌) **👍 잘한 점:** (문장의 좋은 점) **💡 개선할 점:** **문법:** (구체적인 오류와 수정 사항. 없으면 "문법이 정확합니다"라고 표시) **어휘:** (단어 선택 제안, 더 나은 대안. 적절하면 "어휘가 적절합니다"라고 표시) **자연스러움/유창성:** (더 자연스럽게 들리기 위한 팁. 자연스러우면 "자연스럽게 들립니다"라고 표시) **✨ 수정 제안 (있을 경우):** (중요한 개선이 필요한 경우 수정된 문장 제공) 피드백은 일본어 학습자가 이해하기 쉽도록 한국어로 건설적이고 친절하게 작성해주세요.`;
+        } else {
+            // 영어 학습자를 위한 영어 분석 (기존)
+            analysisPrompt = `The user (learning English) said: "${lastUserMessage.text}" in the context of "${scenarioTitleForPrompt}" scenario. ${focusTopicForPrompt} Provide a structured analysis in English: **⭐ Overall Impression:** (Brief positive comment or general feel) **👍 Strengths:** (What was good about the sentence) **💡 Areas for Improvement:** **Grammar:** (Specific errors & corrections. If none, say "Grammar is good.") **Vocabulary:** (Word choice suggestions, better alternatives. If good, say "Vocabulary is appropriate.") **Naturalness/Fluency:** (Tips to sound more natural. If good, say "Sounds natural.") **✨ Suggested Revision (if any):** (Offer a revised version of the sentence if significant improvements can be made) Keep feedback constructive and easy for an English learner. After the English analysis, provide a concise summary of the feedback in Korean, under a heading "${appState.UI_TEXT.koreanSummaryTitle}". This summary should highlight the main points of the feedback for a beginner to understand easily.`;
+        }
         const combinedAnalysisText = await callGeminiAPI(analysisPrompt);
         showAnalysisModal(combinedAnalysisText, lastUserMessage.text, scenarioTitleForPrompt);
     } catch (error) {
