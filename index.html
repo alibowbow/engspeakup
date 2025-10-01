@@ -1430,11 +1430,23 @@ function deleteSavedAnalysis(index) {
 // --- 외부API통신함수 ---
 
 async function callGeminiAPI(prompt) {
-    const payload = { message: prompt };
+    const API_KEY = "AIzaSyBQ0ldW1zylKC1dGy45ANKWH7BUTLA8yWU";
+    const requestUrl = `${API_ENDPOINT}?key=${API_KEY}`;
+
+    const payload = {
+        contents: [{
+            parts: [{
+                text: prompt
+            }]
+        }]
+    };
+
     try {
-        const response = await fetch(API_ENDPOINT, {
+        const response = await fetch(requestUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify(payload)
         });
 
@@ -1442,7 +1454,7 @@ async function callGeminiAPI(prompt) {
             let errorDetails = `Server response: ${response.statusText || 'Unknown error'}`;
             try {
                 const errorData = await response.json();
-                errorDetails = errorData.error || errorData.message || (typeof errorData === 'object' ? JSON.stringify(errorData) : String(errorData));
+                errorDetails = errorData.error?.message || (typeof errorData === 'object' ? JSON.stringify(errorData) : String(errorData));
                 if (!errorDetails || errorDetails === '{}' || errorDetails.trim() === "") {
                     errorDetails = `Server response: ${response.statusText || 'No error details'}`;
                 }
@@ -1462,23 +1474,19 @@ async function callGeminiAPI(prompt) {
         }
 
         const result = await response.json();
-        if (result.text) {
-            return result.text;
-        } else if (result.generated_text) {
-            return result.generated_text;
-        } else if (result.reply) {
-            return result.reply;
-        } else if (typeof result === 'string') {
-            return result;
-        } else if (result.candidates && result.candidates[0]?.content?.parts[0]?.text) {
-            console.warn("Received Gemini API format response. Make sure the Glitch endpoint supports this format.");
-            return result.candidates[0].content?.parts[0]?.text || '';
+        // Gemini API 응답 구조에서 텍스트 추출
+        if (result.candidates && result.candidates[0]?.content?.parts[0]?.text) {
+            return result.candidates[0].content.parts[0].text;
         } else {
-            console.error("Cannot extract text from API response or unexpected structure:", result);
-            throw new Error('No valid text response received from AI.');
+            console.error("Gemini API 응답에서 텍스트를 추출할 수 없거나 예기치 않은 구조입니다:", result);
+            // 안전 설정으로 인해 응답이 차단되었는지 확인
+            if (result.candidates && result.candidates[0]?.finishReason === 'SAFETY') {
+                 throw new Error('안전 설정으로 인해 응답이 차단되었습니다.');
+            }
+            throw new Error('AI로부터 유효한 텍스트 응답을 받지 못했습니다.');
         }
     } catch (error) {
-        console.error("Exception during API call:", error);
+        console.error("API 호출 중 예외 발생:", error);
         throw error;
     }
 }
