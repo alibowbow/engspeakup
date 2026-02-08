@@ -313,6 +313,7 @@ const ko_UI_TEXT = {
     suggestReplies: "응답 제안",
     analyzeSentence: "문장 분석",
     roleSwapButtonText: "역할 변경",
+    userInputPlaceholder: "메시지를 입력하세요...",
     loading: "로딩중...",
     aiResponseError: "죄송합니다. AI 응답을 생성하는 중 오류가 발생했습니다:",
     errorMessageSuggestions: "제안을 가져오는 중 오류가 발생했습니다.",
@@ -527,6 +528,7 @@ const ja_UI_TEXT = {
     suggestReplies: "返信提案",
     analyzeSentence: "文章分析",
     roleSwapButtonText: "役割交換",
+    userInputPlaceholder: "メッセージを入力してください...",
     loading: "読み込み中...",
     aiResponseError: "申し訳ございません。AI応答の生成中にエラーが発生しました：",
     errorMessageSuggestions: "提案の取得中にエラーが発生しました。",
@@ -765,7 +767,8 @@ function exportConversationToJson(returnString = false) {
         scenarioId: appState.currentScenario?.id,
         customScenarioInput: appState.currentCustomScenarioInput,
         focusTopic: appState.currentFocusTopic,
-        userIsPlayingPrimaryRole: appState.userIsPlayingPrimaryRole
+        userIsPlayingPrimaryRole: appState.userIsPlayingPrimaryRole,
+        savedAnalyses: appState.savedAnalyses
     };
     const jsonStr = JSON.stringify(data, null, 2);
     saveConversationToLocal(jsonStr);
@@ -861,7 +864,7 @@ function updateScenarioDisplay(isConversationStarting = false) {
         ? (appState.currentCustomScenarioInput ? `${appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput).split(':')[0]}: ${appState.currentCustomScenarioInput.substring(0, 10)}...` : appState.UI_TEXT.scenarioTitleCustom(appState.currentCustomScenarioInput))
         : (appState.currentScenario.categoryTitle ? `${appState.currentScenario.title.split(" ")[0]}` : appState.currentScenario.title.split(" ")[0]);
 
-    if (elements.currentScenarioDisplay) elements.currentScenarioDisplay.textContent = "시나리오";
+    if (elements.currentScenarioDisplay) elements.currentScenarioDisplay.textContent = displayTitle;
     if (elements.headerTitle) elements.headerTitle.title = appState.currentScenario.title;
 
     const elementsToHide = document.querySelectorAll('.hide-after-conversation-start');
@@ -956,7 +959,7 @@ function updateAllButtonTexts() {
     if (elements.suggestRepliesButtonText) elements.suggestRepliesButtonText.textContent = appState.UI_TEXT.suggestReplies;
     if (elements.analyzeSentenceButtonText) elements.analyzeSentenceButtonText.textContent = appState.UI_TEXT.analyzeSentence;
     if (elements.roleSwapButtonText) elements.roleSwapButtonText.textContent = appState.UI_TEXT.roleSwapButtonText;
-    if (elements.userInputElem) elements.userInputElem.placeholder = appState.UI_TEXT.customScenarioPlaceholder;
+    if (elements.userInputElem) elements.userInputElem.placeholder = appState.UI_TEXT.userInputPlaceholder;
 
     if (elements.guideModalTitle) elements.guideModalTitle.textContent = appState.UI_TEXT.guideModalTitle;
     if (elements.guideP1) elements.guideP1.innerHTML = appState.UI_TEXT.guideP1_html;
