@@ -1,345 +1,292 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>저장된 분석 보기 - SpeakUp AI</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .fade-in { animation: fadeIn 0.15s ease-in; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
-        .analysis-item { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-        .analysis-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
-        .markdown-content h1 { font-size: 1.5rem; font-weight: bold; margin: 1rem 0; }
-        .markdown-content h2 { font-size: 1.25rem; font-weight: bold; margin: 0.75rem 0; }
-        .markdown-content h3 { font-size: 1.1rem; font-weight: bold; margin: 0.5rem 0; }
-        .markdown-content p { margin: 0.5rem 0; line-height: 1.6; }
-        .markdown-content ul { margin: 0.5rem 0; padding-left: 1.5rem; }
-        .markdown-content li { margin: 0.25rem 0; }
-        .markdown-content strong { font-weight: 600; }
-        .markdown-content em { font-style: italic; }
-        .markdown-content code { background: #f3f4f6; padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-family: monospace; }
-    </style>
-</head>
-<body class="bg-gray-50 min-h-screen">
-    <div class="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-6xl">
-        <!-- Header -->
-        <div class="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div class="flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 mr-2 sm:mr-3 flex-shrink-0">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25M9 16.5v.75m3-3v3M15 12v5.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                    </svg>
-                    <h1 class="text-xl sm:text-2xl font-bold text-gray-800">분석 보관함</h1>
-                </div>
-                <a href="index.html" class="bg-sky-600 hover:bg-sky-700 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-colors text-sm flex items-center justify-center sm:w-auto">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 mr-1">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-                    </svg>
-                    <span class="hidden sm:inline">메인으로</span>
-                    <span class="sm:hidden">홈</span>
-                </a>
-            </div>
-            <p class="text-gray-600 mt-3 text-sm sm:text-base">저장된 문장 분석 결과를 모아보고 관리할 수 있습니다.</p>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="SpeakUp Studio analysis archive with premium review cards for revision, grammar, naturalness, and session links."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style.css" />
+    <title>Analysis Archive | SpeakUp Studio</title>
+  </head>
+  <body>
+    <div class="legacy-page">
+      <section class="surface hero-card">
+        <div>
+          <div class="eyebrow">Review Archive</div>
+          <h1 class="hero-title">Sentence analyses in one place</h1>
+          <p class="hero-copy">
+            Revisit revision notes, grammar fixes, naturalness hints, and session context without opening the main app first.
+          </p>
         </div>
+        <div class="hero-actions">
+          <a class="btn btn-secondary" href="./index.html">Back To App</a>
+          <button id="exportBtn" type="button" class="btn btn-primary">Export Analyses</button>
+        </div>
+      </section>
 
-        <!-- Stats -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-            <div class="bg-white rounded-lg shadow-sm p-4">
-                <div class="flex items-center">
-                    <div class="p-2 bg-blue-100 rounded-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-blue-600">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25M9 16.5v.75m3-3v3M15 12v5.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                        </svg>
-                    </div>
-                    <div class="ml-3">
-                        <p class="text-sm text-gray-500">총 분석</p>
-                        <p class="text-2xl font-semibold text-gray-800" id="totalAnalyses">0</p>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-white rounded-lg shadow-sm p-4">
-                <div class="flex items-center">
-                    <div class="p-2 bg-green-100 rounded-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-green-600">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <div class="ml-3">
-                        <p class="text-sm text-gray-500">이번 주</p>
-                        <p class="text-2xl font-semibold text-gray-800" id="weeklyAnalyses">0</p>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-white rounded-lg shadow-sm p-4">
-                <div class="flex items-center">
-                    <div class="p-2 bg-purple-100 rounded-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-purple-600">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5a2.25 2.25 0 002.25-2.25m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5a2.25 2.25 0 012.25 2.25v7.5" />
-                        </svg>
-                    </div>
-                    <div class="ml-3">
-                        <p class="text-sm text-gray-500">이번 달</p>
-                        <p class="text-2xl font-semibold text-gray-800" id="monthlyAnalyses">0</p>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-white rounded-lg shadow-sm p-4">
-                <div class="flex items-center">
-                    <div class="p-2 bg-orange-100 rounded-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-orange-600">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
-                        </svg>
-                    </div>
-                    <div class="ml-3">
-                        <p class="text-sm text-gray-500">최근 분석</p>
-                        <p class="text-lg font-semibold text-gray-800" id="lastAnalysisDate">-</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+      <section class="stats-grid" id="statsGrid"></section>
 
-        <!-- Search and Filter -->
-        <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-            <div class="flex flex-col gap-3">
-                <div class="flex-1">
-                    <input type="text" id="searchInput" placeholder="검색..." 
-                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent">
-                </div>
-                <div class="flex flex-col sm:flex-row gap-2">
-                    <select id="sortSelect" class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 flex-1 sm:flex-none">
-                        <option value="newest">최신 순</option>
-                        <option value="oldest">오래된 순</option>
-                    </select>
-                    <div class="flex gap-2">
-                        <button id="exportBtn" class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm flex-1 sm:flex-none whitespace-nowrap">
-                            내보내기
-                        </button>
-                        <button id="clearAllBtn" class="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm flex-1 sm:flex-none whitespace-nowrap">
-                            전체 삭제
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+      <section class="surface control-card">
+        <input id="searchInput" class="field-grow" type="search" placeholder="Search scenario, sentence, or feedback" />
+        <select id="sortSelect" class="field-fixed">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+        </select>
+        <button id="clearBtn" type="button" class="btn btn-danger">Clear Analyses</button>
+      </section>
 
-        <!-- Analyses List -->
-        <div id="analysesContainer" class="space-y-6">
-            <!-- Analyses will be loaded here -->
+      <div class="results-header">
+        <div>
+          <div class="eyebrow">Results</div>
+          <div class="results-count" id="resultsCount">0 items</div>
         </div>
+      </div>
 
-        <!-- Empty State -->
-        <div id="emptyState" class="hidden text-center py-12">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-gray-400 mb-4">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25M9 16.5v.75m3-3v3M15 12v5.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-            </svg>
-            <h3 class="text-lg font-medium text-gray-800 mb-2">아직 저장된 분석이 없습니다</h3>
-            <p class="text-gray-600 mb-4">대화 중에 문장 분석 기능을 사용하고 저장해보세요.</p>
-            <a href="index.html" class="inline-flex items-center px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
-                </svg>
-                대화 시작하기
-            </a>
-        </div>
+      <main id="results"></main>
     </div>
 
     <script>
-        // Simple markdown to HTML converter
-        function simpleMarkdownToHtml(text) {
-            return text
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                .replace(/`(.*?)`/g, '<code>$1</code>')
-                .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-                .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-                .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-                .replace(/^\- (.*$)/gim, '<li>$1</li>')
-                .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
-                .replace(/\n\n/g, '</p><p>')
-                .replace(/^(?!<[h1-6ul])/gm, '<p>')
-                .replace(/(?<!>)$/gm, '</p>')
-                .replace(/<p><\/p>/g, '');
+      const STORAGE_KEY = 'speakup-studio-analyses';
+      const ACTIVE_SESSION_KEY = 'speakup-studio-active-session-id';
+
+      const searchInput = document.getElementById('searchInput');
+      const sortSelect = document.getElementById('sortSelect');
+      const results = document.getElementById('results');
+      const resultsCount = document.getElementById('resultsCount');
+      const statsGrid = document.getElementById('statsGrid');
+      const exportBtn = document.getElementById('exportBtn');
+      const clearBtn = document.getElementById('clearBtn');
+
+      function safeRead(key, fallback) {
+        try {
+          const raw = localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : fallback;
+        } catch {
+          return fallback;
+        }
+      }
+
+      function saveAnalyses(next) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      }
+
+      function loadAnalyses() {
+        return safeRead(STORAGE_KEY, []);
+      }
+
+      function formatDate(value) {
+        return new Intl.DateTimeFormat('ko-KR', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }).format(new Date(value));
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#39;');
+      }
+
+      function listMarkup(items) {
+        if (!items || !items.length) {
+          return '<div class="mono">No items</div>';
+        }
+        return `<ul class="signal-list">${items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
+      }
+
+      function createStat(label, value) {
+        return `
+          <div class="surface stat-card">
+            <div class="stat-value">${escapeHtml(value)}</div>
+            <div class="stat-label">${escapeHtml(label)}</div>
+          </div>
+        `;
+      }
+
+      function downloadJson(name, payload) {
+        const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = name;
+        anchor.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function openSession(sessionId) {
+        localStorage.setItem(ACTIVE_SESSION_KEY, sessionId);
+        location.href = './index.html';
+      }
+
+      function filteredAnalyses() {
+        const query = searchInput.value.trim().toLowerCase();
+        const sort = sortSelect.value;
+        const items = loadAnalyses().filter((entry) => {
+          if (!query) return true;
+          const haystack = [
+            entry.scenarioTitle,
+            entry.sentence,
+            entry.overview,
+            entry.revision,
+            ...(entry.strengths || []),
+            ...(entry.grammar || []),
+            ...(entry.naturalness || []),
+          ]
+            .join(' ')
+            .toLowerCase();
+          return haystack.includes(query);
+        });
+
+        items.sort((a, b) => {
+          const left = new Date(a.createdAt).getTime();
+          const right = new Date(b.createdAt).getTime();
+          return sort === 'oldest' ? left - right : right - left;
+        });
+
+        return items;
+      }
+
+      function renderStats(items) {
+        const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        const weekly = items.filter((item) => new Date(item.createdAt).getTime() >= weekAgo).length;
+        const sessions = new Set(items.map((item) => item.sessionId)).size;
+        const latest = items[0] ? formatDate(items[0].createdAt) : '-';
+
+        statsGrid.innerHTML = [
+          createStat('Total analyses', String(items.length)),
+          createStat('This week', String(weekly)),
+          createStat('Sessions linked', String(sessions)),
+          createStat('Latest update', latest),
+        ].join('');
+      }
+
+      function render() {
+        const items = filteredAnalyses();
+        const all = loadAnalyses()
+          .slice()
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+        renderStats(all);
+        resultsCount.textContent = `${items.length} item${items.length === 1 ? '' : 's'}`;
+
+        if (!items.length) {
+          results.innerHTML = `
+            <section class="surface empty-card">
+              <div class="empty-title">No analyses found</div>
+              <div class="empty-copy">Run Analyze inside a chat session and the archive will fill automatically.</div>
+            </section>
+          `;
+          return;
         }
 
-        // Load analyses from localStorage
-        function loadAnalyses() {
-            // First try the new standalone key
-            let savedAnalyses = localStorage.getItem('savedAnalyses');
-            if (savedAnalyses) {
-                try {
-                    return JSON.parse(savedAnalyses);
-                } catch (e) {
-                    console.error('Failed to load standalone analyses:', e);
-                }
-            }
-            
-            // Then try the conversation data
-            const savedConversation = localStorage.getItem('savedConversation');
-            if (savedConversation) {
-                try {
-                    const data = JSON.parse(savedConversation);
-                    return data.savedAnalyses || [];
-                } catch (e) {
-                    console.error('Failed to load analyses from conversation:', e);
-                }
-            }
-            
-            return [];
-        }
-
-        function saveAnalyses(analyses) {
-            // Save both ways for compatibility
-            localStorage.setItem('savedAnalyses', JSON.stringify(analyses));
-            
-            // Also update the conversation data if it exists
-            const savedConversation = localStorage.getItem('savedConversation');
-            if (savedConversation) {
-                try {
-                    const data = JSON.parse(savedConversation);
-                    data.savedAnalyses = analyses;
-                    localStorage.setItem('savedConversation', JSON.stringify(data));
-                } catch (e) {
-                    console.error('Failed to update conversation with analyses:', e);
-                }
-            }
-        }
-
-        function renderAnalyses(analyses = null) {
-            if (analyses === null) {
-                analyses = loadAnalyses();
-            }
-            
-            const container = document.getElementById('analysesContainer');
-            const emptyState = document.getElementById('emptyState');
-            
-            // Calculate stats
-            const now = new Date();
-            const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-            const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-            
-            const weeklyCount = analyses.filter(a => new Date(a.timestamp) >= oneWeekAgo).length;
-            const monthlyCount = analyses.filter(a => new Date(a.timestamp) >= oneMonthAgo).length;
-            const lastAnalysis = analyses.length > 0 ? new Date(Math.max(...analyses.map(a => new Date(a.timestamp)))).toLocaleDateString() : '-';
-            
-            document.getElementById('totalAnalyses').textContent = analyses.length;
-            document.getElementById('weeklyAnalyses').textContent = weeklyCount;
-            document.getElementById('monthlyAnalyses').textContent = monthlyCount;
-            document.getElementById('lastAnalysisDate').textContent = lastAnalysis;
-            
-            if (analyses.length === 0) {
-                container.innerHTML = '';
-                emptyState.classList.remove('hidden');
-                return;
-            }
-            
-            emptyState.classList.add('hidden');
-            
-            container.innerHTML = analyses.map((analysis, index) => `
-                <div class="analysis-item bg-white rounded-lg shadow-sm overflow-hidden">
-                    <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-white font-medium">문장 분석 #${analyses.length - index}</h3>
-                            <div class="flex items-center space-x-2">
-                                <span class="text-blue-100 text-sm">${new Date(analysis.timestamp).toLocaleString()}</span>
-                                <button onclick="removeAnalysis(${index})" class="text-blue-100 hover:text-white transition-colors p-1" title="분석 삭제">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
+        results.innerHTML = `
+          <div class="entry-list">
+            ${items
+              .map(
+                (entry) => `
+                  <article class="surface entry-card">
+                    <div class="entry-head">
+                      <div>
+                        <div class="entry-title">${escapeHtml(entry.scenarioTitle || 'Untitled session')}</div>
+                        <div class="entry-meta">${formatDate(entry.createdAt)}</div>
+                      </div>
+                      <div class="badge-row">
+                        <span class="badge badge-amber">Revision</span>
+                        <span class="badge badge-neutral">${escapeHtml(entry.sessionId || 'No session')}</span>
+                      </div>
                     </div>
-                    <div class="p-6">
-                        <div class="bg-gray-50 rounded-lg p-4 mb-4">
-                            <h4 class="font-medium text-gray-700 mb-2">분석된 문장:</h4>
-                            <p class="text-gray-800 font-medium">"${analysis.originalSentence || analysis.userMessage || ''}"</p>
-                            ${analysis.scenario ? `<p class="text-sm text-gray-600 mt-1">시나리오: ${analysis.scenario}</p>` : ''}
-                        </div>
-                        <div class="markdown-content prose max-w-none">
-                            ${analysis.analysis ? simpleMarkdownToHtml(analysis.analysis) : 
-                              (analysis.engAnalysis && analysis.korSummary ? 
-                               `<div class="mb-4">${analysis.engAnalysis}</div>
-                                <div class="mt-4 pt-4 border-t border-gray-300">
-                                  <h3 class="font-bold text-gray-700 mb-2">🇰🇷 한국어 요약:</h3>
-                                  ${analysis.korSummary}
-                                </div>` : 
-                               '<p class="text-gray-500">분석 내용이 없습니다.</p>')}
-                        </div>
+
+                    <div class="overview-copy">${escapeHtml(entry.overview || '')}</div>
+
+                    <div class="content-grid">
+                      <div class="quote-card">
+                        <div class="quote-label">Original sentence</div>
+                        <div class="quote-copy">${escapeHtml(entry.sentence || '')}</div>
+                      </div>
+                      <div class="quote-card">
+                        <div class="quote-label">Revision</div>
+                        <div class="quote-copy">${escapeHtml(entry.revision || '')}</div>
+                      </div>
                     </div>
-                </div>
-            `).join('');
-        }
 
-        function removeAnalysis(index) {
-            if (!confirm('이 분석을 삭제하시겠습니까?')) return;
-            
-            const analyses = loadAnalyses();
-            analyses.splice(index, 1);
-            saveAnalyses(analyses);
-            renderAnalyses();
-        }
+                    <div class="signal-grid">
+                      <div class="signal-card">
+                        <div class="signal-title">Strengths</div>
+                        ${listMarkup(entry.strengths)}
+                      </div>
+                      <div class="signal-card">
+                        <div class="signal-title">Grammar</div>
+                        ${listMarkup(entry.grammar)}
+                      </div>
+                      <div class="signal-card">
+                        <div class="signal-title">Naturalness</div>
+                        ${listMarkup(entry.naturalness)}
+                      </div>
+                    </div>
 
-        function clearAllAnalyses() {
-            if (!confirm('모든 저장된 분석을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
-            
-            saveAnalyses([]);
-            renderAnalyses();
-        }
+                    ${
+                      entry.vocabulary && entry.vocabulary.length
+                        ? `
+                          <div class="action-row">
+                            ${entry.vocabulary
+                              .slice(0, 4)
+                              .map(
+                                (card) => `
+                                  <span class="badge badge-green">${escapeHtml(card.phrase)}</span>
+                                `,
+                              )
+                              .join('')}
+                          </div>
+                        `
+                        : ''
+                    }
 
-        function exportAnalyses() {
-            const analyses = loadAnalyses();
-            if (analyses.length === 0) {
-                alert('내보낼 분석이 없습니다.');
-                return;
-            }
-            
-            const dataStr = JSON.stringify(analyses, null, 2);
-            const dataBlob = new Blob([dataStr], {type: 'application/json'});
-            const url = URL.createObjectURL(dataBlob);
-            
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `문장분석_${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        }
+                    <div class="action-row">
+                      <button type="button" class="btn btn-secondary" data-session="${escapeHtml(entry.sessionId || '')}">
+                        Open Session
+                      </button>
+                    </div>
+                  </article>
+                `,
+              )
+              .join('')}
+          </div>
+        `;
 
-        function filterAndSortAnalyses() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const sortOrder = document.getElementById('sortSelect').value;
-            let analyses = loadAnalyses();
-            
-            // Apply search filter
-            if (searchTerm) {
-                analyses = analyses.filter(analysis => {
-                    const sentence = (analysis.originalSentence || analysis.userMessage || '').toLowerCase();
-                    const content = (analysis.analysis || analysis.engAnalysis || analysis.korSummary || '').toLowerCase();
-                    const scenario = (analysis.scenario || '').toLowerCase();
-                    return sentence.includes(searchTerm) || content.includes(searchTerm) || scenario.includes(searchTerm);
-                });
-            }
-            
-            // Apply sort
-            analyses.sort((a, b) => {
-                const dateA = new Date(a.timestamp);
-                const dateB = new Date(b.timestamp);
-                return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
-            });
-            
-            renderAnalyses(analyses);
-        }
+        results.querySelectorAll('[data-session]').forEach((button) => {
+          button.addEventListener('click', () => {
+            const sessionId = button.getAttribute('data-session');
+            if (sessionId) openSession(sessionId);
+          });
+        });
+      }
 
-        // Event listeners
-        document.getElementById('searchInput').addEventListener('input', filterAndSortAnalyses);
-        document.getElementById('sortSelect').addEventListener('change', filterAndSortAnalyses);
-        document.getElementById('clearAllBtn').addEventListener('click', clearAllAnalyses);
-        document.getElementById('exportBtn').addEventListener('click', exportAnalyses);
+      searchInput.addEventListener('input', render);
+      sortSelect.addEventListener('change', render);
 
-        // Initialize
-        renderAnalyses();
+      exportBtn.addEventListener('click', () => {
+        downloadJson(`speakup-analyses-${new Date().toISOString().slice(0, 10)}.json`, loadAnalyses());
+      });
+
+      clearBtn.addEventListener('click', () => {
+        if (!window.confirm('Delete all saved analyses from this browser?')) return;
+        saveAnalyses([]);
+        render();
+      });
+
+      render();
     </script>
-</body>
+  </body>
 </html>
