@@ -1,22 +1,33 @@
-# SpeakUp AI
+# SpeakUp Studio
 
-This is a simple web app that helps users practice English conversation.
-The main page is `index.html` which loads language files from the `lang` folder
-and uses a small custom stylesheet `style.css` for UI tweaks and animations.
+`engspeakup`를 전면 재구성한 고급 영어 회화 훈련 앱입니다.
 
-Open `index.html` in a browser to try it out. Click the star next to any message during a conversation to save it as a favorite. Click the star again to remove it. Use the star button in the header to see all of your saved lines in one place.
+## 핵심 변화
 
-## Configuration
+- 단일 HTML 앱에서 React + Vite 기반 모듈형 SPA로 재구성
+- Gemini API 키를 앱 안에서 직접 입력하고 로컬에만 저장 가능
+- 시나리오/미션/표현/어휘를 포함한 대규모 콘텐츠 라이브러리 제공
+- 대화 연습, 답변 추천, 문장 분석, 세션 요약, 복습, 통계까지 한 번에 제공
+- 즐겨찾기, 어휘 뱅크, 세션 히스토리, JSON 내보내기/가져오기 지원
+- 브라우저 음성 입력과 음성 재생 지원
 
-The app sends prompts to an external API. The endpoint URL can be customised by
-editing `config.js` at the project root. The file exposes a global
-`APP_CONFIG` object:
+## 실행
 
-```javascript
-window.APP_CONFIG = {
-  API_ENDPOINT: 'https://your-server.example.com/generate'
-};
+```bash
+npm install
+npm run dev
 ```
 
-If you run the app in a Node environment (e.g. during tests), you may instead
-set the `API_ENDPOINT` environment variable.
+브라우저에서 표시되는 주소를 열고, 우측 설정 패널에서 Gemini API 키를 입력한 뒤 사용하면 됩니다.
+
+## 빌드
+
+```bash
+npm run build
+```
+
+## API 키 정책
+
+- API 키는 사용자가 직접 입력합니다.
+- `API 키 저장`을 켜면 브라우저 `localStorage`에만 저장됩니다.
+- 내보내기 JSON에는 API 키가 포함되지 않습니다.
