@@ -888,43 +888,34 @@ export default function App() {
   );
   const activeChallengeLevel = resolveChallengeLevelView(activeChallengeReview);
   const activeChallengeSubscores = resolveChallengeSubscores(activeChallengeReview);
-  const practiceToolNav: Array<{ id: PracticePanelTab; label: string; hint: string; icon: IconName; ready: boolean }> = [
+  const practiceToolNav: Array<{ id: PracticePanelTab; label: string; icon: IconName; ready: boolean }> = [
     {
       id: 'guide',
       label: '상황 가이드',
-      hint: '미션, 표현, 어휘 보기',
       icon: 'list',
       ready: true,
     },
     {
       id: 'challenge',
       label: '챌린지 결과',
-      hint: activeChallengeReview
-        ? `${activeChallengeReview.score100}점 · ${activeChallengeReview.grade} 등급`
-        : activeChallenge.enabled
-          ? `${activeChallenge.userTurns}/${activeChallenge.targetTurns}턴 진행 중`
-          : '점수와 등급 확인',
       icon: 'bolt',
       ready: Boolean(activeChallenge.enabled || activeChallengeReview),
     },
     {
       id: 'analysis',
       label: '문장 교정',
-      hint: currentSessionAnalysis ? '방금 쓴 문장 교정 완료' : '내 문장 다듬기',
       icon: 'check',
       ready: Boolean(currentSessionAnalysis),
     },
     {
       id: 'suggestions',
       label: '다음 답변',
-      hint: bundle ? '추천 문장 3개 준비됨' : '다음 문장 추천받기',
       icon: 'sparkles',
       ready: Boolean(bundle),
     },
     {
       id: 'recap',
       label: '대화 요약',
-      hint: activeSession?.summary ? '성과와 다음 숙제 정리됨' : '이번 연습 한 번에 정리',
       icon: 'wave',
       ready: Boolean(activeSession?.summary),
     },
