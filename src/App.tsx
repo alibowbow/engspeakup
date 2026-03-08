@@ -27,6 +27,7 @@ import {
   isSpeechRecognitionSupported,
   listenOnce,
   loadEnglishVoices,
+  previewVoiceSample,
   speakText,
   stopSpeaking,
 } from './lib/speech';
@@ -1110,7 +1111,13 @@ export default function App() {
   const previewVoice = async (voiceName: string, sampleText: string) => {
     setPreviewingVoiceName(voiceName);
     try {
-      await playAssistantAudio(sampleText, voiceName, `preview-v1:${voiceName}:${sampleText}`);
+      await previewVoiceSample({
+        text: sampleText,
+        apiKey: settings.apiKey.trim(),
+        voiceName,
+        rate: settings.speechRate,
+        cacheKey: `preview-v1:${voiceName}:${sampleText}`,
+      });
     } finally {
       setPreviewingVoiceName((current) => (current === voiceName ? '' : current));
     }

@@ -73,9 +73,11 @@ const GEMINI_TTS_BLOCKED_DATE_KEY = 'speakup-studio-gemini-tts-blocked-date';
 const GEMINI_TTS_SAMPLE_RATE = 24000;
 const GEMINI_TTS_CACHE_DB = 'speakup-studio-audio-cache';
 const GEMINI_TTS_CACHE_STORE = 'gemini-tts-previews';
+const STATIC_VOICE_PREVIEW_BASE = '/voice-previews';
 
 let activeAudioContext: AudioContext | null = null;
 let activeAudioSource: AudioBufferSourceNode | null = null;
+let activePreviewAudio: HTMLAudioElement | null = null;
 
 function getRecognitionCtor(): RecognitionCtor | null {
   const recognition = (window as Window & {
@@ -290,6 +292,15 @@ async function stopAudioPlayback(): Promise<void> {
   }
 }
 
+function stopPreviewPlayback(): void {
+  if (!activePreviewAudio) {
+    return;
+  }
+  activePreviewAudio.pause();
+  activePreviewAudio.currentTime = 0;
+  activePreviewAudio = null;
+}
+
 async function playGeminiAudio(data: string): Promise<void> {
   const AudioContextCtor = window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!AudioContextCtor) {
@@ -344,6 +355,41 @@ function speakWithBrowser(text: string, rate = 1): Promise<'browser' | 'none'> {
     utterance.onend = () => resolve('browser');
     utterance.onerror = () => resolve('none');
     window.speechSynthesis.speak(utterance);
+  });
+}
+
+function staticVoicePreviewUrl(voiceName: string): string {
+  return `${STATIC_VOICE_PREVIEW_BASE}/${encodeURIComponent(voiceName)}.wav`;
+}
+
+async function playStaticVoicePreview(voiceName: string): Promise<boolean> {
+  if (typeof Audio === 'undefined') {
+    return false;
+  }
+
+  stopPreviewPlayback();
+  window.speechSynthesis?.cancel?.();
+  await stopAudioPlayback();
+
+  return new Promise((resolve) => {
+    const audio = new Audio(staticVoicePreviewUrl(voiceName));
+    let finished = false;
+    activePreviewAudio = audio;
+
+    const done = (success: boolean) => {
+      if (finished) {
+        return;
+      }
+      finished = true;
+      if (activePreviewAudio === audio) {
+        activePreviewAudio = null;
+      }
+      resolve(success);
+    };
+
+    audio.onended = () => done(true);
+    audio.onerror = () => done(false);
+    audio.play().catch(() => done(false));
   });
 }
 
@@ -417,7 +463,35 @@ export async function speakText({
   }
 }
 
+export async function previewVoiceSample({
+  text,
+  apiKey,
+  voiceName,
+  rate = 1,
+  cacheKey,
+}: {
+  text: string;
+  apiKey: string;
+  voiceName: string;
+  rate?: number;
+  cacheKey?: string;
+}): Promise<SpeakResult | 'static-file'> {
+  const staticPreviewPlayed = await playStaticVoicePreview(voiceName);
+  if (staticPreviewPlayed) {
+    return 'static-file';
+  }
+
+  return speakText({
+    text,
+    apiKey,
+    voiceName,
+    rate,
+    cacheKey,
+  });
+}
+
 export function stopSpeaking(): void {
   window.speechSynthesis?.cancel?.();
+  stopPreviewPlayback();
   void stopAudioPlayback();
 }
