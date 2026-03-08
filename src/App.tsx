@@ -1,5 +1,5 @@
 import { startTransition, useDeferredValue, useEffect, useRef, useState } from 'react';
-import type { ChangeEvent, FormEvent, KeyboardEvent, ReactNode } from 'react';
+import type { ChangeEvent, FormEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent, ReactNode } from 'react';
 import { focusSkillOptions, modelPresets, scenarios, spotlightScenarioIds } from './data/scenarios';
 import {
   buildAnalysisPrompt,
@@ -191,6 +191,8 @@ const TTS_VOICE_GROUPS = {
 };
 const CHAT_HISTORY_WINDOW = 12;
 const CHAT_MAX_OUTPUT_TOKENS = 320;
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 function challengeStatsForSession(session: Session, analyses: AnalysisEntry[]) {
   return buildChallengeSnapshot(session, resolveScenarioDetails(scenarioById(session.scenarioId), session), analyses);
@@ -788,6 +790,10 @@ export default function App() {
   const fileRef = useRef<HTMLInputElement | null>(null);
   const stopRef = useRef<(() => void) | null>(null);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
+  const appShellRef = useRef<HTMLDivElement | null>(null);
+  const settingsPanelRef = useRef<HTMLElement | null>(null);
+  const settingsTitleIdRef = useRef(id('settings-title'));
+  const settingsLastTriggerRef = useRef<HTMLElement | null>(null);
 
   const activeSession = sessions.find((item) => item.id === activeSessionId) ?? null;
   const selectedScenario = scenarioById(selectedScenarioId);
@@ -980,6 +986,84 @@ export default function App() {
     const timer = window.setTimeout(() => setToastVisible(false), 3400);
     return () => window.clearTimeout(timer);
   }, [notice]);
+
+
+  useEffect(() => {
+    const appShell = appShellRef.current;
+    if (!appShell) return;
+
+    if (showSettings) {
+      appShell.setAttribute('inert', '');
+      appShell.setAttribute('aria-hidden', 'true');
+    } else {
+      appShell.removeAttribute('inert');
+      appShell.removeAttribute('aria-hidden');
+    }
+
+    return () => {
+      appShell.removeAttribute('inert');
+      appShell.removeAttribute('aria-hidden');
+    };
+  }, [showSettings]);
+
+  useEffect(() => {
+    if (!showSettings) {
+      settingsLastTriggerRef.current?.focus();
+      return;
+    }
+
+    const drawer = settingsPanelRef.current;
+    if (!drawer) return;
+
+    const focusables = Array.from(drawer.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+      (element) => !element.hasAttribute('disabled') && element.getAttribute('aria-hidden') !== 'true',
+    );
+    focusables[0]?.focus();
+
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setShowSettings(false);
+        return;
+      }
+      if (event.key !== 'Tab') return;
+
+      const active = document.activeElement;
+      const items = Array.from(drawer.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+        (element) => !element.hasAttribute('disabled') && element.getAttribute('aria-hidden') !== 'true',
+      );
+      if (!items.length) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = items[0];
+      const last = items[items.length - 1];
+
+      if (event.shiftKey) {
+        if (active === first || !drawer.contains(active)) {
+          event.preventDefault();
+          last.focus();
+        }
+        return;
+      }
+
+      if (active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showSettings]);
+
+  const openSettings = (event: MouseEvent<HTMLElement>) => {
+    settingsLastTriggerRef.current = event.currentTarget;
+    setShowSettings(true);
+  };
+
+  const closeSettings = () => setShowSettings(false);
 
   const upsert = (session: Session) => {
     setSessions((current) => sortSessions([session, ...current.filter((item) => item.id !== session.id)]));
@@ -1196,7 +1280,7 @@ export default function App() {
     }
   };
 
-  const handleComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleComposerKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) {
       return;
     }
@@ -1493,7 +1577,7 @@ export default function App() {
 
   return (
     <>
-      <div className="app-layout">
+      <div className="app-layout" ref={appShellRef}>
       <aside className="sidebar">
         <div className="sidebar-logo">
           <div className="sidebar-logo-icon">
@@ -1561,7 +1645,7 @@ export default function App() {
         </nav>
 
         <div className="sidebar-footer">
-          <button type="button" className="nav-item" onClick={() => setShowSettings(true)}>
+          <button type="button" className="nav-item" onClick={openSettings}>
             <Icon name="settings" />
             <div>
               <div>설정</div>
@@ -1604,7 +1688,7 @@ export default function App() {
             >
               <Icon name={settings.themeMode === 'dark' ? 'sun' : 'moon'} />
             </button>
-            <button type="button" className="btn btn-icon" onClick={() => setShowSettings(true)} aria-label="설정 열기">
+            <button type="button" className="btn btn-icon" onClick={openSettings} aria-label="설정 열기">
               <Icon name="settings" />
             </button>
           </div>
@@ -2470,7 +2554,7 @@ export default function App() {
                   >
                     연습 화면에서 열기
                   </button>
-                  <button type="button" className="btn btn-ghost" onClick={() => setShowSettings(true)}>
+                  <button type="button" className="btn btn-ghost" onClick={openSettings}>
                     API 설정 보기
                   </button>
                 </div>
@@ -2729,11 +2813,18 @@ export default function App() {
       </div>
     </div>
 
-    <div className={`drawer-overlay ${showSettings ? 'open' : ''}`} onClick={() => setShowSettings(false)} />
-    <aside className={`drawer-panel ${showSettings ? 'open' : ''}`} aria-hidden={!showSettings}>
+    <div className={`drawer-overlay ${showSettings ? 'open' : ''}`} onClick={closeSettings} />
+    <aside
+      ref={settingsPanelRef}
+      className={`drawer-panel ${showSettings ? 'open' : ''}`}
+      role="dialog"
+      aria-modal="true"
+      aria-hidden={!showSettings}
+      aria-labelledby={settingsTitleIdRef.current}
+    >
       <div className="drawer-header">
-        <div className="drawer-title">설정</div>
-        <button type="button" className="btn btn-icon" onClick={() => setShowSettings(false)} aria-label="설정 닫기">
+        <div className="drawer-title" id={settingsTitleIdRef.current}>설정</div>
+        <button type="button" className="btn btn-icon" onClick={closeSettings} aria-label="설정 닫기">
           <Icon name="close" />
         </button>
       </div>
