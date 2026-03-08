@@ -1083,12 +1083,13 @@ export default function App() {
     setNotice('챌린지 모드를 정지하고 일반 연습으로 전환했습니다.');
   };
 
-  const playAssistantAudio = async (text: string, voiceName = settings.voiceName) => {
+  const playAssistantAudio = async (text: string, voiceName = settings.voiceName, cacheKey?: string) => {
     const result = await speakText({
       text,
       apiKey: settings.apiKey.trim(),
       voiceName,
       rate: settings.speechRate,
+      cacheKey,
     });
 
     if (result === 'browser-fallback-daily') {
@@ -1109,7 +1110,7 @@ export default function App() {
   const previewVoice = async (voiceName: string, sampleText: string) => {
     setPreviewingVoiceName(voiceName);
     try {
-      await playAssistantAudio(sampleText, voiceName);
+      await playAssistantAudio(sampleText, voiceName, `preview-v1:${voiceName}:${sampleText}`);
     } finally {
       setPreviewingVoiceName((current) => (current === voiceName ? '' : current));
     }

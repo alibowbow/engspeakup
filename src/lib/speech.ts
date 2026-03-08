@@ -25,6 +25,13 @@ export interface GeminiTtsVoiceOption {
   sampleText: string;
 }
 
+interface CachedGeminiAudio {
+  key: string;
+  data: string;
+  mimeType?: string;
+  createdAt: number;
+}
+
 export type SpeakResult = 'gemini' | 'browser-fallback' | 'browser-fallback-daily' | 'none';
 
 export const GEMINI_TTS_DEFAULT_VOICE = 'Kore';
@@ -64,6 +71,8 @@ export const GEMINI_TTS_VOICES: GeminiTtsVoiceOption[] = [
 
 const GEMINI_TTS_BLOCKED_DATE_KEY = 'speakup-studio-gemini-tts-blocked-date';
 const GEMINI_TTS_SAMPLE_RATE = 24000;
+const GEMINI_TTS_CACHE_DB = 'speakup-studio-audio-cache';
+const GEMINI_TTS_CACHE_STORE = 'gemini-tts-previews';
 
 let activeAudioContext: AudioContext | null = null;
 let activeAudioSource: AudioBufferSourceNode | null = null;
@@ -167,6 +176,83 @@ function isDailyQuotaBlocked(): boolean {
   return blockedDate === today;
 }
 
+function openAudioCache(): Promise<IDBDatabase | null> {
+  if (typeof indexedDB === 'undefined') {
+    return Promise.resolve(null);
+  }
+
+  return new Promise((resolve) => {
+    const request = indexedDB.open(GEMINI_TTS_CACHE_DB, 1);
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains(GEMINI_TTS_CACHE_STORE)) {
+        database.createObjectStore(GEMINI_TTS_CACHE_STORE, { keyPath: 'key' });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => resolve(null);
+  });
+}
+
+async function readCachedAudio(key: string): Promise<CachedGeminiAudio | null> {
+  const database = await openAudioCache();
+  if (!database) {
+    return null;
+  }
+
+  return new Promise((resolve) => {
+    const transaction = database.transaction(GEMINI_TTS_CACHE_STORE, 'readonly');
+    const store = transaction.objectStore(GEMINI_TTS_CACHE_STORE);
+    const request = store.get(key);
+    request.onsuccess = () => resolve((request.result as CachedGeminiAudio | undefined) ?? null);
+    request.onerror = () => resolve(null);
+    transaction.oncomplete = () => database.close();
+    transaction.onerror = () => database.close();
+  });
+}
+
+async function writeCachedAudio(entry: CachedGeminiAudio): Promise<void> {
+  const database = await openAudioCache();
+  if (!database) {
+    return;
+  }
+
+  await new Promise<void>((resolve) => {
+    const transaction = database.transaction(GEMINI_TTS_CACHE_STORE, 'readwrite');
+    const store = transaction.objectStore(GEMINI_TTS_CACHE_STORE);
+    store.put(entry);
+    transaction.oncomplete = () => {
+      database.close();
+      resolve();
+    };
+    transaction.onerror = () => {
+      database.close();
+      resolve();
+    };
+  });
+}
+
+async function deleteCachedAudio(key: string): Promise<void> {
+  const database = await openAudioCache();
+  if (!database) {
+    return;
+  }
+
+  await new Promise<void>((resolve) => {
+    const transaction = database.transaction(GEMINI_TTS_CACHE_STORE, 'readwrite');
+    const store = transaction.objectStore(GEMINI_TTS_CACHE_STORE);
+    store.delete(key);
+    transaction.oncomplete = () => {
+      database.close();
+      resolve();
+    };
+    transaction.onerror = () => {
+      database.close();
+      resolve();
+    };
+  });
+}
+
 function base64ToBytes(value: string): Uint8Array {
   const binary = window.atob(value);
   const bytes = new Uint8Array(binary.length);
@@ -266,14 +352,29 @@ export async function speakText({
   apiKey,
   voiceName,
   rate = 1,
+  cacheKey,
 }: {
   text: string;
   apiKey: string;
   voiceName: string;
   rate?: number;
+  cacheKey?: string;
 }): Promise<SpeakResult> {
   if (!text.trim()) {
     return 'none';
+  }
+
+  if (cacheKey) {
+    const cached = await readCachedAudio(cacheKey);
+    if (cached?.data) {
+      try {
+        window.speechSynthesis?.cancel?.();
+        await playGeminiAudio(cached.data);
+        return 'gemini';
+      } catch {
+        await deleteCachedAudio(cacheKey);
+      }
+    }
   }
 
   if (!apiKey.trim() || isDailyQuotaBlocked()) {
@@ -293,6 +394,14 @@ export async function speakText({
       voiceName: isGeminiTtsVoice(voiceName) ? voiceName : GEMINI_TTS_DEFAULT_VOICE,
       rate,
     });
+    if (cacheKey && audio.data) {
+      await writeCachedAudio({
+        key: cacheKey,
+        data: audio.data,
+        mimeType: audio.mimeType,
+        createdAt: Date.now(),
+      });
+    }
     await playGeminiAudio(audio.data);
     return 'gemini';
   } catch (error) {
