@@ -1052,8 +1052,7 @@ export default function App() {
     noticeMessage?: string;
   } = {}) => {
     if (selectedScenario.isCustom && !customBrief.trim()) {
-      openPracticePanel('guide');
-      setNotice('커스텀 상황은 먼저 브리프를 입력해야 시작할 수 있습니다.');
+      setNotice('커스텀 상황은 먼저 브리프를 입력한 뒤, 왼쪽 메뉴의 코치 도구에서 설정을 확인해 주세요.');
       return null;
     }
     const session = makeSession(selectedScenario, {
@@ -1114,8 +1113,7 @@ export default function App() {
 
   const ensureSession = () => {
     if (selectedScenario.isCustom && !customBrief.trim()) {
-      openPracticePanel('guide');
-      setNotice('커스텀 상황은 먼저 브리프를 입력해야 시작할 수 있습니다.');
+      setNotice('커스텀 상황은 먼저 브리프를 입력한 뒤, 왼쪽 메뉴의 코치 도구에서 설정을 확인해 주세요.');
       return null;
     }
     if (hasCurrentScenarioSession && activeSession) return activeSession;
@@ -1662,7 +1660,7 @@ export default function App() {
                       <p className="quick-action-copy">{activeChallenge.enabled ? '현재 미션을 초기화하고 바로 재도전합니다.' : `${challengeTargetTurns}턴 목표로 집중 챌린지를 시작합니다.`}</p>
                     </div>
                   </button>
-                  <button type="button" className="quick-action-card" onClick={() => openPracticePanel('analysis')}>
+                  <button type="button" className="quick-action-card" onClick={() => setNotice('코치 피드백은 왼쪽 메뉴의 코치 도구에서 확인할 수 있습니다.')}>
                     <div className="quick-action-icon" aria-hidden="true">
                       <Icon name="sparkles" />
                     </div>
@@ -1776,7 +1774,7 @@ export default function App() {
                             : '내 문장과 추천 문장을 바로 비교한 뒤, 필요하면 코치 도구에서 상세 피드백까지 볼 수 있습니다.'}
                         </div>
                       </div>
-                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => openPracticePanel('analysis')}>
+                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => setNotice('상세 피드백은 왼쪽 메뉴의 코치 도구에서 확인하세요.')}>
                         코치 도구에서 자세히 보기
                       </button>
                     </div>
