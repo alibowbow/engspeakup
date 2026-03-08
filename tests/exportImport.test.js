@@ -7,6 +7,17 @@ test('export and import conversation JSON', async () => {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   let html = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf8');
   html = html.replace(/<script[^>]*tailwindcss[^>]*><\/script>/, '');
+  const koJs = fs
+    .readFileSync(path.resolve(__dirname, '../lang/ko.js'), 'utf8')
+    .replace(/export const UI_TEXT/, 'const ko_UI_TEXT')
+    .replace(/export const SCENARIO_DATA/, 'const ko_SCENARIO_DATA');
+  const jaJs = fs
+    .readFileSync(path.resolve(__dirname, '../lang/ja.js'), 'utf8')
+    .replace(/export const UI_TEXT/, 'const ja_UI_TEXT')
+    .replace(/export const SCENARIO_DATA/, 'const ja_SCENARIO_DATA');
+  html = html
+    .replace('<script type="module">', `<script>\n${koJs}\n${jaJs}`)
+    .replace(/import[^\n]*ko\.js';\nimport[^\n]*ja\.js';\n/, '');
   const dom = new JSDOM(html, { runScripts: 'dangerously', url: 'http://localhost' });
   await new Promise(r => dom.window.document.addEventListener('DOMContentLoaded', r));
   const { window } = dom;
