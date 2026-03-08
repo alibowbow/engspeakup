@@ -574,9 +574,53 @@ button, input, textarea, select { font: inherit; }
 
 .practice-toolbar-actions {
   flex: 1 1 540px;
+  position: relative;
+  display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.practice-toolbar-actions .btn-primary,
+.practice-toolbar-actions .btn-secondary {
+  order: 1;
+}
+
+.practice-toolbar-actions .toolbar-select,
+.practice-toolbar-actions .toolbar-overflow-toggle,
+.practice-toolbar-actions .btn-ghost {
+  order: 2;
+}
+
+.toolbar-overflow-toggle.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.toolbar-overflow-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 160px;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-card);
+  z-index: 20;
+}
+
+.toolbar-overflow-menu.open {
+  display: flex;
+}
+
+.toolbar-overflow-menu .btn {
+  width: 100%;
+  justify-content: flex-start;
 }
 
 .toolbar-select {
@@ -868,6 +912,12 @@ button, input, textarea, select { font: inherit; }
   background: var(--accent-dim);
   border-color: rgba(245, 166, 35, 0.24);
   color: var(--accent);
+}
+
+.practice-panel-tab--highlight:not(.active) {
+  border-color: rgba(62, 207, 142, 0.26);
+  color: var(--green);
+  background: rgba(62, 207, 142, 0.08);
 }
 
 .practice-panel-body {
@@ -1167,6 +1217,11 @@ button, input, textarea, select { font: inherit; }
     flex-wrap: wrap;
   }
 
+  .toolbar-overflow-menu {
+    right: auto;
+    left: 0;
+  }
+
   .toolbar-select {
     justify-content: space-between;
   }
@@ -1214,8 +1269,17 @@ button, input, textarea, select { font: inherit; }
   .catalog-popover { margin: 16px 16px 0; }
   .scenario-meta { display: none; }
   .practice-toolbar-actions { gap: 6px; }
-  .practice-toolbar-actions .btn-ghost:last-child { display: none; }
-  .toolbar-select { width: 100%; justify-content: space-between; }
+  .practice-toolbar-actions .toolbar-overflow-toggle { margin-left: auto; }
+  .practice-toolbar-actions .toolbar-select {
+    order: 3;
+    width: auto;
+  }
+  .toolbar-overflow-menu {
+    top: calc(100% + 6px);
+    left: auto;
+    right: 0;
+  }
+  .practice-toolbar .toolbar-select { width: auto; justify-content: space-between; }
   .challenge-result-head { flex-direction: column; }
   .challenge-score-badge { align-items: flex-start; }
   .practice-panel-header,

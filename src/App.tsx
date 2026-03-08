@@ -63,6 +63,7 @@ import type {
 
 type Busy = 'chat' | 'suggestions' | 'analysis' | 'recap' | 'challenge' | null;
 type PracticePanelTab = 'guide' | 'challenge' | 'suggestions' | 'analysis' | 'recap';
+type PracticePanelHighlights = Record<Exclude<PracticePanelTab, 'guide'>, boolean>;
 type IconName =
   | 'chat'
   | 'library'
@@ -782,12 +783,20 @@ export default function App() {
   const [showCatalog, setShowCatalog] = useState(false);
   const [showTools, setShowTools] = useState(false);
   const [practicePanelTab, setPracticePanelTab] = useState<PracticePanelTab>('guide');
+  const [practicePanelHighlights, setPracticePanelHighlights] = useState<PracticePanelHighlights>({
+    challenge: false,
+    suggestions: false,
+    analysis: false,
+    recap: false,
+  });
+  const [showToolbarOverflow, setShowToolbarOverflow] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [toastVisible, setToastVisible] = useState(true);
   const deferredSearch = useDeferredValue(search);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const stopRef = useRef<(() => void) | null>(null);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
+  const toolbarOverflowRef = useRef<HTMLDivElement | null>(null);
 
   const activeSession = sessions.find((item) => item.id === activeSessionId) ?? null;
   const selectedScenario = scenarioById(selectedScenarioId);
@@ -836,6 +845,9 @@ export default function App() {
   const suggestionChips = (bundle?.suggestions.length ? bundle.suggestions : currentScenario.warmups).slice(0, 3);
   const openPracticePanel = (tab: PracticePanelTab) => {
     setPracticePanelTab(tab);
+    if (tab !== 'guide') {
+      setPracticePanelHighlights((current) => ({ ...current, [tab]: true }));
+    }
     setShowTools(true);
   };
   const togglePracticePanel = (tab: PracticePanelTab) => {
@@ -951,6 +963,23 @@ export default function App() {
     window.speechSynthesis?.addEventListener?.('voiceschanged', applyVoices);
     return () => window.speechSynthesis?.removeEventListener?.('voiceschanged', applyVoices);
   }, []);
+  useEffect(() => {
+    if (!showToolbarOverflow) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!toolbarOverflowRef.current?.contains(event.target as Node)) {
+        setShowToolbarOverflow(false);
+      }
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [showToolbarOverflow]);
+  useEffect(() => {
+    setShowToolbarOverflow(false);
+  }, [view, showTools]);
+  useEffect(() => {
+    if (view !== 'practice') return;
+    setPracticePanelTab('guide');
+  }, [view, selectedScenarioId]);
   useEffect(() => {
     if (isGeminiTtsVoice(settings.voiceName)) return;
     setSettings((current) => ({ ...current, voiceName: GEMINI_TTS_DEFAULT_VOICE }));
@@ -1669,7 +1698,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="practice-toolbar-actions">
+                  <div className="practice-toolbar-actions" ref={toolbarOverflowRef}>
                     <label className="toolbar-select">
                       <span>목표</span>
                       <select
@@ -1720,15 +1749,54 @@ export default function App() {
                       </button>
                     )}
 
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={suggest} disabled={busy === 'suggestions' || busy === 'challenge'}>
-                      {busy === 'suggestions' ? '생성 중...' : '다음 답변'}
+                    <button
+                      type="button"
+                      className={`btn btn-ghost btn-sm toolbar-overflow-toggle ${showToolbarOverflow ? 'active' : ''}`}
+                      aria-expanded={showToolbarOverflow}
+                      aria-haspopup="menu"
+                      onClick={() => setShowToolbarOverflow((current) => !current)}
+                    >
+                      더보기
                     </button>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={analyze} disabled={busy === 'analysis' || busy === 'challenge'}>
-                      {busy === 'analysis' ? '교정 중...' : '문장 교정'}
-                    </button>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={recap} disabled={busy === 'recap' || busy === 'challenge'}>
-                      {busy === 'recap' ? '정리 중...' : '대화 요약'}
-                    </button>
+
+                    <div className={`toolbar-overflow-menu ${showToolbarOverflow ? 'open' : ''}`} role="menu" aria-label="고급 도구">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => {
+                          void suggest();
+                          setShowToolbarOverflow(false);
+                        }}
+                        disabled={busy === 'suggestions' || busy === 'challenge'}
+                      >
+                        {busy === 'suggestions' ? '생성 중...' : '다음 답변'}
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => {
+                          void analyze();
+                          setShowToolbarOverflow(false);
+                        }}
+                        disabled={busy === 'analysis' || busy === 'challenge'}
+                      >
+                        {busy === 'analysis' ? '교정 중...' : '문장 교정'}
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => {
+                          void recap();
+                          setShowToolbarOverflow(false);
+                        }}
+                        disabled={busy === 'recap' || busy === 'challenge'}
+                      >
+                        {busy === 'recap' ? '정리 중...' : '대화 요약'}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1932,7 +2000,9 @@ export default function App() {
                         type="button"
                         role="tab"
                         aria-selected={practicePanelTab === tab.id}
-                        className={`practice-panel-tab ${practicePanelTab === tab.id ? 'active' : ''}`}
+                        className={`practice-panel-tab ${practicePanelTab === tab.id ? 'active' : ''} ${
+                          tab.id !== 'guide' && practicePanelHighlights[tab.id] ? 'practice-panel-tab--highlight' : ''
+                        }`}
                         onClick={() => setPracticePanelTab(tab.id)}
                       >
                         {tab.label}
