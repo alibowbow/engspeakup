@@ -240,6 +240,7 @@ button, input, textarea, select { font: inherit; }
 
 .page-title { font-size: 16px; font-weight: 600; letter-spacing: -0.02em; }
 .page-subtitle { font-size: 13px; color: var(--text-3); }
+.page-heading { flex: 1 1 320px; min-width: 0; }
 .page-header-actions,
 .scenario-bar-actions,
 .input-actions,
@@ -335,7 +336,7 @@ button, input, textarea, select { font: inherit; }
 }
 
 .scenario-badge { display: inline-flex; align-items: center; gap: 6px; }
-.scenario-summary { min-width: 0; }
+.scenario-summary { min-width: 0; flex: 1 1 260px; }
 .scenario-title { font-size: 14px; font-weight: 600; }
 .scenario-caption, .scenario-meta, .catalog-meta, .card-subtitle, .form-hint, .toggle-desc, .message-time, .analysis-sentence, .card-copy { color: var(--text-3); }
 .scenario-caption { font-size: 12.5px; }
@@ -769,6 +770,48 @@ button, input, textarea, select { font: inherit; }
 
   .insights-rail { border-left: none; border-top: 1px solid var(--border); }
   .library-detail-card { position: static; top: auto; }
+}
+
+@media (max-width: 1320px) {
+  .app-layout { grid-template-columns: 220px minmax(0, 1fr); }
+  .page-header,
+  .scenario-bar { padding-inline: 24px; }
+  .chat-feed { padding-inline: 24px; }
+  .input-area { padding-inline: 24px; }
+
+  .page-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    padding-block: 14px;
+  }
+
+  .page-header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .scenario-bar {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .scenario-summary {
+    flex: 1 1 280px;
+    min-width: 220px;
+  }
+
+  .scenario-meta {
+    margin-left: 0;
+    flex: 1 1 220px;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    white-space: normal;
+  }
+
+  .scenario-bar-actions {
+    flex: 1 0 100%;
+    justify-content: flex-end;
+  }
 }
 
 @media (max-width: 768px) {

@@ -893,7 +893,7 @@ export default function App() {
 
       <div className="main-area">
         <header className="page-header">
-          <div>
+          <div className="page-heading">
             <div className="page-title">{pageMeta.title}</div>
             <p className="page-subtitle">{pageMeta.description}</p>
           </div>
