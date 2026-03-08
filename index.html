@@ -7,6 +7,15 @@
       name="description"
       content="SpeakUp Studio is a premium English speaking coach focused on immersive chat practice, live AI roleplay, review, and progress tracking."
     />
+    <script>
+      try {
+        const raw = localStorage.getItem('speakup-studio-settings');
+        const settings = raw ? JSON.parse(raw) : null;
+        const theme = settings?.themeMode === 'light' ? 'light' : 'dark';
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+      } catch {}
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

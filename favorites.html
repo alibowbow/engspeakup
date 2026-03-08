@@ -7,6 +7,13 @@
       name="description"
       content="SpeakUp Studio favorites archive for saved user and AI messages with session links and cleanup actions."
     />
+    <script>
+      try {
+        const raw = localStorage.getItem('speakup-studio-settings');
+        const settings = raw ? JSON.parse(raw) : null;
+        document.documentElement.dataset.theme = settings?.themeMode === 'light' ? 'light' : 'dark';
+      } catch {}
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

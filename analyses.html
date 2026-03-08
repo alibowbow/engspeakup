@@ -7,6 +7,13 @@
       name="description"
       content="SpeakUp Studio analysis archive with premium review cards for revision, grammar, naturalness, and session links."
     />
+    <script>
+      try {
+        const raw = localStorage.getItem('speakup-studio-settings');
+        const settings = raw ? JSON.parse(raw) : null;
+        document.documentElement.dataset.theme = settings?.themeMode === 'light' ? 'light' : 'dark';
+      } catch {}
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

@@ -8,6 +8,8 @@ export type PracticeView = 'practice' | 'library' | 'review' | 'analytics';
 
 export type RoleplayMode = 'normal' | 'reverse';
 
+export type ThemeMode = 'dark' | 'light';
+
 export interface VocabularyCard {
   phrase: string;
   meaningKo: string;
@@ -90,6 +92,7 @@ export interface Settings {
   apiKey: string;
   model: string;
   saveApiKey: boolean;
+  themeMode: ThemeMode;
   userName: string;
   coachMode: CoachMode;
   voiceName: string;

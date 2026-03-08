@@ -40,6 +40,7 @@ import type {
   SessionSummary,
   Settings,
   SuggestionBundle,
+  ThemeMode,
   VocabularyCard,
 } from './types';
 
@@ -62,7 +63,9 @@ type IconName =
   | 'close'
   | 'bolt'
   | 'check'
-  | 'wave';
+  | 'wave'
+  | 'sun'
+  | 'moon';
 
 const NAVS: Array<{ id: PracticeView; label: string; hint: string; icon: IconName }> = [
   { id: 'practice', label: 'Practice', hint: 'Live conversation', icon: 'chat' },
@@ -402,6 +405,19 @@ function Icon({ name }: { name: IconName }) {
           <path d="M2 12c2 0 2-6 4-6s2 12 4 12 2-12 4-12 2 6 4 6 2-6 4-6" />
         </svg>
       );
+    case 'sun':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77" />
+        </svg>
+      );
+    case 'moon':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -499,6 +515,10 @@ export default function App() {
   useEffect(() => saveAnalyses(analyses), [analyses]);
   useEffect(() => saveVocabulary(vocabulary), [vocabulary]);
   useEffect(() => saveActiveSessionId(activeSessionId), [activeSessionId]);
+  useEffect(() => {
+    document.documentElement.dataset.theme = settings.themeMode;
+    document.documentElement.style.colorScheme = settings.themeMode;
+  }, [settings.themeMode]);
   useEffect(() => {
     const applyVoices = () => setVoices(loadVoices());
     applyVoices();
@@ -829,6 +849,13 @@ export default function App() {
     setShowTools(false);
   };
 
+  const toggleThemeMode = () => {
+    setSettings((current) => ({
+      ...current,
+      themeMode: current.themeMode === 'dark' ? 'light' : 'dark',
+    }));
+  };
+
   return (
     <>
       <div className="app-layout">
@@ -916,6 +943,14 @@ export default function App() {
             >
               <Icon name="download" />
               Export
+            </button>
+            <button
+              type="button"
+              className="btn btn-icon"
+              onClick={toggleThemeMode}
+              aria-label={settings.themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              <Icon name={settings.themeMode === 'dark' ? 'sun' : 'moon'} />
             </button>
             <button type="button" className="btn btn-icon" onClick={() => setShowSettings(true)} aria-label="Open settings">
               <Icon name="settings" />
@@ -1679,6 +1714,21 @@ export default function App() {
         </button>
       </div>
       <div className="drawer-body">
+        <section className="settings-section">
+          <div className="settings-section-title">Appearance</div>
+          <ToggleField
+            label="Light mode"
+            description={settings.themeMode === 'light' ? 'Using the bright canvas.' : 'Switch from the dark workspace to a bright canvas.'}
+            checked={settings.themeMode === 'light'}
+            onChange={(checked) =>
+              setSettings((current) => ({
+                ...current,
+                themeMode: (checked ? 'light' : 'dark') as ThemeMode,
+              }))
+            }
+          />
+        </section>
+
         <section className="settings-section">
           <div className="settings-section-title">Gemini</div>
           <label className="form-group">

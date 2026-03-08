@@ -1,6 +1,7 @@
 :root {
   --bg-0: #0f0f11;
   --bg-1: #16161a;
+  --bg-end: #131318;
   --bg-2: #1e1e24;
   --bg-3: #26262e;
   --border: rgba(255, 255, 255, 0.07);
@@ -26,6 +27,12 @@
   --shadow-float: 0 8px 40px 0 rgba(0, 0, 0, 0.5);
   --font-sans: 'DM Sans', system-ui, sans-serif;
   --font-mono: 'DM Mono', monospace;
+  --sidebar-bg: rgba(15, 15, 17, 0.96);
+  --topbar-bg: rgba(22, 22, 26, 0.85);
+  --topbar-strong: rgba(22, 22, 26, 0.92);
+  --panel-bg: rgba(30, 30, 36, 0.88);
+  --panel-strong: rgba(30, 30, 36, 0.94);
+  --overlay-bg: rgba(0, 0, 0, 0.6);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -36,13 +43,44 @@ html {
   color-scheme: dark;
 }
 
+html[data-theme='light'] {
+  color-scheme: light;
+  --bg-0: #f4efe7;
+  --bg-1: #fbf7f0;
+  --bg-end: #efe6d8;
+  --bg-2: #ffffff;
+  --bg-3: #f1ebe2;
+  --border: rgba(58, 47, 28, 0.1);
+  --border-hi: rgba(58, 47, 28, 0.17);
+  --text-1: #1f1d19;
+  --text-2: #625a50;
+  --text-3: #958a7d;
+  --accent: #d8921a;
+  --accent-dim: rgba(216, 146, 26, 0.12);
+  --accent-glow: rgba(216, 146, 26, 0.22);
+  --green: #1f9662;
+  --green-dim: rgba(31, 150, 98, 0.1);
+  --red: #c95d5d;
+  --red-dim: rgba(201, 93, 93, 0.1);
+  --record: #df5757;
+  --record-glow: rgba(223, 87, 87, 0.24);
+  --shadow-card: 0 1px 0 0 rgba(255, 255, 255, 0.7), 0 16px 40px 0 rgba(114, 88, 44, 0.14);
+  --shadow-float: 0 20px 44px 0 rgba(114, 88, 44, 0.18);
+  --sidebar-bg: rgba(248, 243, 235, 0.96);
+  --topbar-bg: rgba(251, 247, 240, 0.88);
+  --topbar-strong: rgba(251, 247, 240, 0.94);
+  --panel-bg: rgba(255, 255, 255, 0.9);
+  --panel-strong: rgba(255, 255, 255, 0.96);
+  --overlay-bg: rgba(59, 43, 20, 0.22);
+}
+
 body {
   min-height: 100dvh;
   font-family: var(--font-sans);
   background:
     radial-gradient(circle at top left, rgba(245, 166, 35, 0.08), transparent 28rem),
     radial-gradient(circle at top right, rgba(62, 207, 142, 0.06), transparent 26rem),
-    linear-gradient(180deg, var(--bg-0), var(--bg-1) 24%, #131318);
+    linear-gradient(180deg, var(--bg-0), var(--bg-1) 24%, var(--bg-end));
   color: var(--text-1);
   line-height: 1.6;
 }
@@ -72,7 +110,7 @@ button, input, textarea, select { font: inherit; }
 .sidebar {
   display: flex;
   flex-direction: column;
-  background: rgba(15, 15, 17, 0.96);
+  background: var(--sidebar-bg);
   border-right: 1px solid var(--border);
   overflow-y: auto;
 }
@@ -231,7 +269,7 @@ button, input, textarea, select { font: inherit; }
   padding: 0 40px;
   min-height: 60px;
   border-bottom: 1px solid var(--border);
-  background: rgba(22, 22, 26, 0.85);
+  background: var(--topbar-bg);
   backdrop-filter: blur(12px);
   position: sticky;
   top: 0;
@@ -332,7 +370,7 @@ button, input, textarea, select { font: inherit; }
   gap: 12px;
   padding: 14px 40px;
   border-bottom: 1px solid var(--border);
-  background: rgba(22, 22, 26, 0.92);
+  background: var(--topbar-strong);
 }
 
 .scenario-badge { display: inline-flex; align-items: center; gap: 6px; }
@@ -424,7 +462,7 @@ button, input, textarea, select { font: inherit; }
 .input-area {
   padding: 20px 40px 28px;
   border-top: 1px solid var(--border);
-  background: rgba(22, 22, 26, 0.96);
+  background: var(--topbar-strong);
 }
 
 .suggestions-row,
@@ -497,7 +535,7 @@ button, input, textarea, select { font: inherit; }
 .waveform-line:nth-child(5) { height: 40%; animation-delay: 0.05s; }
 
 .card {
-  background: rgba(30, 30, 36, 0.88);
+  background: var(--panel-bg);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   padding: 20px;
@@ -584,7 +622,7 @@ button, input, textarea, select { font: inherit; }
 .insight-copy { color: var(--text-2); line-height: 1.7; }
 
 .feedback-card {
-  background: rgba(30, 30, 36, 0.94);
+  background: var(--panel-strong);
   border: 1px solid var(--border);
   border-left: 3px solid var(--green);
   border-radius: var(--r-md);
@@ -655,7 +693,7 @@ button, input, textarea, select { font: inherit; }
 .drawer-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--overlay-bg);
   backdrop-filter: blur(4px);
   z-index: 100;
   opacity: 0;
