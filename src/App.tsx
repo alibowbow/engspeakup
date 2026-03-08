@@ -834,6 +834,8 @@ export default function App() {
   const hasCurrentScenarioSession = Boolean(activeSession && activeSession.scenarioId === selectedScenarioId);
   const hasCurrentMessages = Boolean(hasCurrentScenarioSession && activeSession?.messages.length);
   const suggestionChips = (bundle?.suggestions.length ? bundle.suggestions : currentScenario.warmups).slice(0, 3);
+  const scenarioCatalogToggleLabel = showCatalog ? '시나리오 목록 닫기' : '시나리오 목록 열기';
+  const toolsPanelToggleLabel = showTools ? '도구 패널 닫기' : '도구 패널 열기';
   const openPracticePanel = (tab: PracticePanelTab) => {
     setPracticePanelTab(tab);
     setShowTools(true);
@@ -1619,7 +1621,9 @@ export default function App() {
                     type="button"
                     className="btn btn-icon"
                     onClick={() => setShowCatalog((current) => !current)}
-                    aria-label="시나리오 목록 열기"
+                    aria-label={scenarioCatalogToggleLabel}
+                    aria-expanded={showCatalog}
+                    aria-controls="scenario-catalog-panel"
                   >
                     <Icon name="list" />
                   </button>
@@ -1637,7 +1641,14 @@ export default function App() {
                     <span>{activeChallenge.enabled ? `챌린지 ${activeChallenge.userTurns}/${activeChallenge.targetTurns}턴` : hasCurrentMessages ? `${activeSession?.messages.length ?? 0}턴 진행` : '새 세션'}</span>
                   </div>
                   <div className="scenario-bar-actions">
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => togglePracticePanel('guide')}>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => togglePracticePanel('guide')}
+                      aria-label={toolsPanelToggleLabel}
+                      aria-expanded={showTools}
+                      aria-controls="practice-tools-panel"
+                    >
                       {showTools ? '코치 도구 닫기' : readyPracticeToolCount ? `코치 도구 ${readyPracticeToolCount}` : '코치 도구'}
                     </button>
                   </div>
@@ -1775,7 +1786,7 @@ export default function App() {
                 )}
 
                 {showCatalog && (
-                  <section className="card catalog-popover animate-in">
+                  <section id="scenario-catalog-panel" className="card catalog-popover animate-in">
                     <div className="card-header">
                         <div>
                           <div className="card-title">시나리오 목록</div>
@@ -1914,7 +1925,7 @@ export default function App() {
               </section>
 
               {showTools && (
-                <aside className="practice-panel animate-in">
+                <aside id="practice-tools-panel" className="practice-panel animate-in">
                   <div className="practice-panel-header">
                     <div>
                       <div className="card-title">코치 도구</div>
