@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="SpeakUp Studio favorites archive for saved user and AI messages with session links and cleanup actions."
+      content="SpeakUp Studio 즐겨찾기 아카이브에서 저장한 사용자 문장과 AI 문장을 세션과 함께 다시 확인하고 정리할 수 있습니다."
     />
     <script>
       try {
@@ -21,40 +21,40 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./style.css" />
-    <title>Favorites Archive | SpeakUp Studio</title>
+    <title>저장 문장 아카이브 | SpeakUp Studio</title>
   </head>
   <body>
     <div class="legacy-page">
       <section class="surface hero-card">
         <div>
-          <div class="eyebrow">Review Archive</div>
-          <h1 class="hero-title">Saved lines worth keeping</h1>
+          <div class="eyebrow">복습 아카이브</div>
+          <h1 class="hero-title">다시 볼 가치가 있는 문장 모음</h1>
           <p class="hero-copy">
-            Review starred user and AI messages, reopen the session they came from, or clean up saved lines in bulk.
+            저장해 둔 사용자 문장과 AI 문장을 다시 보고, 원래 세션으로 돌아가거나 한 번에 정리할 수 있습니다.
           </p>
         </div>
         <div class="hero-actions">
-          <a class="btn btn-secondary" href="./index.html">Back To App</a>
-          <button id="exportBtn" type="button" class="btn btn-primary">Export Favorites</button>
+          <a class="btn btn-secondary" href="./index.html">앱으로 돌아가기</a>
+          <button id="exportBtn" type="button" class="btn btn-primary">저장 문장 내보내기</button>
         </div>
       </section>
 
       <section class="stats-grid" id="statsGrid"></section>
 
       <section class="surface control-card">
-        <input id="searchInput" class="field-grow" type="search" placeholder="Search saved line or session name" />
+        <input id="searchInput" class="field-grow" type="search" placeholder="저장한 문장이나 세션 이름 검색" />
         <select id="roleSelect" class="field-fixed">
-          <option value="all">All roles</option>
-          <option value="user">User only</option>
-          <option value="assistant">AI only</option>
+          <option value="all">전체 역할</option>
+          <option value="user">사용자만</option>
+          <option value="assistant">AI만</option>
         </select>
-        <button id="clearBtn" type="button" class="btn btn-danger">Clear Favorites</button>
+        <button id="clearBtn" type="button" class="btn btn-danger">저장 문장 비우기</button>
       </section>
 
       <div class="results-header">
         <div>
-          <div class="eyebrow">Results</div>
-          <div class="results-count" id="resultsCount">0 items</div>
+          <div class="eyebrow">결과</div>
+          <div class="results-count" id="resultsCount">0개</div>
         </div>
       </div>
 
@@ -164,10 +164,10 @@
         const aiCount = items.filter((item) => item.role === 'assistant').length;
         const sessions = new Set(items.map((item) => item.sessionId)).size;
         statsGrid.innerHTML = [
-          createStat('Total favorites', String(items.length)),
-          createStat('User lines', String(userCount)),
-          createStat('AI lines', String(aiCount)),
-          createStat('Sessions linked', String(sessions)),
+          createStat('전체 저장 수', String(items.length)),
+          createStat('사용자 문장', String(userCount)),
+          createStat('AI 문장', String(aiCount)),
+          createStat('연결된 세션', String(sessions)),
         ].join('');
       }
 
@@ -198,13 +198,13 @@
         const all = collectFavorites();
         const items = filteredFavorites();
         renderStats(all);
-        resultsCount.textContent = `${items.length} item${items.length === 1 ? '' : 's'}`;
+        resultsCount.textContent = `${items.length}개`;
 
         if (!items.length) {
           results.innerHTML = `
             <section class="surface empty-card">
-              <div class="empty-title">No favorites found</div>
-              <div class="empty-copy">Use the star action in the chat view to save strong lines for later review.</div>
+              <div class="empty-title">저장한 문장이 없습니다</div>
+              <div class="empty-copy">채팅 화면의 저장 버튼으로 좋은 문장을 따로 모아 둘 수 있습니다.</div>
             </section>
           `;
           return;
@@ -218,30 +218,30 @@
                   <article class="surface entry-card">
                     <div class="entry-head">
                       <div>
-                        <div class="entry-title">${escapeHtml(item.sessionTitle || 'Untitled session')}</div>
+                        <div class="entry-title">${escapeHtml(item.sessionTitle || '제목 없는 세션')}</div>
                         <div class="entry-meta">${formatDate(item.createdAt)}</div>
                       </div>
                       <div class="badge-row">
                         <span class="badge ${item.role === 'assistant' ? 'badge-green' : 'badge-blue'}">
-                          ${item.role === 'assistant' ? 'AI line' : 'User line'}
+                          ${item.role === 'assistant' ? 'AI 문장' : '사용자 문장'}
                         </span>
                       </div>
                     </div>
 
                     <div class="quote-card">
-                      <div class="quote-label">Saved message</div>
+                      <div class="quote-label">저장한 문장</div>
                       <div class="quote-copy">${escapeHtml(item.text)}</div>
                     </div>
 
                     <div class="action-row">
-                      <button type="button" class="btn btn-secondary" data-open="${escapeHtml(item.sessionId)}">Open Session</button>
+                      <button type="button" class="btn btn-secondary" data-open="${escapeHtml(item.sessionId)}">세션 열기</button>
                       <button
                         type="button"
                         class="btn btn-danger"
                         data-remove="${escapeHtml(item.sessionId)}"
                         data-message="${escapeHtml(item.messageId)}"
                       >
-                        Remove Favorite
+                        저장 해제
                       </button>
                     </div>
                   </article>
@@ -272,7 +272,7 @@
       });
 
       clearBtn.addEventListener('click', () => {
-        if (!window.confirm('Remove every saved favorite line from this browser?')) return;
+        if (!window.confirm('이 브라우저에 저장된 문장을 모두 해제할까요?')) return;
         clearFavorites();
       });
 

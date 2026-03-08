@@ -68,30 +68,65 @@ type IconName =
   | 'moon';
 
 const NAVS: Array<{ id: PracticeView; label: string; hint: string; icon: IconName }> = [
-  { id: 'practice', label: 'Practice', hint: 'Live conversation', icon: 'chat' },
-  { id: 'library', label: 'Library', hint: 'Scenario packs', icon: 'library' },
-  { id: 'review', label: 'Review', hint: 'Favorites and notes', icon: 'bookmark' },
-  { id: 'analytics', label: 'Analytics', hint: 'Progress overview', icon: 'chart' },
+  { id: 'practice', label: '대화 연습', hint: '실전 대화', icon: 'chat' },
+  { id: 'library', label: '시나리오', hint: '상황 라이브러리', icon: 'library' },
+  { id: 'review', label: '복습', hint: '저장 문장과 노트', icon: 'bookmark' },
+  { id: 'analytics', label: '통계', hint: '학습 진행 현황', icon: 'chart' },
 ];
 
 const PAGE_META: Record<PracticeView, { title: string; description: string }> = {
   practice: {
-    title: 'Conversation Practice',
-    description: 'A calm space for focused speaking reps and live AI roleplay.',
+    title: '대화 연습',
+    description: 'AI와 역할극을 하며 말하기를 몰입해서 훈련하는 공간입니다.',
   },
   library: {
-    title: 'Scenario Library',
-    description: 'Browse situations, compare difficulty, and open the next practice run.',
+    title: '시나리오 라이브러리',
+    description: '상황별 콘텐츠를 고르고 난이도를 비교한 뒤 바로 연습으로 들어갈 수 있습니다.',
   },
   review: {
-    title: 'Review Hub',
-    description: 'Revisit saved lines, session notes, and feedback worth keeping.',
+    title: '복습 허브',
+    description: '저장한 문장, 세션 메모, 분석 피드백을 한곳에서 다시 볼 수 있습니다.',
   },
   analytics: {
-    title: 'Progress Analytics',
-    description: 'Track recent sessions, study time, and how your practice is compounding.',
+    title: '학습 통계',
+    description: '최근 세션, 말하기 시간, 도전 모드 진행도를 확인할 수 있습니다.',
   },
 };
+
+const FOCUS_SKILL_LABELS: Record<string, string> = {
+  Fluency: '유창성',
+  Accuracy: '정확성',
+  Confidence: '자신감',
+  'Small Talk': '스몰토크',
+  Interview: '면접',
+  Pronunciation: '발음',
+  Negotiation: '협상',
+  Storytelling: '스토리텔링',
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  Everyday: '일상',
+  Travel: '여행',
+  Career: '커리어',
+  Social: '소셜',
+  'High Stakes': '고난도',
+  Custom: '커스텀',
+  'Custom Lab': '커스텀',
+};
+
+const DIFFICULTY_LABELS: Record<Scenario['difficulty'], string> = {
+  Starter: '입문',
+  Builder: '기초 확장',
+  Momentum: '실전',
+  Mastery: '고급',
+};
+
+const ROLEPLAY_MODE_LABELS: Record<RoleplayMode, string> = {
+  normal: '기본 역할',
+  reverse: '역할 반전',
+};
+
+const CHALLENGE_TARGET_OPTIONS = [4, 6, 8, 10, 12];
 
 const id = (prefix: string) =>
   `${prefix}-${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 10)}`;
@@ -111,6 +146,62 @@ const mergeVocabulary = (current: VocabularyCard[], incoming: VocabularyCard[]) 
   [...current, ...incoming].forEach((card) => map.set(card.phrase.toLowerCase(), card));
   return [...map.values()];
 };
+
+const labelCategory = (value: string) => CATEGORY_LABELS[value] ?? value;
+const labelDifficulty = (value: Scenario['difficulty']) => DIFFICULTY_LABELS[value] ?? value;
+const labelFocusSkill = (value: string) => FOCUS_SKILL_LABELS[value] ?? value;
+const labelRoleplayMode = (value: RoleplayMode) => ROLEPLAY_MODE_LABELS[value] ?? value;
+
+function challengeStatsForSession(session: Session, analyses: AnalysisEntry[]) {
+  return buildChallengeSnapshot(session, resolveScenarioDetails(scenarioById(session.scenarioId), session), analyses);
+}
+
+function buildChallengeSnapshot(session: Session | null, scenario: Scenario, analyses: AnalysisEntry[]) {
+  const enabled = session?.challengeMode ?? false;
+  const targetTurns = session?.challengeTargetTurns ?? 8;
+  const userMessages = session?.messages.filter((message) => message.role === 'user') ?? [];
+  const analysisCount = session ? analyses.filter((entry) => entry.sessionId === session.id).length : 0;
+  const expressionHits = userMessages.reduce((sum, message) => {
+    const lower = message.text.toLowerCase();
+    const hits = scenario.keyExpressions.filter((item) => lower.includes(item.toLowerCase())).length;
+    return sum + Math.min(2, hits);
+  }, 0);
+  const depthBonus = userMessages.reduce((sum, message) => {
+    const count = words(message.text);
+    if (count >= 14) return sum + 10;
+    if (count >= 8) return sum + 5;
+    return sum;
+  }, 0);
+  const baseTurns = userMessages.length * 12;
+  const expressionBonus = expressionHits * 6;
+  const analysisBonus = Math.min(3, analysisCount) * 8;
+  const recapBonus = session?.summary ? 12 : 0;
+  const completionBonus = enabled && userMessages.length >= targetTurns ? 20 : 0;
+  const score = enabled ? baseTurns + depthBonus + expressionBonus + analysisBonus + recapBonus + completionBonus : 0;
+
+  let rank = '-';
+  if (enabled) {
+    if (score >= targetTurns * 24) rank = 'S';
+    else if (score >= targetTurns * 20) rank = 'A';
+    else if (score >= targetTurns * 16) rank = 'B';
+    else if (score >= targetTurns * 12) rank = 'C';
+    else rank = 'D';
+  }
+
+  return {
+    enabled,
+    targetTurns,
+    userTurns: userMessages.length,
+    remainingTurns: Math.max(0, targetTurns - userMessages.length),
+    score,
+    rank,
+    completed: enabled && userMessages.length >= targetTurns,
+    analysisCount,
+    expressionHits,
+    depthBonus,
+    recapBonus,
+  };
+}
 
 function exportFile(name: string, payload: unknown) {
   const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
@@ -139,17 +230,17 @@ function MessageCard({
       </div>
       <div className="message-body">
         <div className="message-sender-row">
-          <span className="message-sender">{message.role === 'assistant' ? 'AI Coach' : 'You'}</span>
+          <span className="message-sender">{message.role === 'assistant' ? 'AI 코치' : '나'}</span>
           <span className="message-time">{formatDate(message.createdAt)}</span>
           <div className="message-actions">
-            <button type="button" className="btn btn-icon btn-icon-sm" onClick={onFavorite} aria-label="Save message">
+            <button type="button" className="btn btn-icon btn-icon-sm" onClick={onFavorite} aria-label="문장 저장">
               <Icon name={message.favorite ? 'bookmarkFilled' : 'bookmark'} />
             </button>
-            <button type="button" className="btn btn-icon btn-icon-sm" onClick={onCopy} aria-label="Copy message">
+            <button type="button" className="btn btn-icon btn-icon-sm" onClick={onCopy} aria-label="문장 복사">
               <Icon name="copy" />
             </button>
             {onSpeak ? (
-              <button type="button" className="btn btn-icon btn-icon-sm" onClick={onSpeak} aria-label="Play message">
+              <button type="button" className="btn btn-icon btn-icon-sm" onClick={onSpeak} aria-label="문장 재생">
                 <Icon name="play" />
               </button>
             ) : null}
@@ -175,7 +266,7 @@ function ScenarioCatalog({
       {Object.entries(groups).map(([category, items]) => (
         <section key={category} className="catalog-section">
           <div className="catalog-header">
-            <strong>{category}</strong>
+            <strong>{labelCategory(category)}</strong>
             <span>{items.length}</span>
           </div>
           <div className="catalog-list">
@@ -191,8 +282,8 @@ function ScenarioCatalog({
                   <p>{scenario.subtitle}</p>
                 </div>
                 <div className="catalog-meta">
-                  <span>{scenario.difficulty}</span>
-                  <span>{scenario.tags[0]}</span>
+                  <span>{labelDifficulty(scenario.difficulty)}</span>
+                  <span>핵심 표현 {scenario.keyExpressions.length}개</span>
                 </div>
               </button>
             ))}
@@ -440,8 +531,29 @@ function streak(sessions: Session[]) {
 
 function inferToastTone(notice: string) {
   const lower = notice.toLowerCase();
-  if (lower.includes('fail') || lower.includes('error') || lower.includes('required')) return 'error';
-  if (lower.includes('ready') || lower.includes('saved') || lower.includes('copied') || lower.includes('imported')) return 'success';
+  if (
+    lower.includes('fail') ||
+    lower.includes('error') ||
+    lower.includes('required') ||
+    lower.includes('실패') ||
+    lower.includes('오류') ||
+    lower.includes('필요')
+  ) {
+    return 'error';
+  }
+  if (
+    lower.includes('ready') ||
+    lower.includes('saved') ||
+    lower.includes('copied') ||
+    lower.includes('imported') ||
+    lower.includes('준비') ||
+    lower.includes('저장') ||
+    lower.includes('복사') ||
+    lower.includes('불러') ||
+    lower.includes('완료')
+  ) {
+    return 'success';
+  }
   return 'info';
 }
 
@@ -457,12 +569,14 @@ export default function App() {
   );
   const [focusSkill, setFocusSkill] = useState('Fluency');
   const [roleplayMode, setRoleplayMode] = useState<RoleplayMode>('normal');
+  const [challengeMode, setChallengeMode] = useState(false);
+  const [challengeTargetTurns, setChallengeTargetTurns] = useState(8);
   const [notes, setNotes] = useState('');
   const [customBrief, setCustomBrief] = useState('');
   const [composer, setComposer] = useState('');
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState<Busy>(null);
-  const [notice, setNotice] = useState('Enter your Gemini API key to start live speaking practice.');
+  const [notice, setNotice] = useState('Gemini API 키를 입력하면 바로 실전 회화를 시작할 수 있습니다.');
   const [bundle, setBundle] = useState<SuggestionBundle | null>(null);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [listening, setListening] = useState(false);
@@ -509,6 +623,37 @@ export default function App() {
   const pageMeta = PAGE_META[view];
   const suggestionChips = (bundle?.suggestions.length ? bundle.suggestions : currentScenario.warmups).slice(0, 5);
   const recentSessions = sortSessions(sessions).slice(0, 8);
+  const sessionChallengeSnapshots = sessions.map((session) => ({
+    session,
+    challenge: challengeStatsForSession(session, analyses),
+  }));
+  const challengeSessions = sessionChallengeSnapshots.filter((item) => item.challenge.enabled);
+  const clearedChallenges = challengeSessions.filter((item) => item.challenge.completed);
+  const bestChallengeScore = challengeSessions.reduce((max, item) => Math.max(max, item.challenge.score), 0);
+  const totalChallengeScore = challengeSessions.reduce((sum, item) => sum + item.challenge.score, 0);
+  const challengeStatsBySession = new Map(sessionChallengeSnapshots.map((item) => [item.session.id, item.challenge]));
+  const activeChallenge = buildChallengeSnapshot(
+    activeSession && activeSession.scenarioId === selectedScenarioId
+      ? activeSession
+      : {
+          id: '',
+          scenarioId: selectedScenarioId,
+          scenarioTitle: currentScenario.title,
+          startedAt: '',
+          updatedAt: '',
+          messages: [],
+          focusSkill,
+          customScenario: customBrief,
+          roleplayMode,
+          challengeMode,
+          challengeTargetTurns,
+          notes,
+          completedMissionSteps: [],
+          summary: null,
+        },
+    currentScenario,
+    analyses,
+  );
 
   useEffect(() => saveSettings(settings), [settings]);
   useEffect(() => saveSessions(sessions), [sessions]);
@@ -530,6 +675,8 @@ export default function App() {
     setSelectedScenarioId(activeSession.scenarioId);
     setFocusSkill(activeSession.focusSkill);
     setRoleplayMode(activeSession.roleplayMode);
+    setChallengeMode(activeSession.challengeMode ?? false);
+    setChallengeTargetTurns(activeSession.challengeTargetTurns ?? 8);
     setNotes(activeSession.notes);
     setCustomBrief(activeSession.customScenario);
   }, [activeSession]);
@@ -567,10 +714,12 @@ export default function App() {
     setComposer('');
     setNotes('');
     setCustomBrief('');
+    setChallengeMode(false);
+    setChallengeTargetTurns(8);
     setBundle(null);
     setShowCatalog(false);
     setShowTools(false);
-    setNotice('Scenario switched. Start a fresh session for this context.');
+    setNotice('새 상황으로 전환했습니다. 이 상황은 새 세션으로 시작됩니다.');
   };
 
   const makeSession = (scenario: Scenario): Session => {
@@ -585,6 +734,8 @@ export default function App() {
       focusSkill,
       customScenario: customBrief,
       roleplayMode,
+      challengeMode,
+      challengeTargetTurns,
       notes,
       completedMissionSteps: [],
       summary: null,
@@ -594,7 +745,7 @@ export default function App() {
   const ensureSession = () => {
     if (selectedScenario.isCustom && !customBrief.trim()) {
       setShowTools(true);
-      setNotice('Add a custom brief before starting a custom scenario.');
+      setNotice('커스텀 상황은 먼저 브리프를 입력해야 시작할 수 있습니다.');
       return null;
     }
     if (activeSession && activeSession.scenarioId === selectedScenarioId) return activeSession;
@@ -602,10 +753,10 @@ export default function App() {
     upsert(session);
     setBundle({
       suggestions: selectedScenario.warmups.slice(0, 3),
-      coachTip: `Aim for this target: ${selectedScenario.goals[0]}.`,
+      coachTip: `이번 목표: ${selectedScenario.goals[0]}.`,
       focusPoint: selectedScenario.challenge,
     });
-    setNotice('A fresh speaking session is ready.');
+    setNotice('새 말하기 세션이 준비되었습니다.');
     return session;
   };
 
@@ -615,15 +766,18 @@ export default function App() {
     if (!text) return;
     if (!settings.apiKey.trim()) {
       setShowSettings(true);
-      setNotice('Add your Gemini API key in Settings before sending.');
+      setNotice('메시지를 보내기 전에 설정에서 Gemini API 키를 입력해 주세요.');
       return;
     }
     const session = ensureSession();
     if (!session) return;
+    const previousUserTurns = session.messages.filter((message) => message.role === 'user').length;
     const pending = upsert({
       ...session,
       focusSkill,
       roleplayMode,
+      challengeMode,
+      challengeTargetTurns,
       notes,
       customScenario: customBrief,
       updatedAt: new Date().toISOString(),
@@ -645,9 +799,23 @@ export default function App() {
         messages: [...pending.messages, { id: id('msg'), role: 'assistant', text: reply, createdAt: new Date().toISOString() }],
       });
       if (settings.autoSpeakAi) speakText(reply, settings.voiceName, settings.speechRate);
-      setNotice('AI reply is ready.');
+      if (challengeMode && previousUserTurns < challengeTargetTurns && previousUserTurns + 1 >= challengeTargetTurns) {
+        const challengeComplete = buildChallengeSnapshot(
+          {
+            ...pending,
+            messages: pending.messages,
+            challengeMode,
+            challengeTargetTurns,
+          },
+          selectedScenario,
+          analyses,
+        );
+        setNotice(`챌린지 클리어. ${challengeTargetTurns}턴을 채웠고 현재 점수는 ${challengeComplete.score}점입니다.`);
+      } else {
+        setNotice('AI 응답이 도착했습니다.');
+      }
     } catch (error) {
-      setNotice(error instanceof Error ? `Reply generation failed: ${error.message}` : 'Reply generation failed.');
+      setNotice(error instanceof Error ? `응답 생성 실패: ${error.message}` : '응답 생성에 실패했습니다.');
     } finally {
       setBusy(null);
     }
@@ -659,11 +827,11 @@ export default function App() {
     if (!settings.apiKey.trim()) {
       setBundle({
         suggestions: selectedScenario.warmups.slice(0, 3),
-        coachTip: 'API key missing, so the app is showing built-in warm-up ideas.',
+        coachTip: 'API 키가 없어 기본 워밍업 문장을 보여주고 있습니다.',
         focusPoint: selectedScenario.challenge,
       });
       setShowTools(true);
-      setNotice('Showing warm-up suggestions without AI.');
+      setNotice('AI 없이 기본 워밍업 문장을 보여주고 있습니다.');
       return;
     }
     setBusy('suggestions');
@@ -677,9 +845,9 @@ export default function App() {
       });
       setBundle(normalizeSuggestionBundle(payload, selectedScenario));
       setShowTools(true);
-      setNotice('Suggested three next replies.');
+      setNotice('다음 답변 후보 3개를 준비했습니다.');
     } catch (error) {
-      setNotice(error instanceof Error ? `Suggestions failed: ${error.message}` : 'Suggestions failed.');
+      setNotice(error instanceof Error ? `답변 추천 실패: ${error.message}` : '답변 추천에 실패했습니다.');
     } finally {
       setBusy(null);
     }
@@ -687,17 +855,17 @@ export default function App() {
 
   const analyze = async () => {
     if (!activeSession) {
-      setNotice('Send a line first so there is something to analyze.');
+      setNotice('먼저 한 문장을 보내야 분석할 수 있습니다.');
       return;
     }
     const target = lastUserMessage(activeSession.messages);
     if (!target) {
-      setNotice('There is no recent user message to analyze yet.');
+      setNotice('아직 분석할 최근 사용자 문장이 없습니다.');
       return;
     }
     if (!settings.apiKey.trim()) {
       setShowSettings(true);
-      setNotice('Sentence analysis requires an API key.');
+      setNotice('문장 분석에는 API 키가 필요합니다.');
       return;
     }
     setBusy('analysis');
@@ -717,9 +885,9 @@ export default function App() {
       setAnalyses((current) => [entry, ...current]);
       setVocabulary((current) => mergeVocabulary(current, entry.vocabulary));
       setShowTools(true);
-      setNotice('Analyzed your latest line.');
+      setNotice('최근 문장을 분석했습니다.');
     } catch (error) {
-      setNotice(error instanceof Error ? `Analysis failed: ${error.message}` : 'Analysis failed.');
+      setNotice(error instanceof Error ? `분석 실패: ${error.message}` : '분석에 실패했습니다.');
     } finally {
       setBusy(null);
     }
@@ -727,7 +895,7 @@ export default function App() {
 
   const recap = async () => {
     if (!activeSession) {
-      setNotice('There is no active session to recap.');
+      setNotice('요약할 활성 세션이 없습니다.');
       return;
     }
     const fallback = buildOfflineSummary(selectedScenario, activeSession);
@@ -735,7 +903,7 @@ export default function App() {
       upsert({ ...activeSession, summary: fallback });
       setVocabulary((current) => mergeVocabulary(current, fallback.notableVocabulary));
       setShowTools(true);
-      setNotice('Built a local recap without the API.');
+      setNotice('API 없이 로컬 세션 리캡을 만들었습니다.');
       return;
     }
     setBusy('recap');
@@ -751,11 +919,11 @@ export default function App() {
       upsert({ ...activeSession, summary });
       setVocabulary((current) => mergeVocabulary(current, summary.notableVocabulary));
       setShowTools(true);
-      setNotice('Session recap is ready.');
+      setNotice('세션 리캡이 준비되었습니다.');
     } catch (error) {
       upsert({ ...activeSession, summary: fallback });
       setShowTools(true);
-      setNotice(error instanceof Error ? `Recap failed: ${error.message}` : 'Recap failed.');
+      setNotice(error instanceof Error ? `리캡 생성 실패: ${error.message}` : '리캡 생성에 실패했습니다.');
     } finally {
       setBusy(null);
     }
@@ -774,14 +942,14 @@ export default function App() {
 
   const voiceInput = () => {
     if (!isSpeechRecognitionSupported()) {
-      setNotice('Speech input is not supported in this browser.');
+      setNotice('이 브라우저에서는 음성 입력을 지원하지 않습니다.');
       return;
     }
     if (listening) {
       stopRef.current?.();
       stopRef.current = null;
       setListening(false);
-      setNotice('Voice capture stopped.');
+      setNotice('음성 입력을 중지했습니다.');
       return;
     }
     stopRef.current = listenOnce({
@@ -795,7 +963,7 @@ export default function App() {
     });
     if (stopRef.current) {
       setListening(true);
-      setNotice('Listening for English speech.');
+      setNotice('영어 음성을 듣고 있습니다.');
     }
   };
 
@@ -812,16 +980,16 @@ export default function App() {
         setActiveSessionId(imported.sessions[0]?.id ?? '');
         setView('review');
       });
-      setNotice('Imported study data.');
+      setNotice('학습 데이터를 불러왔습니다.');
     } catch (error) {
-      setNotice(error instanceof Error ? `Import failed: ${error.message}` : 'Import failed.');
+      setNotice(error instanceof Error ? `가져오기 실패: ${error.message}` : '가져오기에 실패했습니다.');
     } finally {
       event.target.value = '';
     }
   };
 
   const resetWorkspace = () => {
-    if (!window.confirm('Reset all local sessions, analyses, and saved vocabulary?')) return;
+    if (!window.confirm('이 브라우저에 저장된 세션, 분석, 어휘를 모두 초기화할까요?')) return;
     clearWorkspace();
     setSessions([]);
     setAnalyses([]);
@@ -831,6 +999,8 @@ export default function App() {
     setSettings(defaultSettings);
     setFocusSkill('Fluency');
     setRoleplayMode('normal');
+    setChallengeMode(false);
+    setChallengeTargetTurns(8);
     setNotes('');
     setCustomBrief('');
     setComposer('');
@@ -838,7 +1008,7 @@ export default function App() {
     setShowCatalog(false);
     setShowTools(false);
     setShowSettings(false);
-    setNotice('Local workspace cleared.');
+    setNotice('로컬 워크스페이스를 초기화했습니다.');
   };
 
   const openReviewSession = (session: Session) => {
@@ -866,12 +1036,12 @@ export default function App() {
           </div>
           <div>
             <div className="sidebar-logo-text">SpeakUp Studio</div>
-            <p className="sidebar-logo-copy">Quiet, premium speaking practice.</p>
+            <p className="sidebar-logo-copy">조용하게 몰입하는 프리미엄 말하기 훈련.</p>
           </div>
         </div>
 
         <nav className="sidebar-nav">
-          <div className="nav-section-label">Workspace</div>
+          <div className="nav-section-label">워크스페이스</div>
           {NAVS.map((item) => (
             <button
               key={item.id}
@@ -887,7 +1057,7 @@ export default function App() {
             </button>
           ))}
 
-          <div className="nav-section-label">Spotlight</div>
+          <div className="nav-section-label">추천</div>
           <button
             type="button"
             className="sidebar-spotlight"
@@ -897,7 +1067,7 @@ export default function App() {
               setShowCatalog(true);
             }}
           >
-            <span className="badge badge-accent">Today</span>
+            <span className="badge badge-accent">오늘 추천</span>
             <strong>{spotlightScenario.title}</strong>
             <p>{spotlightScenario.challenge}</p>
           </button>
@@ -907,13 +1077,13 @@ export default function App() {
           <button type="button" className="nav-item" onClick={() => setShowSettings(true)}>
             <Icon name="settings" />
             <div>
-              <div>Settings</div>
-              <small>API, voice, and workspace</small>
+              <div>설정</div>
+              <small>API, 음성, 저장 데이터</small>
             </div>
           </button>
           <div className="api-status">
             <span className={`api-status-dot ${settings.apiKey.trim() ? 'connected' : ''}`} />
-            <span>{settings.apiKey.trim() ? 'Gemini key connected' : 'Gemini key required'}</span>
+            <span>{settings.apiKey.trim() ? 'Gemini 키 연결됨' : 'Gemini 키 필요'}</span>
           </div>
         </div>
       </aside>
@@ -927,12 +1097,12 @@ export default function App() {
           <div className="page-header-actions">
             {view === 'practice' && !activeSession && (
               <button type="button" className="btn btn-secondary" onClick={() => ensureSession()}>
-                Start Session
+                세션 시작
               </button>
             )}
             <button type="button" className="btn btn-ghost" onClick={() => fileRef.current?.click()}>
               <Icon name="upload" />
-              Import
+              불러오기
             </button>
             <button
               type="button"
@@ -942,17 +1112,17 @@ export default function App() {
               }
             >
               <Icon name="download" />
-              Export
+              내보내기
             </button>
             <button
               type="button"
               className="btn btn-icon"
               onClick={toggleThemeMode}
-              aria-label={settings.themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-label={settings.themeMode === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환'}
             >
               <Icon name={settings.themeMode === 'dark' ? 'sun' : 'moon'} />
             </button>
-            <button type="button" className="btn btn-icon" onClick={() => setShowSettings(true)} aria-label="Open settings">
+            <button type="button" className="btn btn-icon" onClick={() => setShowSettings(true)} aria-label="설정 열기">
               <Icon name="settings" />
             </button>
           </div>
@@ -967,35 +1137,37 @@ export default function App() {
                     type="button"
                     className="btn btn-icon"
                     onClick={() => setShowCatalog((current) => !current)}
-                    aria-label="Toggle scenario catalog"
+                    aria-label="시나리오 목록 열기"
                   >
                     <Icon name="list" />
                   </button>
                   <span className="scenario-badge">
                     <Icon name="bolt" />
-                    {currentScenario.category}
+                    {labelCategory(currentScenario.category)}
                   </span>
                   <div className="scenario-summary">
                     <div className="scenario-title">{currentScenario.title}</div>
                     <div className="scenario-caption">{currentScenario.subtitle}</div>
                   </div>
                   <div className="scenario-meta">
-                    <span>{currentScenario.difficulty}</span>
-                    <span>{roleplayMode === 'normal' ? 'Default roleplay' : 'Reverse roleplay'}</span>
-                    <span>{activeSession ? `${activeSession.messages.length} turns` : 'Ready'}</span>
+                    <span>{labelDifficulty(currentScenario.difficulty)}</span>
+                    <span>{labelRoleplayMode(roleplayMode)}</span>
+                    <span>{activeSession ? `${activeSession.messages.length}턴` : '준비 완료'}</span>
+                    {activeChallenge.enabled ? <span>{activeChallenge.userTurns}/{activeChallenge.targetTurns}턴 챌린지</span> : null}
+                    {activeChallenge.enabled ? <span>{activeChallenge.score}점</span> : null}
                   </div>
                   <div className="scenario-bar-actions">
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowTools((current) => !current)}>
-                      {showTools ? 'Hide Guide' : 'Guide'}
+                      {showTools ? '가이드 닫기' : '가이드'}
                     </button>
                     <button type="button" className="btn btn-ghost btn-sm" onClick={suggest} disabled={busy === 'suggestions'}>
-                      {busy === 'suggestions' ? 'Thinking...' : 'Suggest'}
+                      {busy === 'suggestions' ? '생성 중...' : '답변 추천'}
                     </button>
                     <button type="button" className="btn btn-ghost btn-sm" onClick={analyze} disabled={busy === 'analysis'}>
-                      {busy === 'analysis' ? 'Analyzing...' : 'Analyze'}
+                      {busy === 'analysis' ? '분석 중...' : '문장 분석'}
                     </button>
                     <button type="button" className="btn btn-secondary btn-sm" onClick={recap} disabled={busy === 'recap'}>
-                      {busy === 'recap' ? 'Recapping...' : 'Recap'}
+                      {busy === 'recap' ? '정리 중...' : '세션 리캡'}
                     </button>
                   </div>
                 </div>
@@ -1003,16 +1175,16 @@ export default function App() {
                 {showCatalog && (
                   <section className="card catalog-popover animate-in">
                     <div className="card-header">
-                      <div>
-                        <div className="card-title">Scenario Catalog</div>
-                        <div className="card-subtitle">{filteredScenarios.length} scenarios available</div>
+                        <div>
+                          <div className="card-title">시나리오 목록</div>
+                          <div className="card-subtitle">총 {filteredScenarios.length}개 시나리오</div>
+                        </div>
                       </div>
-                    </div>
                     <label className="form-group">
-                      <span className="form-label">Search</span>
+                      <span className="form-label">검색</span>
                       <input
                         className="form-input"
-                        placeholder="Search title, category, or tag"
+                        placeholder="제목, 카테고리, 태그 검색"
                         value={search}
                         onChange={(event) => setSearch(event.target.value)}
                       />
@@ -1025,24 +1197,24 @@ export default function App() {
                   {!activeSession?.messages.length && (
                     <EmptyState
                       icon={<Icon name="chat" />}
-                      title="Start a focused speaking session"
+                      title="새 대화 연습을 시작해 보세요"
                       description={currentScenario.challenge}
                       action={
                         <button type="button" className="btn btn-primary" onClick={() => ensureSession()}>
-                          Start Session
+                          세션 시작
                         </button>
                       }
                     />
                   )}
 
-                  {activeSession?.messages.length ? <div className="chat-divider">Current session</div> : null}
+                  {activeSession?.messages.length ? <div className="chat-divider">현재 세션</div> : null}
 
                   {activeSession?.messages.map((message) => (
                     <MessageCard
                       key={message.id}
                       message={message}
                       onFavorite={() => toggleFavorite(activeSession.id, message.id)}
-                      onCopy={() => navigator.clipboard.writeText(message.text).then(() => setNotice('Message copied.'))}
+                      onCopy={() => navigator.clipboard.writeText(message.text).then(() => setNotice('문장을 복사했습니다.'))}
                       onSpeak={
                         message.role === 'assistant'
                           ? () => speakText(message.text, settings.voiceName, settings.speechRate)
@@ -1058,7 +1230,7 @@ export default function App() {
                       </div>
                       <div className="message-body">
                         <div className="message-sender-row">
-                          <span className="message-sender">AI Coach</span>
+                          <span className="message-sender">AI 코치</span>
                         </div>
                         <div className="message-bubble">
                           <span className="typing-dot" />
@@ -1088,10 +1260,10 @@ export default function App() {
                     <div className="input-container">
                       <textarea
                         rows={1}
-                        value={composer}
-                        onChange={(event) => setComposer(event.target.value)}
-                        placeholder="Type the next line in English"
-                      />
+                          value={composer}
+                          onChange={(event) => setComposer(event.target.value)}
+                          placeholder="영어로 다음 문장을 입력해 보세요"
+                        />
                       <div className="input-actions">
                         {listening && (
                           <div className="waveform-bar" aria-hidden="true">
@@ -1103,21 +1275,21 @@ export default function App() {
                           </div>
                         )}
                         <button
-                          type="button"
-                          className={`record-btn ${listening ? 'recording' : ''}`}
-                          onClick={voiceInput}
-                          aria-label="Use voice input"
-                        >
-                          <Icon name="mic" />
-                        </button>
-                        {composer.trim() && (
-                          <button type="button" className="btn btn-icon" onClick={() => setComposer('')} aria-label="Clear message">
-                            <Icon name="close" />
+                            type="button"
+                            className={`record-btn ${listening ? 'recording' : ''}`}
+                            onClick={voiceInput}
+                            aria-label="음성 입력"
+                          >
+                            <Icon name="mic" />
                           </button>
-                        )}
-                        <button type="submit" className="send-btn" disabled={busy === 'chat' || !composer.trim()} aria-label="Send message">
-                          <Icon name="send" />
-                        </button>
+                          {composer.trim() && (
+                            <button type="button" className="btn btn-icon" onClick={() => setComposer('')} aria-label="입력 지우기">
+                              <Icon name="close" />
+                            </button>
+                          )}
+                          <button type="submit" className="send-btn" disabled={busy === 'chat' || !composer.trim()} aria-label="메시지 보내기">
+                            <Icon name="send" />
+                          </button>
                       </div>
                     </div>
                   </form>
@@ -1129,17 +1301,15 @@ export default function App() {
                   <section className="card animate-in">
                     <div className="card-header">
                       <div>
-                        <div className="card-title">Scenario Guide</div>
-                        <div className="card-subtitle">
-                          {currentScenario.userRole} speaking to {currentScenario.aiRole}
-                        </div>
+                        <div className="card-title">상황 가이드</div>
+                        <div className="card-subtitle">내 역할: {currentScenario.userRole} · 상대 역할: {currentScenario.aiRole}</div>
                       </div>
-                      <span className="badge badge-neutral">{focusSkill}</span>
+                      <span className="badge badge-neutral">{labelFocusSkill(focusSkill)}</span>
                     </div>
 
                     <div className="form-grid">
                       <label className="form-group">
-                        <span className="form-label">Focus skill</span>
+                        <span className="form-label">집중 스킬</span>
                         <select
                           className="form-select"
                           value={focusSkill}
@@ -1149,13 +1319,13 @@ export default function App() {
                           }}
                         >
                           {focusSkillOptions.map((option) => (
-                            <option key={option}>{option}</option>
+                            <option key={option}>{labelFocusSkill(option)}</option>
                           ))}
                         </select>
                       </label>
 
                       <label className="form-group">
-                        <span className="form-label">Roleplay mode</span>
+                        <span className="form-label">역할 모드</span>
                         <select
                           className="form-select"
                           value={roleplayMode}
@@ -1165,15 +1335,63 @@ export default function App() {
                             patchActive({ roleplayMode: next });
                           }}
                         >
-                          <option value="normal">Default</option>
-                          <option value="reverse">Reverse</option>
+                          <option value="normal">기본 역할</option>
+                          <option value="reverse">역할 반전</option>
                         </select>
                       </label>
                     </div>
 
+                    <div className="form-grid">
+                      <ToggleField
+                        label="챌린지 모드"
+                        description="정해진 턴 수를 채우고 점수를 쌓는 도전형 연습입니다."
+                        checked={challengeMode}
+                        onChange={(checked) => {
+                          setChallengeMode(checked);
+                          patchActive({ challengeMode: checked });
+                        }}
+                      />
+                      <label className="form-group">
+                        <span className="form-label">목표 턴 수</span>
+                        <select
+                          className="form-select"
+                          value={challengeTargetTurns}
+                          onChange={(event) => {
+                            const next = Number(event.target.value) || 8;
+                            setChallengeTargetTurns(next);
+                            patchActive({ challengeTargetTurns: next });
+                          }}
+                        >
+                          {CHALLENGE_TARGET_OPTIONS.map((turns) => (
+                            <option key={turns} value={turns}>
+                              {turns}턴
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+
+                    {challengeMode && (
+                      <div className="feedback-card">
+                        <div className="feedback-label">챌린지 진행</div>
+                        <p>
+                          현재 {activeChallenge.userTurns}/{activeChallenge.targetTurns}턴, {activeChallenge.score}점, 등급 {activeChallenge.rank}
+                        </p>
+                        <div className="progress-bar-wrap">
+                          <div
+                            className="progress-bar-fill"
+                            style={{ width: `${Math.min(100, Math.round((activeChallenge.userTurns / activeChallenge.targetTurns) * 100))}%` }}
+                          />
+                        </div>
+                        <p className="insight-copy">
+                          남은 턴 {activeChallenge.remainingTurns}턴 · 분석 {activeChallenge.analysisCount}회 · 핵심 표현 사용 {activeChallenge.expressionHits}회
+                        </p>
+                      </div>
+                    )}
+
                     {selectedScenario.isCustom && (
                       <label className="form-group">
-                        <span className="form-label">Custom brief</span>
+                        <span className="form-label">커스텀 브리프</span>
                         <textarea
                           className="form-input form-input--textarea"
                           value={customBrief}
@@ -1181,13 +1399,13 @@ export default function App() {
                             setCustomBrief(event.target.value);
                             patchActive({ customScenario: event.target.value });
                           }}
-                          placeholder="Describe the setting, partner, and goal."
+                          placeholder="상황, 상대 역할, 목표를 한국어로 적어 주세요"
                         />
                       </label>
                     )}
 
                     <label className="form-group">
-                      <span className="form-label">Coach notes</span>
+                      <span className="form-label">코칭 메모</span>
                       <textarea
                         className="form-input form-input--textarea"
                         value={notes}
@@ -1195,13 +1413,13 @@ export default function App() {
                           setNotes(event.target.value);
                           patchActive({ notes: event.target.value });
                         }}
-                        placeholder="What do you want to push harder on in this session?"
+                        placeholder="이번 세션에서 더 집중하고 싶은 포인트를 적어 주세요"
                       />
                     </label>
 
                     <div className="detail-columns">
                       <div>
-                        <div className="mini-label">Mission steps</div>
+                        <div className="mini-label">미션 단계</div>
                         <ul className="bullet-list">
                           {currentScenario.missionSteps.map((step) => (
                             <li key={step}>{step}</li>
@@ -1209,7 +1427,7 @@ export default function App() {
                         </ul>
                       </div>
                       <div>
-                        <div className="mini-label">Key expressions</div>
+                        <div className="mini-label">핵심 표현</div>
                         <div className="chip-row">
                           {currentScenario.keyExpressions.map((item) => (
                             <button
@@ -1226,14 +1444,14 @@ export default function App() {
                     </div>
 
                     <div>
-                      <div className="mini-label">Vocabulary set</div>
+                      <div className="mini-label">어휘 세트</div>
                       <div className="vocab-chip-grid">
                         {currentScenario.vocabulary.map((card) => (
                           <button
                             key={card.phrase}
                             type="button"
                             className="vocab-chip"
-                            onClick={() => navigator.clipboard.writeText(card.example).then(() => setNotice('Example copied.'))}
+                            onClick={() => navigator.clipboard.writeText(card.example).then(() => setNotice('예문을 복사했습니다.'))}
                           >
                             <strong>{card.phrase}</strong>
                             <span>{card.meaningKo}</span>
@@ -1246,8 +1464,8 @@ export default function App() {
                   <section className="card animate-in">
                     <div className="card-header">
                       <div>
-                        <div className="card-title">Reply Deck</div>
-                        <div className="card-subtitle">Fast next-line options for the current flow.</div>
+                        <div className="card-title">답변 덱</div>
+                        <div className="card-subtitle">현재 흐름에 맞는 다음 답변 후보입니다.</div>
                       </div>
                     </div>
                     {bundle ? (
@@ -1260,19 +1478,19 @@ export default function App() {
                           ))}
                         </div>
                         <div className="feedback-card">
-                          <div className="feedback-label">Coach tip</div>
+                          <div className="feedback-label">코치 팁</div>
                           <p>{bundle.coachTip}</p>
                         </div>
                         <div className="feedback-card">
-                          <div className="feedback-label">Focus point</div>
+                          <div className="feedback-label">집중 포인트</div>
                           <p>{bundle.focusPoint}</p>
                         </div>
                       </>
                     ) : (
                       <EmptyState
                         icon={<Icon name="sparkles" />}
-                        title="No reply deck yet"
-                        description="Run Suggest to generate next-line ideas tuned to the current exchange."
+                        title="아직 답변 덱이 없습니다"
+                        description="답변 추천을 누르면 현재 대화에 맞는 다음 문장을 제안합니다."
                       />
                     )}
                   </section>
@@ -1280,20 +1498,20 @@ export default function App() {
                   <section className="card animate-in">
                     <div className="card-header">
                       <div>
-                        <div className="card-title">Latest Analysis</div>
-                        <div className="card-subtitle">What to keep, fix, and reuse.</div>
+                        <div className="card-title">최근 분석</div>
+                        <div className="card-subtitle">유지할 점, 고칠 점, 다시 쓸 표현을 정리합니다.</div>
                       </div>
                     </div>
                     {latestAnalysis ? (
                       <>
                         <p className="insight-copy">{latestAnalysis.overview}</p>
                         <div className="feedback-card">
-                          <div className="feedback-label">Revision</div>
+                          <div className="feedback-label">개선문</div>
                           <p>{latestAnalysis.revision}</p>
                         </div>
                         <div className="analysis-grid">
                           <div className="feedback-card">
-                            <div className="feedback-label">Strengths</div>
+                            <div className="feedback-label">잘한 점</div>
                             <ul className="bullet-list compact">
                               {latestAnalysis.strengths.map((item) => (
                                 <li key={item}>{item}</li>
@@ -1301,7 +1519,7 @@ export default function App() {
                             </ul>
                           </div>
                           <div className="feedback-card">
-                            <div className="feedback-label">Grammar</div>
+                            <div className="feedback-label">문법</div>
                             <ul className="bullet-list compact">
                               {latestAnalysis.grammar.map((item) => (
                                 <li key={item}>{item}</li>
@@ -1309,7 +1527,7 @@ export default function App() {
                             </ul>
                           </div>
                           <div className="feedback-card">
-                            <div className="feedback-label">Naturalness</div>
+                            <div className="feedback-label">자연스러움</div>
                             <ul className="bullet-list compact">
                               {latestAnalysis.naturalness.map((item) => (
                                 <li key={item}>{item}</li>
@@ -1321,8 +1539,8 @@ export default function App() {
                     ) : (
                       <EmptyState
                         icon={<Icon name="check" />}
-                        title="No analysis yet"
-                        description="Analyze the latest user line to populate feedback, corrections, and new vocabulary."
+                        title="아직 분석 결과가 없습니다"
+                        description="문장 분석을 실행하면 피드백, 교정, 새 어휘가 여기에 쌓입니다."
                       />
                     )}
                   </section>
@@ -1331,14 +1549,14 @@ export default function App() {
                     <section className="card animate-in">
                       <div className="card-header">
                         <div>
-                          <div className="card-title">Session Recap</div>
-                          <div className="card-subtitle">Wins, next focus, and homework from this run.</div>
+                          <div className="card-title">세션 리캡</div>
+                          <div className="card-subtitle">이번 연습의 성과와 다음 할 일을 정리합니다.</div>
                         </div>
                       </div>
                       <p className="insight-copy">{activeSession.summary.summary}</p>
                       <div className="detail-columns">
                         <div>
-                          <div className="mini-label">Wins</div>
+                          <div className="mini-label">잘한 점</div>
                           <ul className="bullet-list compact">
                             {activeSession.summary.wins.map((item) => (
                               <li key={item}>{item}</li>
@@ -1346,7 +1564,7 @@ export default function App() {
                           </ul>
                         </div>
                         <div>
-                          <div className="mini-label">Next focus</div>
+                          <div className="mini-label">다음 집중 포인트</div>
                           <ul className="bullet-list compact">
                             {activeSession.summary.nextFocus.map((item) => (
                               <li key={item}>{item}</li>
@@ -1355,7 +1573,7 @@ export default function App() {
                         </div>
                       </div>
                       <div>
-                        <div className="mini-label">Homework</div>
+                        <div className="mini-label">숙제</div>
                         <ul className="bullet-list compact">
                           {activeSession.summary.homework.map((item) => (
                             <li key={item}>{item}</li>
@@ -1374,16 +1592,16 @@ export default function App() {
               <section className="card animate-in">
                 <div className="card-header">
                   <div>
-                    <div className="card-title">Scenario Library</div>
-                    <div className="card-subtitle">Browse all speaking packs and choose the next run.</div>
+                    <div className="card-title">시나리오 라이브러리</div>
+                    <div className="card-subtitle">전체 말하기 팩을 둘러보고 다음 연습을 고를 수 있습니다.</div>
                   </div>
-                  <span className="badge badge-neutral">{filteredScenarios.length} total</span>
+                  <span className="badge badge-neutral">총 {filteredScenarios.length}개</span>
                 </div>
                 <label className="form-group">
-                  <span className="form-label">Search</span>
+                  <span className="form-label">검색</span>
                   <input
                     className="form-input"
-                    placeholder="Search title, category, or tag"
+                    placeholder="제목, 카테고리, 태그 검색"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                   />
@@ -1401,11 +1619,11 @@ export default function App() {
                           <div className="card-title">{scenario.title}</div>
                           <div className="card-subtitle">{scenario.subtitle}</div>
                         </div>
-                        <span className="badge badge-neutral">{scenario.category}</span>
+                        <span className="badge badge-neutral">{labelCategory(scenario.category)}</span>
                       </div>
                       <p className="card-copy">{scenario.description}</p>
                       <div className="card-footer">
-                        <div className="difficulty-dots" aria-label={scenario.difficulty}>
+                        <div className="difficulty-dots" aria-label={labelDifficulty(scenario.difficulty)}>
                           {Array.from({ length: 4 }).map((_, index) => (
                             <span
                               key={`${scenario.id}-${index}`}
@@ -1413,7 +1631,7 @@ export default function App() {
                             />
                           ))}
                         </div>
-                        <span className="badge badge-accent">{scenario.difficulty}</span>
+                        <span className="badge badge-accent">{labelDifficulty(scenario.difficulty)}</span>
                       </div>
                     </button>
                   ))}
@@ -1426,13 +1644,13 @@ export default function App() {
                     <div className="card-title">{selectedScenario.title}</div>
                     <div className="card-subtitle">{selectedScenario.subtitle}</div>
                   </div>
-                  <span className="badge badge-accent">{selectedScenario.difficulty}</span>
+                  <span className="badge badge-accent">{labelDifficulty(selectedScenario.difficulty)}</span>
                 </div>
                 <p className="insight-copy">{selectedScenario.description}</p>
 
                 <div className="detail-columns">
                   <div>
-                    <div className="mini-label">Goals</div>
+                    <div className="mini-label">목표</div>
                     <ul className="bullet-list compact">
                       {selectedScenario.goals.map((goal) => (
                         <li key={goal}>{goal}</li>
@@ -1440,7 +1658,7 @@ export default function App() {
                     </ul>
                   </div>
                   <div>
-                    <div className="mini-label">Mission steps</div>
+                    <div className="mini-label">미션 단계</div>
                     <ul className="bullet-list compact">
                       {selectedScenario.missionSteps.map((step) => (
                         <li key={step}>{step}</li>
@@ -1451,7 +1669,7 @@ export default function App() {
 
                 <div className="detail-columns">
                   <div>
-                    <div className="mini-label">Warm-ups</div>
+                    <div className="mini-label">워밍업</div>
                     <div className="chip-row">
                       {selectedScenario.warmups.map((item) => (
                         <button key={item} type="button" className="suggestion-chip" onClick={() => setComposer(item)}>
@@ -1461,7 +1679,7 @@ export default function App() {
                     </div>
                   </div>
                   <div>
-                    <div className="mini-label">Key expressions</div>
+                    <div className="mini-label">핵심 표현</div>
                     <div className="chip-row">
                       {selectedScenario.keyExpressions.map((item) => (
                         <button key={item} type="button" className="suggestion-chip" onClick={() => setComposer(item)}>
@@ -1473,7 +1691,7 @@ export default function App() {
                 </div>
 
                 <div>
-                  <div className="mini-label">Vocabulary preview</div>
+                  <div className="mini-label">어휘 미리보기</div>
                   <div className="vocab-list">
                     {selectedScenario.vocabulary.map((card) => (
                       <div key={card.phrase} className="vocab-item">
@@ -1500,10 +1718,10 @@ export default function App() {
                       setShowTools(false);
                     }}
                   >
-                    Open In Practice
+                    연습 화면에서 열기
                   </button>
                   <button type="button" className="btn btn-ghost" onClick={() => setShowSettings(true)}>
-                    Review API Settings
+                    API 설정 보기
                   </button>
                 </div>
               </section>
@@ -1515,37 +1733,42 @@ export default function App() {
               <section className="card animate-in">
                 <div className="card-header">
                   <div>
-                    <div className="card-title">Session History</div>
-                    <div className="card-subtitle">Jump back into any previous practice run.</div>
+                    <div className="card-title">세션 기록</div>
+                    <div className="card-subtitle">이전 연습 세션으로 바로 돌아갈 수 있습니다.</div>
                   </div>
                 </div>
                 {recentSessions.length ? (
                   <div className="session-list">
-                    {recentSessions.map((session) => (
-                      <button key={session.id} type="button" className="session-item" onClick={() => openReviewSession(session)}>
-                        <div className="session-icon">
-                          <Icon name="chat" />
-                        </div>
-                        <div className="session-info">
-                          <div className="session-title">{session.scenarioTitle}</div>
-                          <div className="session-meta">
-                            {session.messages.filter((message) => message.role === 'user').length} user turns · {formatDate(session.updatedAt)}
+                    {recentSessions.map((session) => {
+                      const challenge = challengeStatsBySession.get(session.id);
+                      return (
+                        <button key={session.id} type="button" className="session-item" onClick={() => openReviewSession(session)}>
+                          <div className="session-icon">
+                            <Icon name="chat" />
                           </div>
-                        </div>
-                        <div className="session-score">{session.focusSkill}</div>
-                      </button>
-                    ))}
+                          <div className="session-info">
+                            <div className="session-title">{session.scenarioTitle}</div>
+                            <div className="session-meta">
+                              {session.messages.filter((message) => message.role === 'user').length}개 사용자 턴 · {formatDate(session.updatedAt)}
+                            </div>
+                          </div>
+                          <div className="session-score">
+                            {challenge?.enabled ? `${challenge.score}점 ${challenge.rank}` : labelFocusSkill(session.focusSkill)}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : (
-                  <EmptyState icon={<Icon name="chat" />} title="No sessions yet" description="Start a practice run and your recent sessions will appear here." />
+                  <EmptyState icon={<Icon name="chat" />} title="아직 세션이 없습니다" description="대화 연습을 시작하면 최근 세션이 여기에 쌓입니다." />
                 )}
               </section>
 
               <section className="card animate-in">
                 <div className="card-header">
                   <div>
-                    <div className="card-title">Saved Messages</div>
-                    <div className="card-subtitle">Useful lines you marked for review.</div>
+                    <div className="card-title">저장한 문장</div>
+                    <div className="card-subtitle">복습하려고 표시해 둔 문장을 모아 봅니다.</div>
                   </div>
                   <span className="badge badge-neutral">{favoriteMessages.length}</span>
                 </div>
@@ -1565,15 +1788,15 @@ export default function App() {
                     ))}
                   </div>
                 ) : (
-                  <EmptyState icon={<Icon name="bookmark" />} title="Nothing saved yet" description="Use the star action in chat bubbles to keep strong lines for later review." />
+                  <EmptyState icon={<Icon name="bookmark" />} title="아직 저장한 문장이 없습니다" description="채팅 말풍선의 저장 버튼으로 좋은 문장을 따로 모아 둘 수 있습니다." />
                 )}
               </section>
 
               <section className="card animate-in">
                 <div className="card-header">
                   <div>
-                    <div className="card-title">Feedback Archive</div>
-                    <div className="card-subtitle">Recent AI corrections and naturalness notes.</div>
+                    <div className="card-title">피드백 아카이브</div>
+                    <div className="card-subtitle">최근 AI 교정과 자연스러움 피드백을 모아 봅니다.</div>
                   </div>
                   <span className="badge badge-neutral">{analyses.length}</span>
                 </div>
@@ -1588,15 +1811,15 @@ export default function App() {
                     ))}
                   </div>
                 ) : (
-                  <EmptyState icon={<Icon name="check" />} title="No feedback yet" description="Run Analyze inside a session to build a correction archive." />
+                  <EmptyState icon={<Icon name="check" />} title="아직 피드백이 없습니다" description="세션 안에서 문장 분석을 실행하면 교정 기록이 여기에 쌓입니다." />
                 )}
               </section>
 
               <section className="card animate-in">
                 <div className="card-header">
                   <div>
-                    <div className="card-title">Vocabulary Bank</div>
-                    <div className="card-subtitle">Terms collected from analyses and recaps.</div>
+                    <div className="card-title">어휘 뱅크</div>
+                    <div className="card-subtitle">분석과 리캡에서 모은 표현을 다시 확인합니다.</div>
                   </div>
                   <span className="badge badge-neutral">{vocabulary.length}</span>
                 </div>
@@ -1616,7 +1839,7 @@ export default function App() {
                     ))}
                   </div>
                 ) : (
-                  <EmptyState icon={<Icon name="wave" />} title="Vocabulary bank is empty" description="New cards appear here after AI analysis or session recap." />
+                  <EmptyState icon={<Icon name="wave" />} title="어휘 뱅크가 비어 있습니다" description="AI 분석이나 세션 리캡을 실행하면 새 카드가 여기에 추가됩니다." />
                 )}
               </section>
             </div>
@@ -1625,16 +1848,18 @@ export default function App() {
           {view === 'analytics' && (
             <div className="analytics-layout">
               <section className="stats-grid">
-                <StatCard value={String(sessions.length)} label="Total sessions" />
-                <StatCard value={String(totalTurns)} label="Total turns" />
-                <StatCard value={`${streak(sortSessions(sessions))}`} label="Current streak" suffix="days" />
-                <StatCard value={`${weeklyMinutes}`} label="Weekly speaking time" suffix="min" />
+                <StatCard value={String(sessions.length)} label="총 세션 수" />
+                <StatCard value={String(totalTurns)} label="전체 대화 턴" />
+                <StatCard value={`${streak(sortSessions(sessions))}`} label="현재 연속 학습" suffix="일" />
+                <StatCard value={`${weeklyMinutes}`} label="주간 말하기 시간" suffix="분" />
+                <StatCard value={String(clearedChallenges.length)} label="챌린지 클리어" />
+                <StatCard value={`${bestChallengeScore}`} label="최고 챌린지 점수" suffix="점" />
               </section>
               <section className="card animate-in">
                 <div className="card-header">
                   <div>
-                    <div className="card-title">Weekly Goal</div>
-                    <div className="card-subtitle">Estimated from your spoken word count in recent sessions.</div>
+                    <div className="card-title">주간 목표</div>
+                    <div className="card-subtitle">최근 세션의 말한 단어 수를 기준으로 추정합니다.</div>
                   </div>
                   <span className="badge badge-accent">{goalProgress}%</span>
                 </div>
@@ -1642,58 +1867,93 @@ export default function App() {
                   <div className="progress-bar-fill" style={{ width: `${goalProgress}%` }} />
                 </div>
                 <p className="insight-copy">
-                  {weeklyMinutes} minutes tracked against a {settings.dailyMinutesGoal}-minute target.
+                  이번 주 {weeklyMinutes}분을 기록했고, 하루 목표 {settings.dailyMinutesGoal}분 기준으로 계산했습니다.
                 </p>
               </section>
 
               <section className="card animate-in">
                 <div className="card-header">
                   <div>
-                    <div className="card-title">Recent Sessions</div>
-                    <div className="card-subtitle">The latest practice runs that shaped this week.</div>
+                    <div className="card-title">최근 세션</div>
+                    <div className="card-subtitle">이번 주 학습 흐름을 만든 최신 연습 기록입니다.</div>
                   </div>
                 </div>
                 {recentSessions.length ? (
                   <div className="session-list">
-                    {recentSessions.map((session) => (
-                      <button key={session.id} type="button" className="session-item" onClick={() => openReviewSession(session)}>
-                        <div className="session-icon">
-                          <Icon name="chart" />
-                        </div>
-                        <div className="session-info">
-                          <div className="session-title">{session.scenarioTitle}</div>
-                          <div className="session-meta">
-                            {session.messages.length} turns · {formatDate(session.updatedAt)}
+                    {recentSessions.map((session) => {
+                      const challenge = challengeStatsBySession.get(session.id);
+                      return (
+                        <button key={session.id} type="button" className="session-item" onClick={() => openReviewSession(session)}>
+                          <div className="session-icon">
+                            <Icon name="chart" />
                           </div>
-                        </div>
-                        <div className="session-score">{session.roleplayMode === 'normal' ? 'Default' : 'Reverse'}</div>
-                      </button>
-                    ))}
+                          <div className="session-info">
+                            <div className="session-title">{session.scenarioTitle}</div>
+                            <div className="session-meta">
+                              {session.messages.length}턴 · {formatDate(session.updatedAt)}
+                            </div>
+                          </div>
+                          <div className="session-score">
+                            {challenge?.enabled ? `${challenge.score}점 ${challenge.rank}` : labelRoleplayMode(session.roleplayMode)}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : (
-                  <EmptyState icon={<Icon name="chart" />} title="No analytics yet" description="Complete a few sessions and the dashboard will start to fill in." />
+                  <EmptyState icon={<Icon name="chart" />} title="아직 통계가 없습니다" description="세션을 몇 개 완료하면 대시보드가 채워지기 시작합니다." />
                 )}
               </section>
 
               <section className="card animate-in">
                 <div className="card-header">
                   <div>
-                    <div className="card-title">Workspace Health</div>
-                    <div className="card-subtitle">Quick checks for device support and data state.</div>
+                    <div className="card-title">챌린지 보드</div>
+                    <div className="card-subtitle">턴 미션과 누적 점수로 도전 진행도를 확인합니다.</div>
+                  </div>
+                  <span className="badge badge-accent">{totalChallengeScore}점</span>
+                </div>
+                {challengeSessions.length ? (
+                  <div className="session-list">
+                    {challengeSessions.slice(0, 6).map(({ session, challenge }) => (
+                      <button key={session.id} type="button" className="session-item" onClick={() => openReviewSession(session)}>
+                        <div className="session-icon">
+                          <Icon name="bolt" />
+                        </div>
+                        <div className="session-info">
+                          <div className="session-title">{session.scenarioTitle}</div>
+                          <div className="session-meta">
+                            {challenge.userTurns}/{challenge.targetTurns}턴 · 분석 {challenge.analysisCount}회 · 핵심 표현 {challenge.expressionHits}회
+                          </div>
+                        </div>
+                        <div className="session-score">{challenge.completed ? `클리어 ${challenge.rank}` : `${challenge.rank} 진행 중`}</div>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState icon={<Icon name="bolt" />} title="아직 챌린지 기록이 없습니다" description="챌린지 모드를 켜고 목표 턴을 채우면 점수 기록이 여기에 쌓입니다." />
+                )}
+              </section>
+
+              <section className="card animate-in">
+                <div className="card-header">
+                  <div>
+                    <div className="card-title">워크스페이스 상태</div>
+                    <div className="card-subtitle">기기 지원 여부와 데이터 상태를 빠르게 확인합니다.</div>
                   </div>
                 </div>
                 <div className="health-grid">
                   <div className="feedback-card">
-                    <div className="feedback-label">Voice input</div>
-                    <p>{isSpeechRecognitionSupported() ? 'Supported in this browser.' : 'Not supported in this browser.'}</p>
+                    <div className="feedback-label">음성 입력</div>
+                    <p>{isSpeechRecognitionSupported() ? '이 브라우저에서 지원됩니다.' : '이 브라우저에서 지원되지 않습니다.'}</p>
                   </div>
                   <div className="feedback-card">
-                    <div className="feedback-label">Voice output</div>
-                    <p>{voices.length ? `${voices.length} voices ready.` : 'No voices detected yet.'}</p>
+                    <div className="feedback-label">음성 출력</div>
+                    <p>{voices.length ? `${voices.length}개의 음성이 준비되었습니다.` : '아직 사용할 수 있는 음성이 감지되지 않았습니다.'}</p>
                   </div>
                   <div className="feedback-card">
-                    <div className="feedback-label">Export safety</div>
-                    <p>API keys are excluded from exported study bundles.</p>
+                    <div className="feedback-label">내보내기 안전성</div>
+                    <p>API 키는 학습 데이터 내보내기 파일에 포함되지 않습니다.</p>
                   </div>
                 </div>
               </section>
@@ -1708,17 +1968,17 @@ export default function App() {
     <div className={`drawer-overlay ${showSettings ? 'open' : ''}`} onClick={() => setShowSettings(false)} />
     <aside className={`drawer-panel ${showSettings ? 'open' : ''}`} aria-hidden={!showSettings}>
       <div className="drawer-header">
-        <div className="drawer-title">Settings</div>
-        <button type="button" className="btn btn-icon" onClick={() => setShowSettings(false)} aria-label="Close settings">
+        <div className="drawer-title">설정</div>
+        <button type="button" className="btn btn-icon" onClick={() => setShowSettings(false)} aria-label="설정 닫기">
           <Icon name="close" />
         </button>
       </div>
       <div className="drawer-body">
         <section className="settings-section">
-          <div className="settings-section-title">Appearance</div>
+          <div className="settings-section-title">화면</div>
           <ToggleField
-            label="Light mode"
-            description={settings.themeMode === 'light' ? 'Using the bright canvas.' : 'Switch from the dark workspace to a bright canvas.'}
+            label="라이트 모드"
+            description={settings.themeMode === 'light' ? '밝은 캔버스 화면을 사용 중입니다.' : '어두운 작업 화면에서 밝은 화면으로 전환합니다.'}
             checked={settings.themeMode === 'light'}
             onChange={(checked) =>
               setSettings((current) => ({
@@ -1732,19 +1992,19 @@ export default function App() {
         <section className="settings-section">
           <div className="settings-section-title">Gemini</div>
           <label className="form-group">
-            <span className="form-label">API key</span>
+            <span className="form-label">API 키</span>
             <input
               className="form-input"
               type="password"
               value={settings.apiKey}
               onChange={(event) => setSettings((current) => ({ ...current, apiKey: event.target.value }))}
-              placeholder="Paste your Gemini API key"
+              placeholder="Gemini API 키를 붙여 넣어 주세요"
             />
-            <span className="form-hint">The key is used directly from the browser. It is excluded from export files.</span>
+            <span className="form-hint">브라우저에서 직접 사용하며, 내보내기 파일에는 포함되지 않습니다.</span>
           </label>
 
           <label className="form-group">
-            <span className="form-label">Model</span>
+            <span className="form-label">모델</span>
             <select
               className="form-select"
               value={settings.model}
@@ -1759,7 +2019,7 @@ export default function App() {
           </label>
 
           <label className="form-group">
-            <span className="form-label">Coach mode</span>
+            <span className="form-label">코치 모드</span>
             <select
               className="form-select"
               value={settings.coachMode}
@@ -1767,30 +2027,30 @@ export default function App() {
                 setSettings((current) => ({ ...current, coachMode: event.target.value as Settings['coachMode'] }))
               }
             >
-              <option value="gentle">Gentle</option>
-              <option value="balanced">Balanced</option>
-              <option value="push">Direct</option>
+              <option value="gentle">부드럽게</option>
+              <option value="balanced">균형 있게</option>
+              <option value="push">직설적으로</option>
             </select>
           </label>
 
           <ToggleField
-            label="Save API key locally"
-            description="If off, the key is cleared from local storage after refresh."
+            label="API 키 로컬 저장"
+            description="끄면 새로고침 후 로컬 저장소에서 API 키를 지웁니다."
             checked={settings.saveApiKey}
             onChange={(checked) => setSettings((current) => ({ ...current, saveApiKey: checked }))}
           />
         </section>
 
         <section className="settings-section">
-          <div className="settings-section-title">Voice</div>
+          <div className="settings-section-title">음성</div>
           <label className="form-group">
-            <span className="form-label">Voice</span>
+            <span className="form-label">음성</span>
             <select
               className="form-select"
               value={settings.voiceName}
               onChange={(event) => setSettings((current) => ({ ...current, voiceName: event.target.value }))}
             >
-              <option value="">System default</option>
+              <option value="">시스템 기본값</option>
               {voices.map((voice) => (
                 <option key={`${voice.name}-${voice.lang}`} value={voice.name}>
                   {voice.name} ({voice.lang})
@@ -1800,7 +2060,7 @@ export default function App() {
           </label>
 
           <label className="form-group">
-            <span className="form-label">Speech rate</span>
+            <span className="form-label">재생 속도</span>
             <input
               className="form-input"
               type="number"
@@ -1815,27 +2075,27 @@ export default function App() {
           </label>
 
           <ToggleField
-            label="Auto-play AI replies"
-            description="Read assistant lines aloud as soon as they arrive."
+            label="AI 응답 자동 재생"
+            description="AI 문장이 도착하면 바로 음성으로 읽어 줍니다."
             checked={settings.autoSpeakAi}
             onChange={(checked) => setSettings((current) => ({ ...current, autoSpeakAi: checked }))}
           />
         </section>
 
         <section className="settings-section">
-          <div className="settings-section-title">Practice</div>
+          <div className="settings-section-title">연습</div>
           <label className="form-group">
-            <span className="form-label">Display name</span>
+            <span className="form-label">표시 이름</span>
             <input
               className="form-input"
               value={settings.userName}
               onChange={(event) => setSettings((current) => ({ ...current, userName: event.target.value }))}
-              placeholder="Optional"
+              placeholder="선택 입력"
             />
           </label>
 
           <label className="form-group">
-            <span className="form-label">Daily goal (minutes)</span>
+            <span className="form-label">하루 목표 시간(분)</span>
             <input
               className="form-input"
               type="number"
@@ -1848,10 +2108,10 @@ export default function App() {
         </section>
 
         <section className="settings-section">
-          <div className="settings-section-title">Workspace</div>
+          <div className="settings-section-title">워크스페이스</div>
           <button type="button" className="btn btn-ghost" onClick={() => fileRef.current?.click()}>
             <Icon name="upload" />
-            Import Study Data
+            학습 데이터 불러오기
           </button>
           <button
             type="button"
@@ -1864,13 +2124,13 @@ export default function App() {
             }
           >
             <Icon name="download" />
-            Export Study Data
+            학습 데이터 내보내기
           </button>
           <button type="button" className="btn btn-danger" onClick={resetWorkspace}>
-            Reset Local Workspace
+            로컬 워크스페이스 초기화
           </button>
           <p className="form-hint">
-            API keys are excluded from exported bundles. Session, analysis, and vocabulary data remain local unless you export them.
+            API 키는 내보내기 파일에 포함되지 않습니다. 세션, 분석, 어휘 데이터는 직접 내보내기 전까지 이 기기에만 남습니다.
           </p>
         </section>
       </div>

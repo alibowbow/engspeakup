@@ -62,6 +62,8 @@ export interface Session {
   focusSkill: string;
   customScenario: string;
   roleplayMode: RoleplayMode;
+  challengeMode?: boolean;
+  challengeTargetTurns?: number;
   notes: string;
   completedMissionSteps: string[];
   summary: SessionSummary | null;
