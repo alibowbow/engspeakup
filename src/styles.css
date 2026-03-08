@@ -627,6 +627,10 @@ button, input, textarea, select { font: inherit; }
 }
 
 .message-loading .message-bubble { display: flex; align-items: center; gap: 5px; padding: 16px 20px; }
+.message-loading .message-bubble.message-bubble--streaming {
+  display: block;
+  white-space: pre-wrap;
+}
 .typing-dot {
   width: 6px;
   height: 6px;

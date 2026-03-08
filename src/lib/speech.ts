@@ -21,6 +21,8 @@ type RecognitionCtor = new () => {
 export interface GeminiTtsVoiceOption {
   name: string;
   tone: string;
+  group: 'female' | 'male';
+  sampleText: string;
 }
 
 export type SpeakResult = 'gemini' | 'browser-fallback' | 'browser-fallback-daily' | 'none';
@@ -28,36 +30,36 @@ export type SpeakResult = 'gemini' | 'browser-fallback' | 'browser-fallback-dail
 export const GEMINI_TTS_DEFAULT_VOICE = 'Kore';
 
 export const GEMINI_TTS_VOICES: GeminiTtsVoiceOption[] = [
-  { name: 'Zephyr', tone: 'Bright' },
-  { name: 'Puck', tone: 'Upbeat' },
-  { name: 'Charon', tone: 'Informative' },
-  { name: 'Kore', tone: 'Firm' },
-  { name: 'Fenrir', tone: 'Excitable' },
-  { name: 'Leda', tone: 'Youthful' },
-  { name: 'Orus', tone: 'Firm' },
-  { name: 'Aoede', tone: 'Breezy' },
-  { name: 'Callirrhoe', tone: 'Easy-going' },
-  { name: 'Autonoe', tone: 'Bright' },
-  { name: 'Enceladus', tone: 'Breathy' },
-  { name: 'Iapetus', tone: 'Clear' },
-  { name: 'Umbriel', tone: 'Easy-going' },
-  { name: 'Algieba', tone: 'Smooth' },
-  { name: 'Despina', tone: 'Smooth' },
-  { name: 'Erinome', tone: 'Clear' },
-  { name: 'Algenib', tone: 'Gravelly' },
-  { name: 'Rasalgethi', tone: 'Informative' },
-  { name: 'Laomedeia', tone: 'Upbeat' },
-  { name: 'Achernar', tone: 'Soft' },
-  { name: 'Alnilam', tone: 'Firm' },
-  { name: 'Schedar', tone: 'Even' },
-  { name: 'Gacrux', tone: 'Mature' },
-  { name: 'Pulcherrima', tone: 'Forward' },
-  { name: 'Achird', tone: 'Friendly' },
-  { name: 'Zubenelgenubi', tone: 'Casual' },
-  { name: 'Vindemiatrix', tone: 'Gentle' },
-  { name: 'Sadachbia', tone: 'Lively' },
-  { name: 'Sadaltager', tone: 'Knowledgeable' },
-  { name: 'Sulafat', tone: 'Warm' },
+  { name: 'Aoede', tone: 'Breezy', group: 'female', sampleText: "Hi, I'm Aoede. Let's practice relaxed everyday English together." },
+  { name: 'Autonoe', tone: 'Bright', group: 'female', sampleText: "Hi, I'm Autonoe. I'll help you sound brighter and more confident in English." },
+  { name: 'Callirrhoe', tone: 'Easy-going', group: 'female', sampleText: "Hi, I'm Callirrhoe. Let's keep this English conversation easy and natural." },
+  { name: 'Despina', tone: 'Smooth', group: 'female', sampleText: "Hi, I'm Despina. Let's make your English sound smoother and clearer." },
+  { name: 'Erinome', tone: 'Clear', group: 'female', sampleText: "Hi, I'm Erinome. I'll read in a clear voice so you can shadow each sentence." },
+  { name: 'Laomedeia', tone: 'Upbeat', group: 'female', sampleText: "Hi, I'm Laomedeia. Let's practice lively English with good energy." },
+  { name: 'Leda', tone: 'Youthful', group: 'female', sampleText: "Hi, I'm Leda. Let's practice friendly and youthful English conversation." },
+  { name: 'Pulcherrima', tone: 'Forward', group: 'female', sampleText: "Hi, I'm Pulcherrima. I'll give your English a more confident speaking rhythm." },
+  { name: 'Sulafat', tone: 'Warm', group: 'female', sampleText: "Hi, I'm Sulafat. Let's practice English in a warm and encouraging tone." },
+  { name: 'Vindemiatrix', tone: 'Gentle', group: 'female', sampleText: "Hi, I'm Vindemiatrix. Let's slow down and shape gentle, natural English." },
+  { name: 'Achernar', tone: 'Soft', group: 'male', sampleText: "Hi, I'm Achernar. Let's practice English with a softer, calmer delivery." },
+  { name: 'Achird', tone: 'Friendly', group: 'male', sampleText: "Hi, I'm Achird. Let's practice casual English that still sounds friendly and clean." },
+  { name: 'Algenib', tone: 'Gravelly', group: 'male', sampleText: "Hi, I'm Algenib. Let's try a deeper English voice with a stronger texture." },
+  { name: 'Algieba', tone: 'Smooth', group: 'male', sampleText: "Hi, I'm Algieba. I'll help you hear smoother English pacing and intonation." },
+  { name: 'Alnilam', tone: 'Firm', group: 'male', sampleText: "Hi, I'm Alnilam. Let's practice firm and direct English responses." },
+  { name: 'Charon', tone: 'Informative', group: 'male', sampleText: "Hi, I'm Charon. Let's practice informative English with steady delivery." },
+  { name: 'Enceladus', tone: 'Breathy', group: 'male', sampleText: "Hi, I'm Enceladus. This voice is softer, lighter, and a little more airy." },
+  { name: 'Fenrir', tone: 'Excitable', group: 'male', sampleText: "Hi, I'm Fenrir. Let's practice energetic English with stronger momentum." },
+  { name: 'Gacrux', tone: 'Mature', group: 'male', sampleText: "Hi, I'm Gacrux. Let's practice mature, grounded English conversation." },
+  { name: 'Iapetus', tone: 'Clear', group: 'male', sampleText: "Hi, I'm Iapetus. I'll keep the English pronunciation clear and steady." },
+  { name: 'Kore', tone: 'Firm', group: 'male', sampleText: "Hi, I'm Kore. Let's train clear and confident English for real conversations." },
+  { name: 'Orus', tone: 'Firm', group: 'male', sampleText: "Hi, I'm Orus. Let's practice stronger and more structured English replies." },
+  { name: 'Puck', tone: 'Upbeat', group: 'male', sampleText: "Hi, I'm Puck. Let's keep your English upbeat, quick, and easy to follow." },
+  { name: 'Rasalgethi', tone: 'Informative', group: 'male', sampleText: "Hi, I'm Rasalgethi. I'll read in a clear explanatory style for study." },
+  { name: 'Sadachbia', tone: 'Lively', group: 'male', sampleText: "Hi, I'm Sadachbia. Let's make your English sound more lively and active." },
+  { name: 'Sadaltager', tone: 'Knowledgeable', group: 'male', sampleText: "Hi, I'm Sadaltager. Let's practice polished English with a knowledgeable tone." },
+  { name: 'Schedar', tone: 'Even', group: 'male', sampleText: "Hi, I'm Schedar. This voice keeps English balanced and even." },
+  { name: 'Umbriel', tone: 'Easy-going', group: 'male', sampleText: "Hi, I'm Umbriel. Let's practice easy-going English that still sounds natural." },
+  { name: 'Zephyr', tone: 'Bright', group: 'male', sampleText: "Hi, I'm Zephyr. Let's practice bright and clean English conversation together." },
+  { name: 'Zubenelgenubi', tone: 'Casual', group: 'male', sampleText: "Hi, I'm Zubenelgenubi. Let's practice casual English you can actually use." },
 ];
 
 const GEMINI_TTS_BLOCKED_DATE_KEY = 'speakup-studio-gemini-tts-blocked-date';

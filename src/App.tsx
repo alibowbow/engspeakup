@@ -19,7 +19,7 @@ import {
   normalizeSummary,
   resolveScenarioDetails,
 } from './lib/coaching';
-import { generateJson, generateText } from './lib/gemini';
+import { generateJson, generateText, streamText } from './lib/gemini';
 import {
   GEMINI_TTS_DEFAULT_VOICE,
   getGeminiTtsVoices,
@@ -176,6 +176,12 @@ const CHALLENGE_SUBSCORE_LABELS: Record<keyof ChallengeReview['subscores'], stri
   naturalness: '자연스러움',
 };
 const TTS_VOICE_OPTIONS = getGeminiTtsVoices();
+const TTS_VOICE_GROUPS = {
+  female: TTS_VOICE_OPTIONS.filter((voice) => voice.group === 'female'),
+  male: TTS_VOICE_OPTIONS.filter((voice) => voice.group === 'male'),
+};
+const CHAT_HISTORY_WINDOW = 12;
+const CHAT_MAX_OUTPUT_TOKENS = 320;
 
 function challengeStatsForSession(session: Session, analyses: AnalysisEntry[]) {
   return buildChallengeSnapshot(session, resolveScenarioDetails(scenarioById(session.scenarioId), session), analyses);
@@ -203,6 +209,10 @@ function resolveChallengeLevelView(review: ChallengeReview | null) {
 
 function resolveChallengeSubscores(review: ChallengeReview | null): ChallengeReview['subscores'] {
   return review?.subscores ?? legacyChallengeSubscores(review?.score100 ?? 0);
+}
+
+function trimChatHistory(messages: Session['messages']) {
+  return messages.slice(-CHAT_HISTORY_WINDOW);
 }
 
 function buildChallengeSnapshot(session: Session | null, scenario: Scenario, analyses: AnalysisEntry[]) {
@@ -757,6 +767,8 @@ export default function App() {
   const [notice, setNotice] = useState('Gemini API 키를 입력하면 바로 실전 회화를 시작할 수 있습니다.');
   const [bundle, setBundle] = useState<SuggestionBundle | null>(null);
   const [browserVoices, setBrowserVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [previewingVoiceName, setPreviewingVoiceName] = useState('');
+  const [streamingReply, setStreamingReply] = useState('');
   const [listening, setListening] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false);
   const [showTools, setShowTools] = useState(false);
@@ -845,6 +857,10 @@ export default function App() {
   );
   const activeChallengeLevel = resolveChallengeLevelView(activeChallengeReview);
   const activeChallengeSubscores = resolveChallengeSubscores(activeChallengeReview);
+  const selectedTtsVoice =
+    TTS_VOICE_OPTIONS.find((voice) => voice.name === settings.voiceName) ??
+    TTS_VOICE_OPTIONS.find((voice) => voice.name === GEMINI_TTS_DEFAULT_VOICE) ??
+    TTS_VOICE_OPTIONS[0];
 
   useEffect(() => saveSettings(settings), [settings]);
   useEffect(() => saveSessions(sessions), [sessions]);
@@ -880,7 +896,7 @@ export default function App() {
     const node = chatScrollRef.current;
     if (!node) return;
     node.scrollTop = node.scrollHeight;
-  }, [activeSession?.messages.length, busy]);
+  }, [activeSession?.messages.length, busy, streamingReply]);
   useEffect(() => () => {
     stopRef.current?.();
     stopSpeaking();
@@ -908,6 +924,7 @@ export default function App() {
     setSelectedScenarioId(nextScenarioId);
     setActiveSessionId('');
     setComposer('');
+    setStreamingReply('');
     setNotes('');
     setCustomBrief('');
     setChallengeMode(false);
@@ -973,6 +990,7 @@ export default function App() {
     });
     setChallengeMode(challenge);
     setComposer('');
+    setStreamingReply('');
     setShowCatalog(false);
     setShowTools(false);
     upsert(session);
@@ -1065,11 +1083,11 @@ export default function App() {
     setNotice('챌린지 모드를 정지하고 일반 연습으로 전환했습니다.');
   };
 
-  const playAssistantAudio = async (text: string) => {
+  const playAssistantAudio = async (text: string, voiceName = settings.voiceName) => {
     const result = await speakText({
       text,
       apiKey: settings.apiKey.trim(),
-      voiceName: settings.voiceName,
+      voiceName,
       rate: settings.speechRate,
     });
 
@@ -1085,6 +1103,15 @@ export default function App() {
 
     if (result === 'none') {
       setNotice('음성을 재생할 수 없습니다.');
+    }
+  };
+
+  const previewVoice = async (voiceName: string, sampleText: string) => {
+    setPreviewingVoiceName(voiceName);
+    try {
+      await playAssistantAudio(sampleText, voiceName);
+    } finally {
+      setPreviewingVoiceName((current) => (current === voiceName ? '' : current));
     }
   };
 
@@ -1123,21 +1150,35 @@ export default function App() {
       messages: [...session.messages, { id: id('msg'), role: 'user', text, createdAt: new Date().toISOString() }],
     });
     setComposer('');
+    setStreamingReply('');
     setBusy('chat');
     try {
-      const reply = await generateText({
+      const chatRequest = {
         apiKey: settings.apiKey.trim(),
         model: settings.model.trim(),
         systemInstruction: buildConversationSystemPrompt(selectedScenario, pending, settings),
-        history: pending.messages.slice(0, -1),
+        history: trimChatHistory(pending.messages.slice(0, -1)),
         userPrompt: text,
-      });
+        maxOutputTokens: CHAT_MAX_OUTPUT_TOKENS,
+      };
+      let reply = '';
+      try {
+        reply = await streamText(chatRequest, (partial) => setStreamingReply(partial));
+      } catch {
+        setStreamingReply('');
+        reply = await generateText(chatRequest);
+      }
+      const finalReply = reply.trim();
+      if (!finalReply) {
+        throw new Error('Gemini response did not contain text.');
+      }
+      setStreamingReply('');
       const completedSession = upsert({
         ...pending,
         updatedAt: new Date().toISOString(),
-        messages: [...pending.messages, { id: id('msg'), role: 'assistant', text: reply, createdAt: new Date().toISOString() }],
+        messages: [...pending.messages, { id: id('msg'), role: 'assistant', text: finalReply, createdAt: new Date().toISOString() }],
       });
-      if (settings.autoSpeakAi) void playAssistantAudio(reply);
+      if (settings.autoSpeakAi) void playAssistantAudio(finalReply);
       if (challengeMode && previousUserTurns < challengeTargetTurns && previousUserTurns + 1 >= challengeTargetTurns) {
         setBusy('challenge');
         setShowTools(true);
@@ -1159,6 +1200,7 @@ export default function App() {
     } catch (error) {
       setNotice(error instanceof Error ? `응답 생성 실패: ${error.message}` : '응답 생성에 실패했습니다.');
     } finally {
+      setStreamingReply('');
       setBusy(null);
     }
   };
@@ -1730,10 +1772,16 @@ export default function App() {
                         <div className="message-sender-row">
                           <span className="message-sender">AI 코치</span>
                         </div>
-                        <div className="message-bubble">
-                          <span className="typing-dot" />
-                          <span className="typing-dot" />
-                          <span className="typing-dot" />
+                        <div className={`message-bubble ${streamingReply ? 'message-bubble--streaming' : ''}`}>
+                          {streamingReply ? (
+                            <span>{streamingReply}</span>
+                          ) : (
+                            <>
+                              <span className="typing-dot" />
+                              <span className="typing-dot" />
+                              <span className="typing-dot" />
+                            </>
+                          )}
                         </div>
                       </div>
                     </article>
@@ -2566,14 +2614,36 @@ export default function App() {
               value={settings.voiceName}
               onChange={(event) => setSettings((current) => ({ ...current, voiceName: event.target.value }))}
             >
-              {TTS_VOICE_OPTIONS.map((voice) => (
-                <option key={voice.name} value={voice.name}>
-                  {voice.name} · {voice.tone}
-                </option>
-              ))}
+              <optgroup label="Female">
+                {TTS_VOICE_GROUPS.female.map((voice) => (
+                  <option key={voice.name} value={voice.name}>
+                    {voice.name} / {voice.tone}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Male">
+                {TTS_VOICE_GROUPS.male.map((voice) => (
+                  <option key={voice.name} value={voice.name}>
+                    {voice.name} / {voice.tone}
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </label>
 
+          <div className="inline-actions">
+            <span className="form-hint">
+              {`현재 선택: ${selectedTtsVoice.name} / ${selectedTtsVoice.tone} / ${selectedTtsVoice.group === 'female' ? '여성' : '남성'}`}
+            </span>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => void previewVoice(settings.voiceName, selectedTtsVoice.sampleText)}
+              disabled={previewingVoiceName === settings.voiceName}
+            >
+              {previewingVoiceName === settings.voiceName ? '재생 중' : '샘플 듣기'}
+            </button>
+          </div>
           <label className="form-group">
             <span className="form-label">재생 속도</span>
             <input

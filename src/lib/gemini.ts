@@ -8,6 +8,7 @@ interface GeminiTextRequest {
   userPrompt: string;
   temperature?: number;
   responseMimeType?: 'application/json' | 'text/plain';
+  maxOutputTokens?: number;
 }
 
 interface GeminiSpeechRequest {
@@ -68,6 +69,37 @@ function extractJsonCandidate(text: string): string {
   return trimmed;
 }
 
+function buildGenerateContentBody({
+  systemInstruction,
+  history = [],
+  userPrompt,
+  temperature = 0.85,
+  responseMimeType = 'text/plain',
+  maxOutputTokens = 512,
+}: Omit<GeminiTextRequest, 'apiKey' | 'model'>) {
+  return {
+    systemInstruction: {
+      parts: [{ text: systemInstruction }],
+    },
+    contents: [
+      ...history.map((message) => ({
+        role: toGeminiRole(message.role),
+        parts: [{ text: message.text }],
+      })),
+      {
+        role: 'user',
+        parts: [{ text: userPrompt }],
+      },
+    ],
+    generationConfig: {
+      temperature,
+      topP: 0.95,
+      maxOutputTokens,
+      responseMimeType,
+    },
+  };
+}
+
 function extractInlineAudio(payload: unknown): { data: string; mimeType?: string } {
   const candidate = (payload as {
     candidates?: Array<{
@@ -123,11 +155,7 @@ ${text}`.trim();
 export async function generateText({
   apiKey,
   model,
-  systemInstruction,
-  history = [],
-  userPrompt,
-  temperature = 0.85,
-  responseMimeType = 'text/plain',
+  ...request
 }: GeminiTextRequest): Promise<string> {
   const response = await fetch(
     `${API_ROOT}/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
@@ -136,27 +164,7 @@ export async function generateText({
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: systemInstruction }],
-        },
-        contents: [
-          ...history.map((message) => ({
-            role: toGeminiRole(message.role),
-            parts: [{ text: message.text }],
-          })),
-          {
-            role: 'user',
-            parts: [{ text: userPrompt }],
-          },
-        ],
-        generationConfig: {
-          temperature,
-          topP: 0.95,
-          maxOutputTokens: 2048,
-          responseMimeType,
-        },
-      }),
+      body: JSON.stringify(buildGenerateContentBody(request)),
     },
   );
 
@@ -178,8 +186,92 @@ export async function generateJson<T>(request: GeminiTextRequest): Promise<T> {
     ...request,
     responseMimeType: 'application/json',
     temperature: request.temperature ?? 0.35,
+    maxOutputTokens: request.maxOutputTokens ?? 1024,
   });
   return JSON.parse(extractJsonCandidate(raw)) as T;
+}
+
+export async function streamText(
+  request: GeminiTextRequest,
+  onChunk: (text: string) => void,
+): Promise<string> {
+  const response = await fetch(
+    `${API_ROOT}/${encodeURIComponent(request.model)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(request.apiKey)}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(buildGenerateContentBody({
+        ...request,
+        maxOutputTokens: request.maxOutputTokens ?? 512,
+      })),
+    },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || `Gemini stream request failed with ${response.status}`);
+  }
+
+  if (!response.body) {
+    throw new Error('Gemini stream response did not include a readable body.');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let combined = '';
+
+  const flushEvent = (rawEvent: string) => {
+    const dataLines = rawEvent
+      .split(/\r?\n/)
+      .filter((line) => line.startsWith('data:'))
+      .map((line) => line.slice(5).trimStart());
+
+    if (!dataLines.length) {
+      return;
+    }
+
+    const payloadText = dataLines.join('\n').trim();
+    if (!payloadText || payloadText === '[DONE]') {
+      return;
+    }
+
+    const payload = JSON.parse(payloadText) as unknown;
+    const chunkText = extractText(payload);
+    if (!chunkText) {
+      return;
+    }
+
+    combined += chunkText;
+    onChunk(combined);
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+
+    let separatorMatch = buffer.match(/\r?\n\r?\n/);
+    while (separatorMatch?.index !== undefined) {
+      const separatorIndex = separatorMatch.index;
+      const separatorLength = separatorMatch[0].length;
+      const rawEvent = buffer.slice(0, separatorIndex);
+      buffer = buffer.slice(separatorIndex + separatorLength);
+      flushEvent(rawEvent);
+      separatorMatch = buffer.match(/\r?\n\r?\n/);
+    }
+
+    if (done) {
+      const trailing = buffer.trim();
+      if (trailing) {
+        flushEvent(trailing);
+      }
+      break;
+    }
+  }
+
+  return combined.trim();
 }
 
 export async function generateSpeechAudio({
