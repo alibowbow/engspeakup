@@ -1265,7 +1265,6 @@ export default function App() {
       if (settings.autoSpeakAi) void playAssistantAudio(finalReply);
       if (challengeMode && previousUserTurns < challengeTargetTurns && previousUserTurns + 1 >= challengeTargetTurns) {
         setBusy('challenge');
-        openPracticePanel('challenge');
         const result = await evaluateChallengeSession(completedSession);
         if (result.usedFallback) {
           setNotice(
@@ -1298,7 +1297,6 @@ export default function App() {
         coachTip: 'API 키가 없어 기본 워밍업 문장을 보여주고 있습니다.',
         focusPoint: selectedScenario.challenge,
       });
-      openPracticePanel('suggestions');
       setNotice('AI 없이 기본 워밍업 문장을 보여주고 있습니다.');
       return;
     }
@@ -1312,7 +1310,6 @@ export default function App() {
         temperature: 0.4,
       });
       setBundle(normalizeSuggestionBundle(payload, selectedScenario));
-      openPracticePanel('suggestions');
       setNotice('다음 답변 후보 3개를 준비했습니다.');
     } catch (error) {
       setNotice(error instanceof Error ? `다음 답변 추천 실패: ${error.message}` : '다음 답변 추천에 실패했습니다.');
@@ -1352,7 +1349,6 @@ export default function App() {
       };
       setAnalyses((current) => [entry, ...current]);
       setVocabulary((current) => mergeVocabulary(current, entry.vocabulary));
-      openPracticePanel('analysis');
       setNotice('최근 문장을 분석했습니다.');
     } catch (error) {
       setNotice(error instanceof Error ? `분석 실패: ${error.message}` : '분석에 실패했습니다.');
@@ -1370,7 +1366,6 @@ export default function App() {
     if (!settings.apiKey.trim()) {
       upsert({ ...activeSession, summary: fallback });
       setVocabulary((current) => mergeVocabulary(current, fallback.notableVocabulary));
-      openPracticePanel('recap');
       setNotice('API 없이 로컬 대화 요약을 만들었습니다.');
       return;
     }
@@ -1386,11 +1381,9 @@ export default function App() {
       const summary = normalizeSummary(payload, fallback);
       upsert({ ...activeSession, summary });
       setVocabulary((current) => mergeVocabulary(current, summary.notableVocabulary));
-      openPracticePanel('recap');
       setNotice('대화 요약이 준비되었습니다.');
     } catch (error) {
       upsert({ ...activeSession, summary: fallback });
-      openPracticePanel('recap');
       setNotice(error instanceof Error ? `대화 요약 생성 실패: ${error.message}` : '대화 요약 생성에 실패했습니다.');
     } finally {
       setBusy(null);
