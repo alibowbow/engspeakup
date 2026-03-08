@@ -216,12 +216,12 @@ button, input, textarea, select { font: inherit; }
   margin: 0 4px;
   padding: 14px;
   text-align: left;
-  background: linear-gradient(180deg, rgba(245, 166, 35, 0.1), rgba(245, 166, 35, 0.04));
-  border: 1px solid rgba(245, 166, 35, 0.14);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
-.sidebar-spotlight:hover { transform: translateY(-1px); border-color: rgba(245, 166, 35, 0.24); }
+.sidebar-spotlight:hover { transform: translateY(-1px); border-color: var(--border-hi); }
 .sidebar-spotlight strong { display: block; margin: 10px 0 6px; font-size: 14px; color: var(--text-1); }
 .sidebar-spotlight p { font-size: 12.5px; color: var(--text-2); }
 
@@ -365,7 +365,7 @@ button, input, textarea, select { font: inherit; }
   font-weight: 500;
 }
 
-.badge-accent { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(245, 166, 35, 0.2); }
+.badge-accent { background: var(--bg-3); color: var(--text-2); border: 1px solid var(--border); }
 .badge-neutral { background: var(--bg-3); color: var(--text-2); border: 1px solid var(--border); }
 
 .practice-shell {
@@ -386,12 +386,25 @@ button, input, textarea, select { font: inherit; }
 
 .scenario-bar {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 10px;
   padding: 14px 40px;
   border-bottom: 1px solid var(--border);
   background: var(--topbar-strong);
 }
+
+.scenario-bar--tiered { align-items: stretch; }
+
+.scenario-tier {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.scenario-tier--primary { justify-content: space-between; }
+.scenario-tier--tools { padding-top: 4px; }
+.scenario-tier--meta { padding-top: 2px; }
 
 .scenario-badge { display: inline-flex; align-items: center; gap: 6px; }
 .scenario-summary { min-width: 0; flex: 1 1 260px; }
@@ -399,8 +412,18 @@ button, input, textarea, select { font: inherit; }
 .scenario-caption, .card-subtitle, .form-hint, .toggle-desc, .analysis-sentence, .card-copy { color: var(--text-2); }
 .scenario-meta, .catalog-meta, .message-time { color: var(--text-3); }
 .scenario-caption { font-size: 12.5px; }
-.scenario-meta { display: flex; gap: 16px; margin-left: auto; font-size: 12.5px; white-space: nowrap; }
-.scenario-bar-actions { display: flex; align-items: center; gap: 8px; }
+.scenario-primary-actions,
+.advanced-tool-actions,
+.scenario-meta--collapsible {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.scenario-meta--collapsible {
+  margin-top: 4px;
+  font-size: 12.5px;
+}
 
 .practice-toolbar {
   align-items: stretch;
@@ -408,7 +431,7 @@ button, input, textarea, select { font: inherit; }
   gap: 14px;
   padding: 14px 40px;
   border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--bg-1) 80%, transparent);
+  background: color-mix(in srgb, var(--bg-1) 86%, transparent);
 }
 
 .session-state-card {
@@ -421,8 +444,8 @@ button, input, textarea, select { font: inherit; }
 }
 
 .session-state-card--challenge {
-  background: var(--accent-dim);
-  border-color: rgba(245, 166, 35, 0.24);
+  background: color-mix(in srgb, var(--accent-dim) 45%, var(--bg-2));
+  border-color: var(--border-hi);
 }
 
 .session-state-title {
@@ -475,16 +498,14 @@ button, input, textarea, select { font: inherit; }
 }
 
 .analysis-spotlight-card--accent {
-  border-color: rgba(245, 166, 35, 0.24);
-  background: rgba(245, 166, 35, 0.09);
+  border-color: var(--border-hi);
+  background: var(--bg-2);
 }
 
 .challenge-result-card {
   margin: 0;
-  border-color: rgba(245, 166, 35, 0.22);
-  background:
-    linear-gradient(180deg, rgba(245, 166, 35, 0.08), rgba(245, 166, 35, 0.03)),
-    var(--panel-bg);
+  border-color: var(--border);
+  background: var(--panel-bg);
 }
 
 .challenge-result-head,
@@ -844,6 +865,14 @@ button, input, textarea, select { font: inherit; }
   overflow-x: auto;
 }
 
+
+.practice-panel-more-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 0 20px 12px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
 .practice-panel-tab {
   display: inline-flex;
   align-items: center;
@@ -1066,6 +1095,8 @@ button, input, textarea, select { font: inherit; }
 .toast-title { font-size: 14px; font-weight: 600; }
 .toast-msg { font-size: 12.5px; color: var(--text-2); margin-top: 2px; }
 
+.empty-actions--single .btn { min-width: 180px; }
+
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -1150,16 +1181,9 @@ button, input, textarea, select { font: inherit; }
     min-width: 220px;
   }
 
-  .scenario-meta {
-    margin-left: 0;
+  .scenario-meta--collapsible {
     flex: 1 1 220px;
-    flex-wrap: wrap;
     gap: 8px 14px;
-    white-space: normal;
-  }
-
-  .scenario-bar-actions {
-    margin-left: auto;
   }
 
   .practice-toolbar-actions {
@@ -1212,7 +1236,7 @@ button, input, textarea, select { font: inherit; }
   .chat-feed { padding: 20px 16px; }
   .input-area { padding: 14px 16px 20px; }
   .catalog-popover { margin: 16px 16px 0; }
-  .scenario-meta { display: none; }
+  .scenario-meta--collapsible { display: none; }
   .practice-toolbar-actions { gap: 6px; }
   .practice-toolbar-actions .btn-ghost:last-child { display: none; }
   .toolbar-select { width: 100%; justify-content: space-between; }

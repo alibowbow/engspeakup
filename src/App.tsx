@@ -179,11 +179,12 @@ const CHALLENGE_SUBSCORE_LABELS: Record<keyof ChallengeReview['subscores'], stri
 };
 const PRACTICE_PANEL_TABS: Array<{ id: PracticePanelTab; label: string }> = [
   { id: 'guide', label: '상황 가이드' },
-  { id: 'challenge', label: '챌린지 결과' },
   { id: 'suggestions', label: '다음 답변' },
   { id: 'analysis', label: '문장 교정' },
+  { id: 'challenge', label: '챌린지 결과' },
   { id: 'recap', label: '대화 요약' },
 ];
+const PRACTICE_PANEL_PRIMARY_TABS: PracticePanelTab[] = ['suggestions', 'guide', 'analysis'];
 const TTS_VOICE_OPTIONS = getGeminiTtsVoices();
 const TTS_VOICE_GROUPS = {
   female: TTS_VOICE_OPTIONS.filter((voice) => voice.group === 'female'),
@@ -781,7 +782,10 @@ export default function App() {
   const [listening, setListening] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false);
   const [showTools, setShowTools] = useState(false);
-  const [practicePanelTab, setPracticePanelTab] = useState<PracticePanelTab>('guide');
+  const [practicePanelTab, setPracticePanelTab] = useState<PracticePanelTab>('suggestions');
+  const [showMorePracticeTabs, setShowMorePracticeTabs] = useState(false);
+  const [showAdvancedTools, setShowAdvancedTools] = useState(false);
+  const [showScenarioMeta, setShowScenarioMeta] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [toastVisible, setToastVisible] = useState(true);
   const deferredSearch = useDeferredValue(search);
@@ -834,8 +838,11 @@ export default function App() {
   const hasCurrentScenarioSession = Boolean(activeSession && activeSession.scenarioId === selectedScenarioId);
   const hasCurrentMessages = Boolean(hasCurrentScenarioSession && activeSession?.messages.length);
   const suggestionChips = (bundle?.suggestions.length ? bundle.suggestions : currentScenario.warmups).slice(0, 3);
+  const primaryPracticeTabs = PRACTICE_PANEL_TABS.filter((tab) => PRACTICE_PANEL_PRIMARY_TABS.includes(tab.id));
+  const secondaryPracticeTabs = PRACTICE_PANEL_TABS.filter((tab) => !PRACTICE_PANEL_PRIMARY_TABS.includes(tab.id));
   const openPracticePanel = (tab: PracticePanelTab) => {
     setPracticePanelTab(tab);
+    setShowMorePracticeTabs(!PRACTICE_PANEL_PRIMARY_TABS.includes(tab));
     setShowTools(true);
   };
   const togglePracticePanel = (tab: PracticePanelTab) => {
@@ -1614,32 +1621,80 @@ export default function App() {
           {view === 'practice' && (
             <div className={`practice-shell ${showTools ? 'practice-shell--tools' : ''}`}>
               <section className="conversation-layout">
-                <div className="scenario-bar">
-                  <button
-                    type="button"
-                    className="btn btn-icon"
-                    onClick={() => setShowCatalog((current) => !current)}
-                    aria-label="시나리오 목록 열기"
-                  >
-                    <Icon name="list" />
-                  </button>
-                  <span className="scenario-badge">
-                    <Icon name="bolt" />
-                    {labelCategory(currentScenario.category)}
-                  </span>
-                  <div className="scenario-summary">
-                    <div className="scenario-title">{currentScenario.title}</div>
-                    <div className="scenario-caption">{currentScenario.subtitle}</div>
+                <div className="scenario-bar scenario-bar--tiered">
+                  <div className="scenario-tier scenario-tier--primary">
+                    <button
+                      type="button"
+                      className="btn btn-icon"
+                      onClick={() => setShowCatalog((current) => !current)}
+                      aria-label="시나리오 목록 열기"
+                    >
+                      <Icon name="list" />
+                    </button>
+                    <div className="scenario-summary">
+                      <div className="scenario-title">{currentScenario.title}</div>
+                      <div className="scenario-caption">{currentScenario.subtitle}</div>
+                    </div>
+                    <div className="scenario-primary-actions">
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={voiceInput} disabled={busy === 'challenge'}>
+                        <Icon name="mic" />
+                        말하기
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        disabled={busy === 'chat' || busy === 'challenge' || !composer.trim()}
+                        onClick={() => void send()}
+                      >
+                        <Icon name="send" />
+                        전송
+                      </button>
+                    </div>
                   </div>
-                  <div className="scenario-meta">
-                    <span>{labelDifficulty(currentScenario.difficulty)}</span>
-                    <span>{labelRoleplayMode(roleplayMode)}</span>
-                    <span>{activeChallenge.enabled ? `챌린지 ${activeChallenge.userTurns}/${activeChallenge.targetTurns}턴` : hasCurrentMessages ? `${activeSession?.messages.length ?? 0}턴 진행` : '새 세션'}</span>
-                  </div>
-                  <div className="scenario-bar-actions">
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => togglePracticePanel('guide')}>
+
+                  <div className="scenario-tier scenario-tier--tools">
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => togglePracticePanel('guide')}>
                       {showTools ? '코치 도구 닫기' : readyPracticeToolCount ? `코치 도구 ${readyPracticeToolCount}` : '코치 도구'}
                     </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => setShowAdvancedTools((current) => !current)}
+                    >
+                      {showAdvancedTools ? '고급 도구 숨기기' : '고급 도구 보기'}
+                    </button>
+                    {showAdvancedTools && (
+                      <div className="advanced-tool-actions">
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={analyze} disabled={busy === 'analysis' || busy === 'challenge'}>
+                          {busy === 'analysis' ? '교정 중...' : '문장 교정'}
+                        </button>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={recap} disabled={busy === 'recap' || busy === 'challenge'}>
+                          {busy === 'recap' ? '정리 중...' : '대화 요약'}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={activeChallenge.enabled ? retryChallenge : startChallenge}
+                          disabled={busy === 'challenge'}
+                        >
+                          {activeChallenge.enabled ? '챌린지 재도전' : '챌린지 시작'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="scenario-tier scenario-tier--meta">
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowScenarioMeta((current) => !current)}>
+                      {showScenarioMeta ? '메타 정보 접기' : '메타 정보 보기'}
+                    </button>
+                    {showScenarioMeta && (
+                      <div className="scenario-meta scenario-meta--collapsible">
+                        <span>{labelCategory(currentScenario.category)}</span>
+                        <span>{labelDifficulty(currentScenario.difficulty)}</span>
+                        <span>{labelRoleplayMode(roleplayMode)}</span>
+                        <span>{activeChallenge.enabled ? `챌린지 ${activeChallenge.userTurns}/${activeChallenge.targetTurns}턴` : hasCurrentMessages ? `${activeSession?.messages.length ?? 0}턴 진행` : '새 세션'}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1652,20 +1707,20 @@ export default function App() {
                           ? activeChallenge.completed
                             ? '챌린지 클리어'
                             : '챌린지 진행 중'
-                        : hasCurrentMessages
-                          ? '일반 연습 진행 중'
-                          : '새 연습 준비'}
+                          : hasCurrentMessages
+                            ? '일반 연습 진행 중'
+                            : '새 연습 준비'}
                     </div>
                     <div className="session-state-copy">
                       {busy === 'challenge'
                         ? '대화 전체를 읽고 100점 만점 최종 점수와 등급을 계산하고 있습니다.'
                         : activeChallengeReview
                           ? `${activeChallengeReview.medal} · ${activeChallengeReview.score100}점 / 100점 · ${activeChallengeReview.grade} 등급`
-                        : activeChallenge.enabled
-                          ? `${activeChallenge.userTurns}/${activeChallenge.targetTurns}턴 진행 중 · 종료 후 AI가 100점 만점으로 최종 평가합니다.`
-                        : hasCurrentMessages
-                          ? `현재 대화 ${activeSession?.messages.length ?? 0}턴 · 필요하면 바로 비우고 다시 시작할 수 있습니다.`
-                          : `같은 상황으로 일반 연습을 시작하거나 ${challengeTargetTurns}턴 챌린지에 바로 도전할 수 있습니다.`}
+                          : activeChallenge.enabled
+                            ? `${activeChallenge.userTurns}/${activeChallenge.targetTurns}턴 진행 중 · 종료 후 AI가 100점 만점으로 최종 평가합니다.`
+                            : hasCurrentMessages
+                              ? `현재 대화 ${activeSession?.messages.length ?? 0}턴 · 필요하면 바로 비우고 다시 시작할 수 있습니다.`
+                              : `다음 답변 버튼으로 첫 문장을 빠르게 준비해 보세요.`}
                     </div>
                   </div>
 
@@ -1704,30 +1759,8 @@ export default function App() {
                         일반 시작
                       </button>
                     )}
-
-                    {activeChallenge.enabled ? (
-                      <>
-                        <button type="button" className="btn btn-primary btn-sm" onClick={retryChallenge} disabled={busy === 'challenge'}>
-                          재도전
-                        </button>
-                        <button type="button" className="btn btn-ghost btn-sm" onClick={stopChallenge} disabled={busy === 'challenge'}>
-                          챌린지 정지
-                        </button>
-                      </>
-                    ) : (
-                      <button type="button" className="btn btn-primary btn-sm" onClick={startChallenge} disabled={busy === 'challenge'}>
-                        챌린지 시작
-                      </button>
-                    )}
-
                     <button type="button" className="btn btn-ghost btn-sm" onClick={suggest} disabled={busy === 'suggestions' || busy === 'challenge'}>
                       {busy === 'suggestions' ? '생성 중...' : '다음 답변'}
-                    </button>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={analyze} disabled={busy === 'analysis' || busy === 'challenge'}>
-                      {busy === 'analysis' ? '교정 중...' : '문장 교정'}
-                    </button>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={recap} disabled={busy === 'recap' || busy === 'challenge'}>
-                      {busy === 'recap' ? '정리 중...' : '대화 요약'}
                     </button>
                   </div>
                 </div>
@@ -1802,12 +1835,9 @@ export default function App() {
                       title="새 대화 연습을 시작해 보세요"
                       description={currentScenario.challenge}
                       action={
-                        <div className="empty-actions">
-                          <button type="button" className="btn btn-secondary" onClick={() => startFreshSession({ challenge: false })}>
-                            일반 시작
-                          </button>
-                          <button type="button" className="btn btn-primary" onClick={startChallenge}>
-                            챌린지 시작
+                        <div className="empty-actions empty-actions--single">
+                          <button type="button" className="btn btn-primary" onClick={() => startFreshSession({ challenge: false })}>
+                            지금 시작하기
                           </button>
                         </div>
                       }
@@ -1926,19 +1956,45 @@ export default function App() {
                   </div>
 
                   <div className="practice-panel-tabs" role="tablist" aria-label="도구 패널 탭">
-                    {PRACTICE_PANEL_TABS.map((tab) => (
+                    {primaryPracticeTabs.map((tab) => (
                       <button
                         key={tab.id}
                         type="button"
                         role="tab"
                         aria-selected={practicePanelTab === tab.id}
                         className={`practice-panel-tab ${practicePanelTab === tab.id ? 'active' : ''}`}
-                        onClick={() => setPracticePanelTab(tab.id)}
+                        onClick={() => {
+                          setPracticePanelTab(tab.id);
+                          setShowMorePracticeTabs(false);
+                        }}
                       >
                         {tab.label}
                       </button>
                     ))}
+                    <button
+                      type="button"
+                      className={`practice-panel-tab ${showMorePracticeTabs ? 'active' : ''}`}
+                      aria-expanded={showMorePracticeTabs}
+                      onClick={() => setShowMorePracticeTabs((current) => !current)}
+                    >
+                      더보기
+                    </button>
                   </div>
+
+                  {showMorePracticeTabs && (
+                    <div className="practice-panel-more-tabs">
+                      {secondaryPracticeTabs.map((tab) => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          className={`practice-panel-tab ${practicePanelTab === tab.id ? 'active' : ''}`}
+                          onClick={() => setPracticePanelTab(tab.id)}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
                   <div className="practice-panel-body">
                     {practicePanelTab === 'guide' && (
