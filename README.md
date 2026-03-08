@@ -26,6 +26,12 @@ npm run dev
 npm run build
 ```
 
+## 스타일 수정 진입점
+
+- 공통 스타일 시스템 수정은 `src/styles.css` **한 파일만** 기준으로 진행합니다.
+- 레거시 정적 페이지(`analyses.html`, `favorites.html`)도 동일하게 `src/styles.css`를 참조합니다.
+- `style.css`는 제거되어 더 이상 사용하지 않습니다.
+
 ## API 키 정책
 
 - API 키는 사용자가 직접 입력합니다.
