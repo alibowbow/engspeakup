@@ -190,6 +190,7 @@ button, input, textarea, select { font: inherit; }
 }
 
 .nav-label-mobile { display: none; }
+.sidebar .nav-item small { display: none; }
 .nav-item-row {
   display: flex;
   align-items: center;
