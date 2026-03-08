@@ -91,11 +91,11 @@ type IconName =
   | 'sun'
   | 'moon';
 
-const NAVS: Array<{ id: PracticeView; label: string; mobileLabel: string; hint: string; mobileHint: string; icon: IconName }> = [
-  { id: 'practice', label: '대화 연습', mobileLabel: '연습', hint: '실전 대화', mobileHint: '실전', icon: 'chat' },
-  { id: 'library', label: '시나리오', mobileLabel: '시나', hint: '상황 라이브러리', mobileHint: '상황', icon: 'library' },
-  { id: 'review', label: '복습', mobileLabel: '복습', hint: '저장 문장과 노트', mobileHint: '노트', icon: 'bookmark' },
-  { id: 'analytics', label: '통계', mobileLabel: '통계', hint: '학습 진행 현황', mobileHint: '진행', icon: 'chart' },
+const NAVS: Array<{ id: PracticeView; label: string; mobileLabel: string; icon: IconName }> = [
+  { id: 'practice', label: '대화 연습', mobileLabel: '연습', icon: 'chat' },
+  { id: 'library', label: '시나리오', mobileLabel: '시나', icon: 'library' },
+  { id: 'review', label: '복습', mobileLabel: '복습', icon: 'bookmark' },
+  { id: 'analytics', label: '통계', mobileLabel: '통계', icon: 'chart' },
 ];
 
 const PAGE_META: Record<PracticeView, { title: string; description: string }> = {
@@ -891,43 +891,34 @@ export default function App() {
   );
   const activeChallengeLevel = resolveChallengeLevelView(activeChallengeReview);
   const activeChallengeSubscores = resolveChallengeSubscores(activeChallengeReview);
-  const practiceToolNav: Array<{ id: PracticePanelTab; label: string; hint: string; icon: IconName; ready: boolean }> = [
+  const practiceToolNav: Array<{ id: PracticePanelTab; label: string; icon: IconName; ready: boolean }> = [
     {
       id: 'guide',
       label: '상황 가이드',
-      hint: '미션, 표현, 어휘 보기',
       icon: 'list',
       ready: true,
     },
     {
       id: 'challenge',
       label: '챌린지 결과',
-      hint: activeChallengeReview
-        ? `${activeChallengeReview.score100}점 · ${activeChallengeReview.grade} 등급`
-        : activeChallenge.enabled
-          ? `${activeChallenge.userTurns}/${activeChallenge.targetTurns}턴 진행 중`
-          : '점수와 등급 확인',
       icon: 'bolt',
       ready: Boolean(activeChallenge.enabled || activeChallengeReview),
     },
     {
       id: 'analysis',
       label: '문장 교정',
-      hint: currentSessionAnalysis ? '방금 쓴 문장 교정 완료' : '내 문장 다듬기',
       icon: 'check',
       ready: Boolean(currentSessionAnalysis),
     },
     {
       id: 'suggestions',
       label: '다음 답변',
-      hint: bundle ? '추천 문장 3개 준비됨' : '다음 문장 추천받기',
       icon: 'sparkles',
       ready: Boolean(bundle),
     },
     {
       id: 'recap',
       label: '대화 요약',
-      hint: activeSession?.summary ? '성과와 다음 숙제 정리됨' : '이번 연습 한 번에 정리',
       icon: 'wave',
       ready: Boolean(activeSession?.summary),
     },
@@ -1523,8 +1514,6 @@ export default function App() {
                   <span className="nav-label-desktop">{item.label}</span>
                   <span className="nav-label-mobile">{item.mobileLabel}</span>
                 </div>
-                <small>{item.hint}</small>
-                <small className="nav-item-badge">{item.mobileHint}</small>
               </div>
             </button>
           ))}
@@ -1546,7 +1535,6 @@ export default function App() {
                   <span>{item.label}</span>
                   {item.ready && <span className="nav-item-status" aria-hidden="true" />}
                 </div>
-                <small>{item.hint}</small>
               </div>
             </button>
           ))}
@@ -1572,7 +1560,6 @@ export default function App() {
             <Icon name="settings" />
             <div>
               <div>설정</div>
-              <small>API, 음성, 저장 데이터</small>
             </div>
           </button>
           <div className="api-status">
