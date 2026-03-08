@@ -75,7 +75,7 @@ html[data-theme='light'] {
 }
 
 body {
-  min-height: 100dvh;
+  min-height: min(100dvh, 100%);
   font-family: var(--font-sans);
   background:
     radial-gradient(circle at top left, rgba(245, 166, 35, 0.08), transparent 28rem),
@@ -85,7 +85,7 @@ body {
   line-height: 1.6;
 }
 
-#root { min-height: 100dvh; }
+#root { min-height: min(100dvh, 100%); }
 a { color: inherit; text-decoration: none; }
 button { font-family: inherit; cursor: pointer; border: none; background: none; }
 button, input, textarea, select { font: inherit; }
@@ -103,8 +103,15 @@ button, input, textarea, select { font: inherit; }
 .app-layout {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
-  grid-template-rows: 100dvh;
-  overflow: hidden;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: min(100dvh, 100%);
+  overflow-x: clip;
+}
+
+@supports (height: 100svh) {
+  body,
+  #root,
+  .app-layout { min-height: 100svh; }
 }
 
 .sidebar {
@@ -371,7 +378,7 @@ button, input, textarea, select { font: inherit; }
 .practice-shell {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  height: calc(100dvh - 60px);
+  min-height: calc(min(100dvh, 100%) - 60px);
 }
 
 .practice-shell--tools { grid-template-columns: minmax(0, 1fr) 560px; }
@@ -618,6 +625,7 @@ button, input, textarea, select { font: inherit; }
 
 .chat-feed {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 28px 40px;
   display: flex;
@@ -700,6 +708,7 @@ button, input, textarea, select { font: inherit; }
 
 .input-area {
   padding: 20px 40px 28px;
+  padding-bottom: max(calc(20px + env(safe-area-inset-bottom, 0px)), calc(12px + env(keyboard-inset-height, 0px)));
   border-top: 1px solid var(--border);
   background: var(--topbar-strong);
 }
@@ -1105,7 +1114,7 @@ button, input, textarea, select { font: inherit; }
   .health-grid,
   .stats-grid { grid-template-columns: 1fr; }
 
-  .practice-shell { height: auto; min-height: calc(100dvh - 60px); }
+  .practice-shell { min-height: calc(min(100dvh, 100%) - 60px); }
   .practice-panel {
     border-left: none;
     border-top: 1px solid var(--border);
@@ -1173,7 +1182,11 @@ button, input, textarea, select { font: inherit; }
 }
 
 @media (max-width: 768px) {
-  .app-layout { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  .app-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+    min-height: min(100dvh, 100%);
+  }
   .sidebar {
     order: 2;
     flex-direction: row;
@@ -1210,7 +1223,10 @@ button, input, textarea, select { font: inherit; }
   .page-header-actions .btn:not(.btn-icon) { display: none; }
   .main-content { padding: 20px 16px 24px; }
   .chat-feed { padding: 20px 16px; }
-  .input-area { padding: 14px 16px 20px; }
+  .input-area {
+    padding: 14px 16px 20px;
+    padding-bottom: max(calc(14px + env(safe-area-inset-bottom, 0px)), calc(10px + env(keyboard-inset-height, 0px)));
+  }
   .catalog-popover { margin: 16px 16px 0; }
   .scenario-meta { display: none; }
   .practice-toolbar-actions { gap: 6px; }
@@ -1230,4 +1246,14 @@ button, input, textarea, select { font: inherit; }
   .message.ai { max-width: 100%; }
   .message-avatar { display: none; }
   .message-sender-row { flex-wrap: wrap; }
+}
+
+@media (max-width: 768px) and (orientation: portrait) {
+  .app-layout,
+  .practice-shell { min-height: 100svh; }
+}
+
+@media (max-width: 768px) and (orientation: landscape) {
+  .app-layout,
+  .practice-shell { min-height: 100lvh; }
 }
