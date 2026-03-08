@@ -1,5 +1,6 @@
 import type {
   AnalysisEntry,
+  ChallengeReview,
   CoachMode,
   Message,
   Scenario,
@@ -175,6 +176,51 @@ Rules:
 `.trim();
 }
 
+export function buildChallengeReviewPrompt(
+  scenario: Scenario,
+  session: Session,
+  targetTurns: number,
+): string {
+  const resolved = resolveScenarioDetails(scenario, session);
+  const transcript = session.messages
+    .map((message) => `${message.role.toUpperCase()}: ${message.text}`)
+    .join('\n');
+  return `
+You are grading a completed English speaking challenge for a Korean learner.
+Return strict JSON with this shape:
+{
+  "score100": 0,
+  "grade": "S",
+  "medal": "",
+  "summary": "",
+  "verdict": "",
+  "strengths": ["", ""],
+  "improvements": ["", ""],
+  "rewards": ["", ""],
+  "nextMission": ""
+}
+
+Scenario: ${resolved.title}
+Scenario context: ${resolved.description}
+Focus skill: ${session.focusSkill}
+Target turns: ${targetTurns}
+Mission steps: ${resolved.missionSteps.join(' | ')}
+Key expressions: ${resolved.keyExpressions.join(' | ')}
+Transcript:
+${transcript}
+
+Rules:
+- score100 must be an integer from 0 to 100.
+- grade must be one of S, A, B, C, D.
+- medal should be one Korean word such as 다이아, 플래티넘, 골드, 실버, 브론즈.
+- summary and verdict must be in Korean and concise.
+- strengths and improvements should each have 2-3 concrete points.
+- rewards should sound game-like, short, and in Korean.
+- nextMission should be one actionable Korean sentence for the next run.
+- Reward clarity, naturalness, task completion, responsiveness, and initiative.
+`.trim();
+}
+
 export function buildOfflineSummary(scenario: Scenario, session: Session): SessionSummary {
   const userTurns = session.messages.filter((message) => message.role === 'user').length;
   const fallbackVocabulary = scenario.vocabulary.slice(0, 3);
@@ -249,6 +295,31 @@ export function normalizeSummary(
     notableVocabulary: normalizeVocabularyList(
       payload.notableVocabulary ?? fallback.notableVocabulary,
     ),
+  };
+}
+
+export function normalizeChallengeReview(
+  payload: Partial<ChallengeReview>,
+  fallback: ChallengeReview,
+): ChallengeReview {
+  const rawScore = typeof payload.score100 === 'number' ? payload.score100 : fallback.score100;
+  const score100 = Math.max(0, Math.min(100, Math.round(rawScore)));
+  const grade = ['S', 'A', 'B', 'C', 'D'].includes(payload.grade ?? '')
+    ? (payload.grade as ChallengeReview['grade'])
+    : fallback.grade;
+  const strengths = (payload.strengths ?? []).filter(Boolean).slice(0, 3);
+  const improvements = (payload.improvements ?? []).filter(Boolean).slice(0, 3);
+  const rewards = (payload.rewards ?? []).filter(Boolean).slice(0, 4);
+  return {
+    score100,
+    grade,
+    medal: payload.medal?.trim() || fallback.medal,
+    summary: payload.summary?.trim() || fallback.summary,
+    verdict: payload.verdict?.trim() || fallback.verdict,
+    strengths: strengths.length ? strengths : fallback.strengths,
+    improvements: improvements.length ? improvements : fallback.improvements,
+    rewards: rewards.length ? rewards : fallback.rewards,
+    nextMission: payload.nextMission?.trim() || fallback.nextMission,
   };
 }
 

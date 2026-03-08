@@ -3,12 +3,14 @@ import type { ChangeEvent, FormEvent, ReactNode } from 'react';
 import { focusSkillOptions, modelPresets, scenarios, spotlightScenarioIds } from './data/scenarios';
 import {
   buildAnalysisPrompt,
+  buildChallengeReviewPrompt,
   buildConversationSystemPrompt,
   buildOfflineSummary,
   buildRecapPrompt,
   buildSuggestionPrompt,
   lastUserMessage,
   normalizeAnalysisEntry,
+  normalizeChallengeReview,
   normalizeSuggestionBundle,
   normalizeSummary,
   resolveScenarioDetails,
@@ -33,6 +35,7 @@ import {
 } from './lib/storage';
 import type {
   AnalysisEntry,
+  ChallengeReview,
   PracticeView,
   RoleplayMode,
   Scenario,
@@ -44,7 +47,7 @@ import type {
   VocabularyCard,
 } from './types';
 
-type Busy = 'chat' | 'suggestions' | 'analysis' | 'recap' | null;
+type Busy = 'chat' | 'suggestions' | 'analysis' | 'recap' | 'challenge' | null;
 type IconName =
   | 'chat'
   | 'library'
@@ -156,9 +159,26 @@ function challengeStatsForSession(session: Session, analyses: AnalysisEntry[]) {
   return buildChallengeSnapshot(session, resolveScenarioDetails(scenarioById(session.scenarioId), session), analyses);
 }
 
+function medalFromScore(score100: number) {
+  if (score100 >= 95) return '다이아';
+  if (score100 >= 88) return '플래티넘';
+  if (score100 >= 80) return '골드';
+  if (score100 >= 70) return '실버';
+  return '브론즈';
+}
+
+function gradeFromScore(score100: number): ChallengeReview['grade'] {
+  if (score100 >= 93) return 'S';
+  if (score100 >= 85) return 'A';
+  if (score100 >= 75) return 'B';
+  if (score100 >= 65) return 'C';
+  return 'D';
+}
+
 function buildChallengeSnapshot(session: Session | null, scenario: Scenario, analyses: AnalysisEntry[]) {
   const enabled = session?.challengeMode ?? false;
   const targetTurns = session?.challengeTargetTurns ?? 8;
+  const review = session?.challengeReview ?? null;
   const userMessages = session?.messages.filter((message) => message.role === 'user') ?? [];
   const analysisCount = session ? analyses.filter((entry) => entry.sessionId === session.id).length : 0;
   const expressionHits = userMessages.reduce((sum, message) => {
@@ -177,14 +197,16 @@ function buildChallengeSnapshot(session: Session | null, scenario: Scenario, ana
   const analysisBonus = Math.min(3, analysisCount) * 8;
   const recapBonus = session?.summary ? 12 : 0;
   const completionBonus = enabled && userMessages.length >= targetTurns ? 20 : 0;
-  const score = enabled ? baseTurns + depthBonus + expressionBonus + analysisBonus + recapBonus + completionBonus : 0;
+  const heuristicScore = enabled ? baseTurns + depthBonus + expressionBonus + analysisBonus + recapBonus + completionBonus : 0;
+  const score = enabled ? review?.score100 ?? Math.min(99, heuristicScore) : 0;
 
   let rank = '-';
   if (enabled) {
-    if (score >= targetTurns * 24) rank = 'S';
-    else if (score >= targetTurns * 20) rank = 'A';
-    else if (score >= targetTurns * 16) rank = 'B';
-    else if (score >= targetTurns * 12) rank = 'C';
+    if (review?.grade) rank = review.grade;
+    else if (heuristicScore >= targetTurns * 24) rank = 'S';
+    else if (heuristicScore >= targetTurns * 20) rank = 'A';
+    else if (heuristicScore >= targetTurns * 16) rank = 'B';
+    else if (heuristicScore >= targetTurns * 12) rank = 'C';
     else rank = 'D';
   }
 
@@ -200,6 +222,68 @@ function buildChallengeSnapshot(session: Session | null, scenario: Scenario, ana
     expressionHits,
     depthBonus,
     recapBonus,
+    medal: review?.medal ?? medalFromScore(Math.min(99, heuristicScore)),
+    review,
+  };
+}
+
+function buildOfflineChallengeReview(
+  scenario: Scenario,
+  session: Session,
+  snapshot: ReturnType<typeof buildChallengeSnapshot>,
+): ChallengeReview {
+  const userMessages = session.messages.filter((message) => message.role === 'user');
+  const averageWords = userMessages.length
+    ? userMessages.reduce((sum, message) => sum + words(message.text), 0) / userMessages.length
+    : 0;
+  const turnRatio = snapshot.targetTurns ? Math.min(1, snapshot.userTurns / snapshot.targetTurns) : 0;
+  const expressionRatio = Math.min(1, snapshot.expressionHits / Math.max(1, scenario.keyExpressions.length));
+  const score100 = Math.max(
+    48,
+    Math.min(
+      100,
+      Math.round(
+        turnRatio * 38 +
+          Math.min(1, averageWords / 16) * 22 +
+          expressionRatio * 16 +
+          Math.min(1, snapshot.analysisCount / 3) * 10 +
+          (session.summary ? 7 : 0) +
+          (snapshot.completed ? 7 : 0),
+      ),
+    ),
+  );
+  const grade = gradeFromScore(score100);
+  const medal = medalFromScore(score100);
+
+  return {
+    score100,
+    grade,
+    medal,
+    summary: `${scenario.title} 챌린지를 ${snapshot.userTurns}턴까지 완주했고, ${session.focusSkill} 기준으로 ${score100}점 수준의 수행을 보였습니다.`,
+    verdict:
+      grade === 'S'
+        ? '핵심 표현과 흐름을 모두 잘 잡은 완성도 높은 챌린지였습니다.'
+        : grade === 'A'
+          ? '메시지는 충분히 잘 전달됐고, 한두 곳만 더 다듬으면 상위 등급입니다.'
+          : grade === 'B'
+            ? '상황 대응은 안정적이었지만 문장 밀도와 자연스러움을 더 올릴 여지가 있습니다.'
+            : '핵심 의도는 전달됐지만 문장 완성도와 표현 선택을 더 끌어올릴 필요가 있습니다.',
+    strengths: [
+      `${snapshot.userTurns}턴을 채우며 대화를 끝까지 이어 갔습니다.`,
+      `핵심 표현을 ${snapshot.expressionHits}회 사용해 시나리오 미션을 반영했습니다.`,
+      `${session.focusSkill}에 맞춰 직접 영어 문장을 만들어 응답했습니다.`,
+    ].slice(0, 3),
+    improvements: [
+      '문장을 한 단계 더 길게 확장해 이유나 근거를 붙여 보세요.',
+      '핵심 표현을 문맥에 맞게 더 자연스럽게 변형해서 사용해 보세요.',
+      '마지막 턴에서는 질문이나 제안을 덧붙여 주도권을 가져가 보세요.',
+    ],
+    rewards: [
+      `완주 보너스 +${Math.round(turnRatio * 35)}`,
+      `표현 활용 보너스 +${Math.round(expressionRatio * 25)}`,
+      `유창성 보너스 +${Math.round(Math.min(1, averageWords / 16) * 20)}`,
+    ],
+    nextMission: `${scenario.keyExpressions[0] ?? '핵심 표현'}을 포함해 같은 상황을 1턴 더 짧고 선명하게 다시 말해 보세요.`,
   };
 }
 
@@ -630,10 +714,18 @@ export default function App() {
     challenge: challengeStatsForSession(session, analyses),
   }));
   const challengeSessions = sessionChallengeSnapshots.filter((item) => item.challenge.enabled);
-  const clearedChallenges = challengeSessions.filter((item) => item.challenge.completed);
-  const bestChallengeScore = challengeSessions.reduce((max, item) => Math.max(max, item.challenge.score), 0);
-  const totalChallengeScore = challengeSessions.reduce((sum, item) => sum + item.challenge.score, 0);
+  const reviewedChallengeSessions = challengeSessions.filter((item) => item.challenge.review);
+  const clearedChallenges = reviewedChallengeSessions;
+  const bestChallengeScore = reviewedChallengeSessions.reduce(
+    (max, item) => Math.max(max, item.challenge.review?.score100 ?? 0),
+    0,
+  );
+  const totalChallengeScore = reviewedChallengeSessions.reduce(
+    (sum, item) => sum + (item.challenge.review?.score100 ?? 0),
+    0,
+  );
   const challengeStatsBySession = new Map(sessionChallengeSnapshots.map((item) => [item.session.id, item.challenge]));
+  const activeChallengeReview = hasCurrentScenarioSession ? activeSession?.challengeReview ?? null : null;
   const activeChallenge = buildChallengeSnapshot(
     activeSession && activeSession.scenarioId === selectedScenarioId
       ? activeSession
@@ -649,6 +741,7 @@ export default function App() {
           roleplayMode,
           challengeMode,
           challengeTargetTurns,
+          challengeReview: null,
           notes,
           completedMissionSteps: [],
           summary: null,
@@ -746,6 +839,7 @@ export default function App() {
       roleplayMode: overrides?.roleplayMode ?? roleplayMode,
       challengeMode: overrides?.challengeMode ?? challengeMode,
       challengeTargetTurns: overrides?.challengeTargetTurns ?? challengeTargetTurns,
+      challengeReview: null,
       notes: overrides?.notes ?? notes,
       completedMissionSteps: [],
       summary: null,
@@ -791,6 +885,41 @@ export default function App() {
       noticeMessage ?? (challenge ? `${challengeTargetTurns}턴 챌린지를 시작합니다.` : '새 말하기 세션이 준비되었습니다.'),
     );
     return session;
+  };
+
+  const evaluateChallengeSession = async (session: Session) => {
+    const resolvedScenario = resolveScenarioDetails(selectedScenario, session);
+    const snapshot = buildChallengeSnapshot(session, resolvedScenario, analyses);
+    const fallback = buildOfflineChallengeReview(resolvedScenario, session, snapshot);
+
+    try {
+      const payload = await generateJson<Partial<ChallengeReview>>({
+        apiKey: settings.apiKey.trim(),
+        model: settings.model.trim(),
+        systemInstruction: 'Return only valid JSON.',
+        userPrompt: buildChallengeReviewPrompt(resolvedScenario, session, snapshot.targetTurns),
+        temperature: 0.2,
+      });
+      const challengeReview = normalizeChallengeReview(payload, fallback);
+      const reviewedSession = upsert({
+        ...session,
+        challengeReview,
+        updatedAt: new Date().toISOString(),
+      });
+      return { reviewedSession, challengeReview, usedFallback: false };
+    } catch (error) {
+      const reviewedSession = upsert({
+        ...session,
+        challengeReview: fallback,
+        updatedAt: new Date().toISOString(),
+      });
+      return {
+        reviewedSession,
+        challengeReview: fallback,
+        usedFallback: true,
+        error,
+      };
+    }
   };
 
   const ensureSession = () => {
@@ -873,24 +1002,27 @@ export default function App() {
         history: pending.messages.slice(0, -1),
         userPrompt: text,
       });
-      upsert({
+      const completedSession = upsert({
         ...pending,
         updatedAt: new Date().toISOString(),
         messages: [...pending.messages, { id: id('msg'), role: 'assistant', text: reply, createdAt: new Date().toISOString() }],
       });
       if (settings.autoSpeakAi) speakText(reply, settings.voiceName, settings.speechRate);
       if (challengeMode && previousUserTurns < challengeTargetTurns && previousUserTurns + 1 >= challengeTargetTurns) {
-        const challengeComplete = buildChallengeSnapshot(
-          {
-            ...pending,
-            messages: pending.messages,
-            challengeMode,
-            challengeTargetTurns,
-          },
-          selectedScenario,
-          analyses,
-        );
-        setNotice(`챌린지 클리어. ${challengeTargetTurns}턴을 채웠고 현재 점수는 ${challengeComplete.score}점입니다.`);
+        setBusy('challenge');
+        setShowTools(true);
+        const result = await evaluateChallengeSession(completedSession);
+        if (result.usedFallback) {
+          setNotice(
+            result.error instanceof Error
+              ? `챌린지 AI 채점이 실패해 로컬 결과를 표시합니다. ${result.challengeReview.grade} · ${result.challengeReview.score100}점`
+              : `챌린지 AI 채점이 실패해 로컬 결과를 표시합니다. ${result.challengeReview.grade} · ${result.challengeReview.score100}점`,
+          );
+        } else {
+          setNotice(
+            `챌린지 결과가 나왔습니다. ${result.challengeReview.medal} ${result.challengeReview.grade} · ${result.challengeReview.score100}점`,
+          );
+        }
       } else {
         setNotice('AI 응답이 도착했습니다.');
       }
@@ -1239,17 +1371,23 @@ export default function App() {
                 <div className="practice-toolbar">
                   <div className={`session-state-card ${activeChallenge.enabled ? 'session-state-card--challenge' : ''}`}>
                     <div className="session-state-title">
-                      {activeChallenge.enabled
-                        ? activeChallenge.completed
-                          ? '챌린지 클리어'
-                          : '챌린지 진행 중'
+                      {busy === 'challenge'
+                        ? 'AI 최종 채점 중'
+                        : activeChallenge.enabled
+                          ? activeChallenge.completed
+                            ? '챌린지 클리어'
+                            : '챌린지 진행 중'
                         : hasCurrentMessages
                           ? '일반 연습 진행 중'
                           : '새 연습 준비'}
                     </div>
                     <div className="session-state-copy">
-                      {activeChallenge.enabled
-                        ? `${activeChallenge.userTurns}/${activeChallenge.targetTurns}턴 · ${activeChallenge.score}점 · 등급 ${activeChallenge.rank}`
+                      {busy === 'challenge'
+                        ? '대화 전체를 읽고 100점 만점 최종 점수와 등급을 계산하고 있습니다.'
+                        : activeChallengeReview
+                          ? `${activeChallengeReview.medal} · ${activeChallengeReview.score100}점 / 100점 · ${activeChallengeReview.grade} 등급`
+                        : activeChallenge.enabled
+                          ? `${activeChallenge.userTurns}/${activeChallenge.targetTurns}턴 진행 중 · 종료 후 AI가 100점 만점으로 최종 평가합니다.`
                         : hasCurrentMessages
                           ? `현재 대화 ${activeSession?.messages.length ?? 0}턴 · 필요하면 바로 비우고 다시 시작할 수 있습니다.`
                           : `같은 상황으로 일반 연습을 시작하거나 ${challengeTargetTurns}턴 챌린지에 바로 도전할 수 있습니다.`}
@@ -1262,6 +1400,7 @@ export default function App() {
                       <select
                         className="form-select"
                         value={challengeTargetTurns}
+                        disabled={busy === 'challenge'}
                         onChange={(event) => {
                           const next = Number(event.target.value) || 8;
                           setChallengeTargetTurns(next);
@@ -1277,13 +1416,14 @@ export default function App() {
                     </label>
 
                     {hasCurrentMessages ? (
-                      <button type="button" className="btn btn-secondary btn-sm" onClick={restartConversation}>
+                      <button type="button" className="btn btn-secondary btn-sm" onClick={restartConversation} disabled={busy === 'challenge'}>
                         대화 비우기
                       </button>
                     ) : (
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
+                        disabled={busy === 'challenge'}
                         onClick={() => startFreshSession({ challenge: false, noticeMessage: '새 말하기 세션이 준비되었습니다.' })}
                       >
                         일반 시작
@@ -1292,30 +1432,94 @@ export default function App() {
 
                     {activeChallenge.enabled ? (
                       <>
-                        <button type="button" className="btn btn-primary btn-sm" onClick={retryChallenge}>
+                        <button type="button" className="btn btn-primary btn-sm" onClick={retryChallenge} disabled={busy === 'challenge'}>
                           재도전
                         </button>
-                        <button type="button" className="btn btn-ghost btn-sm" onClick={stopChallenge}>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={stopChallenge} disabled={busy === 'challenge'}>
                           챌린지 정지
                         </button>
                       </>
                     ) : (
-                      <button type="button" className="btn btn-primary btn-sm" onClick={startChallenge}>
+                      <button type="button" className="btn btn-primary btn-sm" onClick={startChallenge} disabled={busy === 'challenge'}>
                         챌린지 시작
                       </button>
                     )}
 
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={suggest} disabled={busy === 'suggestions'}>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={suggest} disabled={busy === 'suggestions' || busy === 'challenge'}>
                       {busy === 'suggestions' ? '생성 중...' : '답변 추천'}
                     </button>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={analyze} disabled={busy === 'analysis'}>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={analyze} disabled={busy === 'analysis' || busy === 'challenge'}>
                       {busy === 'analysis' ? '분석 중...' : '문장 분석'}
                     </button>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={recap} disabled={busy === 'recap'}>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={recap} disabled={busy === 'recap' || busy === 'challenge'}>
                       {busy === 'recap' ? '정리 중...' : '세션 리캡'}
                     </button>
                   </div>
                 </div>
+
+                {(busy === 'challenge' || activeChallengeReview) && (
+                  <section className="card challenge-result-card animate-in">
+                    <div className="challenge-result-head">
+                      <div>
+                        <div className="card-title">챌린지 결과</div>
+                        <div className="card-subtitle">
+                          {busy === 'challenge'
+                            ? 'AI가 전체 대화를 기준으로 최종 채점을 만들고 있습니다.'
+                            : activeChallengeReview?.verdict}
+                        </div>
+                      </div>
+                      {activeChallengeReview ? (
+                        <div className="challenge-score-badge">
+                          <strong>{activeChallengeReview.score100}</strong>
+                          <span>/100 · {activeChallengeReview.grade}</span>
+                        </div>
+                      ) : (
+                        <div className="badge badge-accent">채점 중</div>
+                      )}
+                    </div>
+
+                    {activeChallengeReview ? (
+                      <>
+                        <div className="challenge-result-meta">
+                          <span className="badge badge-accent">{activeChallengeReview.medal}</span>
+                          {activeChallengeReview.rewards.map((reward) => (
+                            <span key={reward} className="badge badge-neutral">
+                              {reward}
+                            </span>
+                          ))}
+                        </div>
+                        <p className="insight-copy">{activeChallengeReview.summary}</p>
+                        <div className="analysis-grid">
+                          <div className="feedback-card">
+                            <div className="feedback-label">잘한 플레이</div>
+                            <ul className="bullet-list compact">
+                              {activeChallengeReview.strengths.map((item) => (
+                                <li key={item}>{item}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div className="feedback-card">
+                            <div className="feedback-label">감점 포인트</div>
+                            <ul className="bullet-list compact">
+                              {activeChallengeReview.improvements.map((item) => (
+                                <li key={item}>{item}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div className="feedback-card">
+                            <div className="feedback-label">다음 미션</div>
+                            <p>{activeChallengeReview.nextMission}</p>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="feedback-card">
+                        <div className="feedback-label">최종 채점</div>
+                        <p>상황 대응, 자연스러움, 핵심 표현 활용, 대화 주도성을 기준으로 100점 만점 결과를 계산하는 중입니다.</p>
+                      </div>
+                    )}
+                  </section>
+                )}
 
                 {showCatalog && (
                   <section className="card catalog-popover animate-in">
@@ -1428,16 +1632,17 @@ export default function App() {
                             type="button"
                             className={`record-btn ${listening ? 'recording' : ''}`}
                             onClick={voiceInput}
+                            disabled={busy === 'challenge'}
                             aria-label="음성 입력"
                           >
                             <Icon name="mic" />
                           </button>
                           {composer.trim() && (
-                            <button type="button" className="btn btn-icon" onClick={() => setComposer('')} aria-label="입력 지우기">
+                            <button type="button" className="btn btn-icon" onClick={() => setComposer('')} disabled={busy === 'challenge'} aria-label="입력 지우기">
                               <Icon name="close" />
                             </button>
                           )}
-                          <button type="submit" className="send-btn" disabled={busy === 'chat' || !composer.trim()} aria-label="메시지 보내기">
+                          <button type="submit" className="send-btn" disabled={busy === 'chat' || busy === 'challenge' || !composer.trim()} aria-label="메시지 보내기">
                             <Icon name="send" />
                           </button>
                       </div>
@@ -1518,9 +1723,11 @@ export default function App() {
 
                     {challengeMode && (
                       <div className="feedback-card">
-                        <div className="feedback-label">챌린지 진행</div>
+                        <div className="feedback-label">{activeChallengeReview ? '최종 챌린지 결과' : '챌린지 진행'}</div>
                         <p>
-                          현재 {activeChallenge.userTurns}/{activeChallenge.targetTurns}턴, {activeChallenge.score}점, 등급 {activeChallenge.rank}
+                          {activeChallengeReview
+                            ? `${activeChallengeReview.medal} · ${activeChallengeReview.score100}점 / 100점 · ${activeChallengeReview.grade} 등급`
+                            : `현재 ${activeChallenge.userTurns}/${activeChallenge.targetTurns}턴 진행 중이며, 종료 후 AI가 전체 대화를 평가합니다.`}
                         </p>
                         <div className="progress-bar-wrap">
                           <div
@@ -1529,7 +1736,9 @@ export default function App() {
                           />
                         </div>
                         <p className="insight-copy">
-                          남은 턴 {activeChallenge.remainingTurns}턴 · 분석 {activeChallenge.analysisCount}회 · 핵심 표현 사용 {activeChallenge.expressionHits}회
+                          {activeChallengeReview
+                            ? activeChallengeReview.nextMission
+                            : `남은 턴 ${activeChallenge.remainingTurns}턴 · 분석 ${activeChallenge.analysisCount}회 · 핵심 표현 사용 ${activeChallenge.expressionHits}회`}
                         </p>
                       </div>
                     )}
@@ -1898,7 +2107,11 @@ export default function App() {
                             </div>
                           </div>
                           <div className="session-score">
-                            {challenge?.enabled ? `${challenge.score}점 ${challenge.rank}` : labelFocusSkill(session.focusSkill)}
+                            {challenge?.review
+                              ? `${challenge.review.medal} ${challenge.review.score100}점`
+                              : challenge?.enabled
+                                ? '챌린지 진행 중'
+                                : labelFocusSkill(session.focusSkill)}
                           </div>
                         </button>
                       );
@@ -2039,7 +2252,11 @@ export default function App() {
                             </div>
                           </div>
                           <div className="session-score">
-                            {challenge?.enabled ? `${challenge.score}점 ${challenge.rank}` : labelRoleplayMode(session.roleplayMode)}
+                            {challenge?.review
+                              ? `${challenge.review.medal} ${challenge.review.score100}점`
+                              : challenge?.enabled
+                                ? '챌린지 진행 중'
+                                : labelRoleplayMode(session.roleplayMode)}
                           </div>
                         </button>
                       );
@@ -2071,7 +2288,11 @@ export default function App() {
                             {challenge.userTurns}/{challenge.targetTurns}턴 · 분석 {challenge.analysisCount}회 · 핵심 표현 {challenge.expressionHits}회
                           </div>
                         </div>
-                        <div className="session-score">{challenge.completed ? `클리어 ${challenge.rank}` : `${challenge.rank} 진행 중`}</div>
+                        <div className="session-score">
+                          {challenge.review
+                            ? `${challenge.review.medal} ${challenge.review.score100}점`
+                            : '평가 대기'}
+                        </div>
                       </button>
                     ))}
                   </div>

@@ -52,6 +52,18 @@ export interface SessionSummary {
   notableVocabulary: VocabularyCard[];
 }
 
+export interface ChallengeReview {
+  score100: number;
+  grade: 'S' | 'A' | 'B' | 'C' | 'D';
+  medal: string;
+  summary: string;
+  verdict: string;
+  strengths: string[];
+  improvements: string[];
+  rewards: string[];
+  nextMission: string;
+}
+
 export interface Session {
   id: string;
   scenarioId: string;
@@ -64,6 +76,7 @@ export interface Session {
   roleplayMode: RoleplayMode;
   challengeMode?: boolean;
   challengeTargetTurns?: number;
+  challengeReview?: ChallengeReview | null;
   notes: string;
   completedMissionSteps: string[];
   summary: SessionSummary | null;
