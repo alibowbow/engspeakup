@@ -11,7 +11,7 @@
       try {
         const raw = localStorage.getItem('speakup-studio-settings');
         const settings = raw ? JSON.parse(raw) : null;
-        const theme = settings?.themeMode === 'light' ? 'light' : 'dark';
+        const theme = settings?.themeMode === 'dark' ? 'dark' : 'light';
         document.documentElement.dataset.theme = theme;
         document.documentElement.style.colorScheme = theme;
       } catch {}

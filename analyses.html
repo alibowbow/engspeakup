@@ -11,7 +11,7 @@
       try {
         const raw = localStorage.getItem('speakup-studio-settings');
         const settings = raw ? JSON.parse(raw) : null;
-        document.documentElement.dataset.theme = settings?.themeMode === 'light' ? 'light' : 'dark';
+        document.documentElement.dataset.theme = settings?.themeMode === 'dark' ? 'dark' : 'light';
       } catch {}
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />

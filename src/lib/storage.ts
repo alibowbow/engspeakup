@@ -18,7 +18,7 @@ export const defaultSettings: Settings = {
   apiKey: '',
   model: 'gemini-3-flash-preview',
   saveApiKey: false,
-  themeMode: 'dark',
+  themeMode: 'light',
   userName: '',
   coachMode: 'balanced',
   voiceName: '',
