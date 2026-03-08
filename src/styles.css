@@ -100,6 +100,7 @@ button, input, textarea, select { font: inherit; }
   border-radius: var(--r-sm);
 }
 
+/* Sidebar / top-level shell */
 .app-layout {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
@@ -368,6 +369,7 @@ button, input, textarea, select { font: inherit; }
 .badge-accent { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(245, 166, 35, 0.2); }
 .badge-neutral { background: var(--bg-3); color: var(--text-2); border: 1px solid var(--border); }
 
+/* Practice domain */
 .practice-shell {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -400,7 +402,6 @@ button, input, textarea, select { font: inherit; }
 .scenario-meta, .catalog-meta, .message-time { color: var(--text-3); }
 .scenario-caption { font-size: 12.5px; }
 .scenario-meta { display: flex; gap: 16px; margin-left: auto; font-size: 12.5px; white-space: nowrap; }
-.scenario-bar-actions { display: flex; align-items: center; gap: 8px; }
 
 .practice-toolbar {
   align-items: stretch;
@@ -487,8 +488,7 @@ button, input, textarea, select { font: inherit; }
     var(--panel-bg);
 }
 
-.challenge-result-head,
-.challenge-result-meta {
+.challenge-result-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -496,8 +496,11 @@ button, input, textarea, select { font: inherit; }
 }
 
 .challenge-result-meta {
+  display: flex;
+  align-items: flex-start;
   justify-content: flex-start;
   flex-wrap: wrap;
+  gap: 12px;
   margin-bottom: 12px;
 }
 
