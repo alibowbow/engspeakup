@@ -1,5 +1,5 @@
 import { startTransition, useDeferredValue, useEffect, useRef, useState } from 'react';
-import type { ChangeEvent, FormEvent, ReactNode } from 'react';
+import type { ChangeEvent, FormEvent, KeyboardEvent, ReactNode } from 'react';
 import { focusSkillOptions, modelPresets, scenarios, spotlightScenarioIds } from './data/scenarios';
 import {
   buildAnalysisPrompt,
@@ -8,6 +8,10 @@ import {
   buildOfflineSummary,
   buildRecapPrompt,
   buildSuggestionPrompt,
+  deriveChallengeGrade,
+  deriveChallengeLevel,
+  deriveChallengeMedal,
+  deriveChallengeScoreFromSubscores,
   lastUserMessage,
   normalizeAnalysisEntry,
   normalizeChallengeReview,
@@ -16,7 +20,16 @@ import {
   resolveScenarioDetails,
 } from './lib/coaching';
 import { generateJson, generateText } from './lib/gemini';
-import { isSpeechRecognitionSupported, listenOnce, loadEnglishVoices, speakText, stopSpeaking } from './lib/speech';
+import {
+  GEMINI_TTS_DEFAULT_VOICE,
+  getGeminiTtsVoices,
+  isGeminiTtsVoice,
+  isSpeechRecognitionSupported,
+  listenOnce,
+  loadEnglishVoices,
+  speakText,
+  stopSpeaking,
+} from './lib/speech';
 import {
   clearWorkspace,
   createExportBundle,
@@ -154,25 +167,42 @@ const labelCategory = (value: string) => CATEGORY_LABELS[value] ?? value;
 const labelDifficulty = (value: Scenario['difficulty']) => DIFFICULTY_LABELS[value] ?? value;
 const labelFocusSkill = (value: string) => FOCUS_SKILL_LABELS[value] ?? value;
 const labelRoleplayMode = (value: RoleplayMode) => ROLEPLAY_MODE_LABELS[value] ?? value;
+const CHALLENGE_SUBSCORE_LABELS: Record<keyof ChallengeReview['subscores'], string> = {
+  taskCompletion: '미션 수행',
+  interaction: '대화 운영',
+  fluency: '유창성',
+  accuracy: '정확성',
+  vocabulary: '어휘 폭',
+  naturalness: '자연스러움',
+};
+const TTS_VOICE_OPTIONS = getGeminiTtsVoices();
 
 function challengeStatsForSession(session: Session, analyses: AnalysisEntry[]) {
   return buildChallengeSnapshot(session, resolveScenarioDetails(scenarioById(session.scenarioId), session), analyses);
 }
 
-function medalFromScore(score100: number) {
-  if (score100 >= 95) return '다이아';
-  if (score100 >= 88) return '플래티넘';
-  if (score100 >= 80) return '골드';
-  if (score100 >= 70) return '실버';
-  return '브론즈';
+function legacyChallengeSubscores(score100: number): ChallengeReview['subscores'] {
+  const clamped = Math.max(0, Math.min(100, Math.round(score100)));
+  return {
+    taskCompletion: clamped,
+    interaction: Math.max(28, clamped - 6),
+    fluency: Math.max(24, clamped - 4),
+    accuracy: Math.max(20, clamped - 8),
+    vocabulary: Math.max(22, clamped - 6),
+    naturalness: Math.max(22, clamped - 7),
+  };
 }
 
-function gradeFromScore(score100: number): ChallengeReview['grade'] {
-  if (score100 >= 93) return 'S';
-  if (score100 >= 85) return 'A';
-  if (score100 >= 75) return 'B';
-  if (score100 >= 65) return 'C';
-  return 'D';
+function resolveChallengeLevelView(review: ChallengeReview | null) {
+  const level = deriveChallengeLevel(review?.score100 ?? 0);
+  return {
+    label: review?.conversationLevel || level.label,
+    summary: review?.levelSummary || level.summary,
+  };
+}
+
+function resolveChallengeSubscores(review: ChallengeReview | null): ChallengeReview['subscores'] {
+  return review?.subscores ?? legacyChallengeSubscores(review?.score100 ?? 0);
 }
 
 function buildChallengeSnapshot(session: Session | null, scenario: Scenario, analyses: AnalysisEntry[]) {
@@ -203,11 +233,7 @@ function buildChallengeSnapshot(session: Session | null, scenario: Scenario, ana
   let rank = '-';
   if (enabled) {
     if (review?.grade) rank = review.grade;
-    else if (heuristicScore >= targetTurns * 24) rank = 'S';
-    else if (heuristicScore >= targetTurns * 20) rank = 'A';
-    else if (heuristicScore >= targetTurns * 16) rank = 'B';
-    else if (heuristicScore >= targetTurns * 12) rank = 'C';
-    else rank = 'D';
+    else rank = deriveChallengeGrade(Math.min(100, heuristicScore));
   }
 
   return {
@@ -222,7 +248,7 @@ function buildChallengeSnapshot(session: Session | null, scenario: Scenario, ana
     expressionHits,
     depthBonus,
     recapBonus,
-    medal: review?.medal ?? medalFromScore(Math.min(99, heuristicScore)),
+    medal: review?.medal ?? deriveChallengeMedal(Math.min(99, heuristicScore)),
     review,
   };
 }
@@ -233,32 +259,100 @@ function buildOfflineChallengeReview(
   snapshot: ReturnType<typeof buildChallengeSnapshot>,
 ): ChallengeReview {
   const userMessages = session.messages.filter((message) => message.role === 'user');
-  const averageWords = userMessages.length
-    ? userMessages.reduce((sum, message) => sum + words(message.text), 0) / userMessages.length
-    : 0;
+  const totalWords = userMessages.reduce((sum, message) => sum + words(message.text), 0);
+  const averageWords = userMessages.length ? totalWords / userMessages.length : 0;
   const turnRatio = snapshot.targetTurns ? Math.min(1, snapshot.userTurns / snapshot.targetTurns) : 0;
   const expressionRatio = Math.min(1, snapshot.expressionHits / Math.max(1, scenario.keyExpressions.length));
-  const score100 = Math.max(
-    48,
-    Math.min(
-      100,
-      Math.round(
-        turnRatio * 38 +
-          Math.min(1, averageWords / 16) * 22 +
-          expressionRatio * 16 +
-          Math.min(1, snapshot.analysisCount / 3) * 10 +
-          (session.summary ? 7 : 0) +
-          (snapshot.completed ? 7 : 0),
+  const clamp = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+  const longTurnRatio =
+    userMessages.filter((message) => words(message.text) >= 8).length / Math.max(1, userMessages.length);
+  const shortTurnRatio =
+    userMessages.filter((message) => words(message.text) <= 3).length / Math.max(1, userMessages.length);
+  const questionTurnRatio =
+    userMessages.filter((message) =>
+      /[?]|(^|\s)(who|what|when|where|why|how|do|did|are|is|can|could|would|should)\b/i.test(
+        message.text.trim(),
       ),
+    ).length / Math.max(1, userMessages.length);
+  const connectors = ['because', 'so', 'but', 'actually', 'instead', 'maybe', 'probably', 'first', 'then', 'also'];
+  const connectorHits = userMessages.reduce((sum, message) => {
+    const lower = message.text.toLowerCase();
+    return sum + connectors.filter((word) => lower.includes(word)).length;
+  }, 0);
+  const connectorRatio = Math.min(1, connectorHits / Math.max(1, userMessages.length * 1.5));
+  const uniqueWords = new Set(
+    userMessages
+      .flatMap((message) => message.text.toLowerCase().match(/[a-z']+/g) ?? [])
+      .filter((token) => token.length > 1),
+  ).size;
+  const varietyRatio = totalWords ? uniqueWords / totalWords : 0;
+  const repetitionPenalty = Math.max(0, 0.48 - varietyRatio) * 1.8;
+
+  const subscores: ChallengeReview['subscores'] = {
+    taskCompletion: clamp(turnRatio * 56 + expressionRatio * 24 + questionTurnRatio * 10 + longTurnRatio * 10),
+    interaction: clamp(
+      22 +
+        questionTurnRatio * 32 +
+        longTurnRatio * 16 +
+        connectorRatio * 14 +
+        (1 - shortTurnRatio) * 18 -
+        repetitionPenalty * 22,
     ),
-  );
-  const grade = gradeFromScore(score100);
-  const medal = medalFromScore(score100);
+    fluency: clamp(
+      20 +
+        Math.min(1, averageWords / 11) * 20 +
+        longTurnRatio * 24 +
+        connectorRatio * 14 -
+        shortTurnRatio * 28 -
+        repetitionPenalty * 14,
+    ),
+    accuracy: clamp(
+      18 +
+        Math.min(1, averageWords / 10) * 14 +
+        (1 - shortTurnRatio) * 24 +
+        connectorRatio * 12 -
+        repetitionPenalty * 18,
+    ),
+    vocabulary: clamp(
+      16 +
+        Math.min(1, varietyRatio / 0.62) * 44 +
+        expressionRatio * 22 +
+        connectorRatio * 8 -
+        repetitionPenalty * 18,
+    ),
+    naturalness: clamp(
+      16 +
+        connectorRatio * 20 +
+        questionTurnRatio * 18 +
+        longTurnRatio * 16 +
+        Math.min(1, varietyRatio / 0.62) * 14 -
+        shortTurnRatio * 24 -
+        repetitionPenalty * 20,
+    ),
+  };
+
+  const score100 = deriveChallengeScoreFromSubscores(subscores);
+  const grade = deriveChallengeGrade(score100);
+  const medal = deriveChallengeMedal(score100);
+  const level = deriveChallengeLevel(score100);
+  const strongestSubscore = Object.entries(subscores).sort((left, right) => right[1] - left[1])[0][0] as keyof ChallengeReview['subscores'];
+  const weakestSubscore = Object.entries(subscores).sort((left, right) => left[1] - right[1])[0][0] as keyof ChallengeReview['subscores'];
+  const nextMissionBySubscore: Record<keyof ChallengeReview['subscores'], string> = {
+    taskCompletion: `다음에는 ${scenario.keyExpressions[0] ?? '핵심 표현'}을 포함해 목표 상황을 더 분명하게 끝까지 밀고 가 보세요.`,
+    interaction: '다음 챌린지에서는 답만 하지 말고 확인 질문과 되묻기를 섞어 대화 주도권을 가져오세요.',
+    fluency: '다음에는 한 턴마다 이유 한 문장, 예시 한 문장을 붙여 끊기지 않는 흐름을 만들어 보세요.',
+    accuracy: '다음에는 짧아도 구조가 분명한 문장으로 말하고, 주어와 시제를 끝까지 맞춰 보세요.',
+    vocabulary: '다음에는 같은 단어 반복을 줄이고 비슷한 뜻의 표현 두세 개를 번갈아 써 보세요.',
+    naturalness: '다음에는 because, actually, maybe 같은 연결 표현을 섞어 말투를 더 자연스럽게 만들어 보세요.',
+  };
 
   return {
     score100,
     grade,
     medal,
+    conversationLevel: level.label,
+    levelSummary: level.summary,
+    subscores,
     summary: `${scenario.title} 챌린지를 ${snapshot.userTurns}턴까지 완주했고, ${session.focusSkill} 기준으로 ${score100}점 수준의 수행을 보였습니다.`,
     verdict:
       grade === 'S'
@@ -662,7 +756,7 @@ export default function App() {
   const [busy, setBusy] = useState<Busy>(null);
   const [notice, setNotice] = useState('Gemini API 키를 입력하면 바로 실전 회화를 시작할 수 있습니다.');
   const [bundle, setBundle] = useState<SuggestionBundle | null>(null);
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [browserVoices, setBrowserVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [listening, setListening] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false);
   const [showTools, setShowTools] = useState(false);
@@ -749,6 +843,8 @@ export default function App() {
     currentScenario,
     analyses,
   );
+  const activeChallengeLevel = resolveChallengeLevelView(activeChallengeReview);
+  const activeChallengeSubscores = resolveChallengeSubscores(activeChallengeReview);
 
   useEffect(() => saveSettings(settings), [settings]);
   useEffect(() => saveSessions(sessions), [sessions]);
@@ -760,16 +856,16 @@ export default function App() {
     document.documentElement.style.colorScheme = settings.themeMode;
   }, [settings.themeMode]);
   useEffect(() => {
-    const applyVoices = () => setVoices(loadEnglishVoices().sort((left, right) => left.name.localeCompare(right.name, 'en')));
+    const applyVoices = () =>
+      setBrowserVoices(loadEnglishVoices().sort((left, right) => left.name.localeCompare(right.name, 'en')));
     applyVoices();
     window.speechSynthesis?.addEventListener?.('voiceschanged', applyVoices);
     return () => window.speechSynthesis?.removeEventListener?.('voiceschanged', applyVoices);
   }, []);
   useEffect(() => {
-    if (!settings.voiceName || !voices.length) return;
-    if (voices.some((voice) => voice.name === settings.voiceName)) return;
-    setSettings((current) => (current.voiceName ? { ...current, voiceName: '' } : current));
-  }, [voices, settings.voiceName]);
+    if (isGeminiTtsVoice(settings.voiceName)) return;
+    setSettings((current) => ({ ...current, voiceName: GEMINI_TTS_DEFAULT_VOICE }));
+  }, [settings.voiceName]);
   useEffect(() => {
     if (!activeSession) return;
     setSelectedScenarioId(activeSession.scenarioId);
@@ -969,6 +1065,40 @@ export default function App() {
     setNotice('챌린지 모드를 정지하고 일반 연습으로 전환했습니다.');
   };
 
+  const playAssistantAudio = async (text: string) => {
+    const result = await speakText({
+      text,
+      apiKey: settings.apiKey.trim(),
+      voiceName: settings.voiceName,
+      rate: settings.speechRate,
+    });
+
+    if (result === 'browser-fallback-daily') {
+      setNotice('Gemini 2.5 Flash TTS 일일 한도를 모두 사용해 기본 브라우저 영어 음성으로 전환했습니다.');
+      return;
+    }
+
+    if (result === 'browser-fallback') {
+      setNotice('Gemini TTS를 사용할 수 없어 이번 재생은 기본 브라우저 영어 음성으로 전환했습니다.');
+      return;
+    }
+
+    if (result === 'none') {
+      setNotice('음성을 재생할 수 없습니다.');
+    }
+  };
+
+  const handleComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) {
+      return;
+    }
+    event.preventDefault();
+    if (!composer.trim() || busy === 'chat' || busy === 'challenge') {
+      return;
+    }
+    void send();
+  };
+
   const send = async (event?: FormEvent) => {
     event?.preventDefault();
     const text = composer.trim();
@@ -1007,7 +1137,7 @@ export default function App() {
         updatedAt: new Date().toISOString(),
         messages: [...pending.messages, { id: id('msg'), role: 'assistant', text: reply, createdAt: new Date().toISOString() }],
       });
-      if (settings.autoSpeakAi) speakText(reply, settings.voiceName, settings.speechRate);
+      if (settings.autoSpeakAi) void playAssistantAudio(reply);
       if (challengeMode && previousUserTurns < challengeTargetTurns && previousUserTurns + 1 >= challengeTargetTurns) {
         setBusy('challenge');
         setShowTools(true);
@@ -1482,6 +1612,7 @@ export default function App() {
                       <>
                         <div className="challenge-result-meta">
                           <span className="badge badge-accent">{activeChallengeReview.medal}</span>
+                          <span className="badge badge-neutral">{activeChallengeLevel.label}</span>
                           {activeChallengeReview.rewards.map((reward) => (
                             <span key={reward} className="badge badge-neutral">
                               {reward}
@@ -1489,6 +1620,19 @@ export default function App() {
                           ))}
                         </div>
                         <p className="insight-copy">{activeChallengeReview.summary}</p>
+                        <div className="challenge-level-card">
+                          <div className="feedback-label">회화 레벨</div>
+                          <strong>{activeChallengeLevel.label}</strong>
+                          <p>{activeChallengeLevel.summary}</p>
+                        </div>
+                        <div className="challenge-breakdown-grid">
+                          {Object.entries(activeChallengeSubscores).map(([key, value]) => (
+                            <div key={key} className="challenge-breakdown-item">
+                              <span>{CHALLENGE_SUBSCORE_LABELS[key as keyof ChallengeReview['subscores']]}</span>
+                              <strong>{value}</strong>
+                            </div>
+                          ))}
+                        </div>
                         <div className="analysis-grid">
                           <div className="feedback-card">
                             <div className="feedback-label">잘한 플레이</div>
@@ -1571,7 +1715,7 @@ export default function App() {
                       onCopy={() => navigator.clipboard.writeText(message.text).then(() => setNotice('문장을 복사했습니다.'))}
                       onSpeak={
                         message.role === 'assistant'
-                          ? () => speakText(message.text, settings.voiceName, settings.speechRate)
+                          ? () => void playAssistantAudio(message.text)
                           : undefined
                       }
                     />
@@ -1597,18 +1741,20 @@ export default function App() {
                 </div>
 
                 <div className="input-area">
-                  <div className="suggestions-row">
-                    {suggestionChips.map((item) => (
-                      <button
-                        key={item}
-                        type="button"
-                        className="suggestion-chip"
-                        onClick={() => setComposer((current) => (current ? `${current} ${item}` : item))}
-                      >
-                        {item}
-                      </button>
-                    ))}
-                  </div>
+                  {!hasCurrentMessages && (
+                    <div className="suggestions-row">
+                      {suggestionChips.map((item) => (
+                        <button
+                          key={item}
+                          type="button"
+                          className="suggestion-chip"
+                          onClick={() => setComposer((current) => (current ? `${current} ${item}` : item))}
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
                   <form onSubmit={send}>
                     <div className="input-container">
@@ -1616,6 +1762,7 @@ export default function App() {
                         rows={1}
                           value={composer}
                           onChange={(event) => setComposer(event.target.value)}
+                          onKeyDown={handleComposerKeyDown}
                           placeholder="영어로 다음 문장을 입력해 보세요"
                         />
                       <div className="input-actions">
@@ -2315,7 +2462,9 @@ export default function App() {
                   </div>
                   <div className="feedback-card">
                     <div className="feedback-label">음성 출력</div>
-                    <p>{voices.length ? `영어 음성 ${voices.length}개를 선택할 수 있습니다.` : '아직 사용할 수 있는 영어 음성이 감지되지 않았습니다.'}</p>
+                    <p>
+                      {`Gemini 2.5 Flash TTS 보이스 ${TTS_VOICE_OPTIONS.length}개를 선택할 수 있고, 브라우저 영어 음성 ${browserVoices.length}개가 백업으로 대기합니다.`}
+                    </p>
                   </div>
                   <div className="feedback-card">
                     <div className="feedback-label">내보내기 안전성</div>
@@ -2382,6 +2531,7 @@ export default function App() {
                 </option>
               ))}
             </select>
+            <span className="form-hint">기본 재생은 Gemini 2.5 Flash TTS를 사용하고, 일일 한도 초과 시 브라우저 영어 음성으로 자동 전환됩니다.</span>
           </label>
 
           <label className="form-group">
@@ -2416,10 +2566,9 @@ export default function App() {
               value={settings.voiceName}
               onChange={(event) => setSettings((current) => ({ ...current, voiceName: event.target.value }))}
             >
-              <option value="">브라우저 기본 영어 음성</option>
-              {voices.map((voice) => (
-                <option key={`${voice.name}-${voice.lang}`} value={voice.name}>
-                  {voice.name} ({voice.lang})
+              {TTS_VOICE_OPTIONS.map((voice) => (
+                <option key={voice.name} value={voice.name}>
+                  {voice.name} · {voice.tone}
                 </option>
               ))}
             </select>

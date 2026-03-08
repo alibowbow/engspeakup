@@ -5,6 +5,7 @@ import type {
   Settings,
   VocabularyCard,
 } from '../types';
+import { GEMINI_TTS_DEFAULT_VOICE, isGeminiTtsVoice } from './speech';
 
 const STORAGE_KEYS = {
   settings: 'speakup-studio-settings',
@@ -21,7 +22,7 @@ export const defaultSettings: Settings = {
   themeMode: 'light',
   userName: '',
   coachMode: 'balanced',
-  voiceName: '',
+  voiceName: GEMINI_TTS_DEFAULT_VOICE,
   speechRate: 1,
   autoSpeakAi: false,
   dailyMinutesGoal: 20,
@@ -48,6 +49,7 @@ export function loadSettings(): Settings {
       settings.model === defaultSettings.model
         ? settings.model
         : defaultSettings.model,
+    voiceName: isGeminiTtsVoice(settings.voiceName) ? settings.voiceName : defaultSettings.voiceName,
     apiKey: settings.saveApiKey ? settings.apiKey ?? '' : '',
   };
 }

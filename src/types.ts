@@ -56,6 +56,16 @@ export interface ChallengeReview {
   score100: number;
   grade: 'S' | 'A' | 'B' | 'C' | 'D';
   medal: string;
+  conversationLevel: string;
+  levelSummary: string;
+  subscores: {
+    taskCompletion: number;
+    interaction: number;
+    fluency: number;
+    accuracy: number;
+    vocabulary: number;
+    naturalness: number;
+  };
   summary: string;
   verdict: string;
   strengths: string[];

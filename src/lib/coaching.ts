@@ -17,6 +17,114 @@ const coachModeGuide: Record<CoachMode, string> = {
   push: 'Coach at a high standard. Challenge vague language, weak logic, and unnatural phrasing.',
 };
 
+type ChallengeSubscores = ChallengeReview['subscores'];
+
+const challengeLevelBands = [
+  {
+    min: 97,
+    label: 'Lv.10 정교한 실전형',
+    summary: '상황 대응, 확장 설명, 질문 주도권, 자연스러운 표현 운영이 모두 매우 안정적입니다.',
+  },
+  {
+    min: 93,
+    label: 'Lv.9 상급 실전형',
+    summary: '실전 대화를 거의 끊김 없이 운영하지만 정교한 뉘앙스나 문장 다듬기는 조금 더 남아 있습니다.',
+  },
+  {
+    min: 88,
+    label: 'Lv.8 설득·설명형',
+    summary: '의견 설명과 근거 확장이 가능하고, 대화 주도권도 어느 정도 가져갈 수 있습니다.',
+  },
+  {
+    min: 82,
+    label: 'Lv.7 안정적 대화형',
+    summary: '핵심 전달은 안정적이지만 표현 폭과 자연스러움에서 아직 상위권과 차이가 납니다.',
+  },
+  {
+    min: 75,
+    label: 'Lv.6 독립 대화형',
+    summary: '짧은 문답을 넘어 기본적인 실전 대화를 이어 갈 수 있지만 확장성과 세밀함은 제한적입니다.',
+  },
+  {
+    min: 68,
+    label: 'Lv.5 확장 응답형',
+    summary: '기본 응답은 가능하지만 설명을 길게 밀고 가거나 자연스럽게 연결하는 힘은 더 필요합니다.',
+  },
+  {
+    min: 60,
+    label: 'Lv.4 기초 실전형',
+    summary: '핵심 의도는 전달하지만 짧은 답변과 단순한 구조에 자주 머무릅니다.',
+  },
+  {
+    min: 50,
+    label: 'Lv.3 문장 연결 시작형',
+    summary: '한 문장 응답은 가능하지만 흐름 유지와 이유 확장이 자주 끊깁니다.',
+  },
+  {
+    min: 40,
+    label: 'Lv.2 기본 응답형',
+    summary: '아주 익숙한 표현으로는 대응하지만 응답 길이와 정확도가 불안정합니다.',
+  },
+  {
+    min: 0,
+    label: 'Lv.1 생존 단답형',
+    summary: '단답이나 외운 표현 중심의 반응이 많아 실전 대화 운영까지는 아직 거리가 있습니다.',
+  },
+] as const;
+
+function clampScore(value: number) {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function normalizeSubscore(value: unknown, fallback: number) {
+  return typeof value === 'number' && Number.isFinite(value) ? clampScore(value) : fallback;
+}
+
+function normalizeSubscores(
+  payload: Partial<ChallengeSubscores> | undefined,
+  fallback: ChallengeSubscores,
+): ChallengeSubscores {
+  return {
+    taskCompletion: normalizeSubscore(payload?.taskCompletion, fallback.taskCompletion),
+    interaction: normalizeSubscore(payload?.interaction, fallback.interaction),
+    fluency: normalizeSubscore(payload?.fluency, fallback.fluency),
+    accuracy: normalizeSubscore(payload?.accuracy, fallback.accuracy),
+    vocabulary: normalizeSubscore(payload?.vocabulary, fallback.vocabulary),
+    naturalness: normalizeSubscore(payload?.naturalness, fallback.naturalness),
+  };
+}
+
+export function deriveChallengeScoreFromSubscores(subscores: ChallengeSubscores) {
+  return clampScore(
+    subscores.taskCompletion * 0.24 +
+      subscores.interaction * 0.2 +
+      subscores.fluency * 0.18 +
+      subscores.accuracy * 0.18 +
+      subscores.vocabulary * 0.1 +
+      subscores.naturalness * 0.1,
+  );
+}
+
+export function deriveChallengeGrade(score100: number): ChallengeReview['grade'] {
+  if (score100 >= 97) return 'S';
+  if (score100 >= 89) return 'A';
+  if (score100 >= 78) return 'B';
+  if (score100 >= 66) return 'C';
+  return 'D';
+}
+
+export function deriveChallengeMedal(score100: number) {
+  if (score100 >= 97) return '다이아';
+  if (score100 >= 89) return '플래티넘';
+  if (score100 >= 78) return '골드';
+  if (score100 >= 66) return '실버';
+  return '브론즈';
+}
+
+export function deriveChallengeLevel(score100: number) {
+  return challengeLevelBands.find((band) => score100 >= band.min) ?? challengeLevelBands.at(-1)!;
+}
+
 export function resolveScenarioDetails(scenario: Scenario, session: Session): Scenario {
   if (!scenario.isCustom) {
     return scenario;
@@ -192,6 +300,16 @@ Return strict JSON with this shape:
   "score100": 0,
   "grade": "S",
   "medal": "",
+  "conversationLevel": "",
+  "levelSummary": "",
+  "subscores": {
+    "taskCompletion": 0,
+    "interaction": 0,
+    "fluency": 0,
+    "accuracy": 0,
+    "vocabulary": 0,
+    "naturalness": 0
+  },
   "summary": "",
   "verdict": "",
   "strengths": ["", ""],
@@ -210,14 +328,37 @@ Transcript:
 ${transcript}
 
 Rules:
+- Evaluate the learner strictly against realistic spoken English performance, not effort.
+- Reaching ${targetTurns} turns alone must not earn a high score.
 - score100 must be an integer from 0 to 100.
-- grade must be one of S, A, B, C, D.
-- medal should be one Korean word such as 다이아, 플래티넘, 골드, 실버, 브론즈.
-- summary and verdict must be in Korean and concise.
+- grade must match this strict scale exactly: S = 97-100, A = 89-96, B = 78-88, C = 66-77, D = 0-65.
+- medal should be exactly one of 다이아, 플래티넘, 골드, 실버, 브론즈.
+- conversationLevel must be exactly one of:
+  Lv.10 정교한 실전형
+  Lv.9 상급 실전형
+  Lv.8 설득·설명형
+  Lv.7 안정적 대화형
+  Lv.6 독립 대화형
+  Lv.5 확장 응답형
+  Lv.4 기초 실전형
+  Lv.3 문장 연결 시작형
+  Lv.2 기본 응답형
+  Lv.1 생존 단답형
+- levelSummary, summary, verdict, strengths, improvements, rewards, nextMission must all be in Korean.
+- Give six subscores from 0 to 100 for taskCompletion, interaction, fluency, accuracy, vocabulary, naturalness.
+- score100 must not be higher than the weighted average of the six subscores.
+- Use this weighting mindset:
+  taskCompletion 24, interaction 20, fluency 18, accuracy 18, vocabulary 10, naturalness 10.
+- Scoring discipline:
+  90+ only if the transcript shows sustained, detailed, natural multi-turn conversation with low error density and clear initiative.
+  80-89 only if the learner can hold an independent conversation but still shows noticeable awkwardness or language limits.
+  70-79 for functional conversation that works, but stays simple, repetitive, or only moderately natural.
+  60-69 for basic back-and-forth with short answers, weak expansion, or uneven control.
+  0-59 for fragmented, memorized, repetitive, or poorly completed performance.
+- If the learner rarely asks follow-up questions, rarely adds reasons/examples, repeats the same wording, or gives very short replies, lower the score materially.
 - strengths and improvements should each have 2-3 concrete points.
 - rewards should sound game-like, short, and in Korean.
 - nextMission should be one actionable Korean sentence for the next run.
-- Reward clarity, naturalness, task completion, responsiveness, and initiative.
 `.trim();
 }
 
@@ -302,18 +443,22 @@ export function normalizeChallengeReview(
   payload: Partial<ChallengeReview>,
   fallback: ChallengeReview,
 ): ChallengeReview {
+  const subscores = normalizeSubscores(payload.subscores, fallback.subscores);
   const rawScore = typeof payload.score100 === 'number' ? payload.score100 : fallback.score100;
-  const score100 = Math.max(0, Math.min(100, Math.round(rawScore)));
-  const grade = ['S', 'A', 'B', 'C', 'D'].includes(payload.grade ?? '')
-    ? (payload.grade as ChallengeReview['grade'])
-    : fallback.grade;
+  const weightedScore = deriveChallengeScoreFromSubscores(subscores);
+  const score100 = clampScore(payload.subscores ? Math.min(rawScore, weightedScore) : rawScore);
+  const grade = deriveChallengeGrade(score100);
   const strengths = (payload.strengths ?? []).filter(Boolean).slice(0, 3);
   const improvements = (payload.improvements ?? []).filter(Boolean).slice(0, 3);
   const rewards = (payload.rewards ?? []).filter(Boolean).slice(0, 4);
+  const level = deriveChallengeLevel(score100);
   return {
     score100,
     grade,
-    medal: payload.medal?.trim() || fallback.medal,
+    medal: deriveChallengeMedal(score100),
+    conversationLevel: level.label,
+    levelSummary: payload.levelSummary?.trim() || fallback.levelSummary || level.summary,
+    subscores,
     summary: payload.summary?.trim() || fallback.summary,
     verdict: payload.verdict?.trim() || fallback.verdict,
     strengths: strengths.length ? strengths : fallback.strengths,

@@ -10,7 +10,32 @@ interface GeminiTextRequest {
   responseMimeType?: 'application/json' | 'text/plain';
 }
 
+interface GeminiSpeechRequest {
+  apiKey: string;
+  text: string;
+  voiceName: string;
+  rate?: number;
+  model?: string;
+}
+
+export type GeminiSpeechErrorKind = 'quota-daily' | 'quota-temporary' | 'unknown';
+
+export class GeminiSpeechError extends Error {
+  kind: GeminiSpeechErrorKind;
+  status: number;
+  payloadText: string;
+
+  constructor(message: string, kind: GeminiSpeechErrorKind, status: number, payloadText: string) {
+    super(message);
+    this.name = 'GeminiSpeechError';
+    this.kind = kind;
+    this.status = status;
+    this.payloadText = payloadText;
+  }
+}
+
 const API_ROOT = 'https://generativelanguage.googleapis.com/v1beta/models';
+export const GEMINI_TTS_MODEL = 'gemini-2.5-flash-preview-tts';
 
 function toGeminiRole(role: Message['role']): 'user' | 'model' {
   return role === 'assistant' ? 'model' : 'user';
@@ -41,6 +66,58 @@ function extractJsonCandidate(text: string): string {
     return trimmed.slice(arrayStart, arrayEnd + 1);
   }
   return trimmed;
+}
+
+function extractInlineAudio(payload: unknown): { data: string; mimeType?: string } {
+  const candidate = (payload as {
+    candidates?: Array<{
+      content?: {
+        parts?: Array<{
+          inlineData?: {
+            data?: string;
+            mimeType?: string;
+          };
+        }>;
+      };
+    }>;
+  }).candidates?.[0];
+
+  const audioPart = candidate?.content?.parts?.find((part) => part.inlineData?.data);
+  return {
+    data: audioPart?.inlineData?.data ?? '',
+    mimeType: audioPart?.inlineData?.mimeType,
+  };
+}
+
+function classifySpeechError(status: number, payloadText: string): GeminiSpeechErrorKind {
+  const text = payloadText.toLowerCase();
+  if (status === 429 || text.includes('resource_exhausted') || text.includes('quota')) {
+    if (
+      text.includes('perday') ||
+      text.includes('per day') ||
+      text.includes('requests per day') ||
+      text.includes('requestsperday') ||
+      text.includes('inputtokenspermodelperday')
+    ) {
+      return 'quota-daily';
+    }
+    return 'quota-temporary';
+  }
+  return 'unknown';
+}
+
+function buildSpeechPrompt(text: string, rate = 1): string {
+  const paceInstruction =
+    rate < 0.92
+      ? 'Speak slightly slower than your normal pace.'
+      : rate > 1.08
+        ? 'Speak slightly faster than your normal pace.'
+        : 'Speak at a natural conversation pace.';
+
+  return `Read the following text verbatim in clear, natural English.
+${paceInstruction}
+Text:
+${text}`.trim();
 }
 
 export async function generateText({
@@ -103,4 +180,61 @@ export async function generateJson<T>(request: GeminiTextRequest): Promise<T> {
     temperature: request.temperature ?? 0.35,
   });
   return JSON.parse(extractJsonCandidate(raw)) as T;
+}
+
+export async function generateSpeechAudio({
+  apiKey,
+  text,
+  voiceName,
+  rate = 1,
+  model = GEMINI_TTS_MODEL,
+}: GeminiSpeechRequest): Promise<{ data: string; mimeType?: string }> {
+  const response = await fetch(
+    `${API_ROOT}/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [{ text: buildSpeechPrompt(text, rate) }],
+          },
+        ],
+        generationConfig: {
+          responseModalities: ['AUDIO'],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: {
+                voiceName,
+              },
+            },
+          },
+        },
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new GeminiSpeechError(
+      errorText || `Gemini speech request failed with ${response.status}`,
+      classifySpeechError(response.status, errorText),
+      response.status,
+      errorText,
+    );
+  }
+
+  const payload = (await response.json()) as unknown;
+  const audio = extractInlineAudio(payload);
+  if (!audio.data) {
+    throw new GeminiSpeechError(
+      'Gemini speech response did not contain audio.',
+      'unknown',
+      response.status,
+      JSON.stringify(payload),
+    );
+  }
+  return audio;
 }
