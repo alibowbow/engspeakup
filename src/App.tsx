@@ -60,9 +60,15 @@ import type {
   ThemeMode,
   VocabularyCard,
 } from './types';
+import { type PracticePanelTab, usePracticeUiContainer } from './hooks/usePracticeUiContainer';
+import { AnalyticsView } from './components/ui-domain/AnalyticsView';
+import { LibraryView } from './components/ui-domain/LibraryView';
+import { PracticeShell } from './components/ui-domain/PracticeShell';
+import { ReviewView } from './components/ui-domain/ReviewView';
+import { Sidebar } from './components/ui-domain/Sidebar';
+import { TopBar } from './components/ui-domain/TopBar';
 
 type Busy = 'chat' | 'suggestions' | 'analysis' | 'recap' | 'challenge' | null;
-type PracticePanelTab = 'guide' | 'challenge' | 'suggestions' | 'analysis' | 'recap';
 type IconName =
   | 'chat'
   | 'library'
@@ -779,10 +785,18 @@ export default function App() {
   const [previewingVoiceName, setPreviewingVoiceName] = useState('');
   const [streamingReply, setStreamingReply] = useState('');
   const [listening, setListening] = useState(false);
-  const [showCatalog, setShowCatalog] = useState(false);
-  const [showTools, setShowTools] = useState(false);
-  const [practicePanelTab, setPracticePanelTab] = useState<PracticePanelTab>('guide');
-  const [showSettings, setShowSettings] = useState(false);
+  const {
+    showScenarioPicker,
+    setShowScenarioPicker,
+    showTools,
+    setShowTools,
+    practicePanelTab,
+    setPracticePanelTab,
+    showSettings,
+    setShowSettings,
+    openPracticePanel,
+    togglePracticePanel,
+  } = usePracticeUiContainer();
   const [toastVisible, setToastVisible] = useState(true);
   const deferredSearch = useDeferredValue(search);
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -834,17 +848,6 @@ export default function App() {
   const hasCurrentScenarioSession = Boolean(activeSession && activeSession.scenarioId === selectedScenarioId);
   const hasCurrentMessages = Boolean(hasCurrentScenarioSession && activeSession?.messages.length);
   const suggestionChips = (bundle?.suggestions.length ? bundle.suggestions : currentScenario.warmups).slice(0, 3);
-  const openPracticePanel = (tab: PracticePanelTab) => {
-    setPracticePanelTab(tab);
-    setShowTools(true);
-  };
-  const togglePracticePanel = (tab: PracticePanelTab) => {
-    if (showTools && practicePanelTab === tab) {
-      setShowTools(false);
-      return;
-    }
-    openPracticePanel(tab);
-  };
   const recentSessions = sortSessions(sessions).slice(0, 8);
   const sessionChallengeSnapshots = sessions.map((session) => ({
     session,
@@ -1003,7 +1006,7 @@ export default function App() {
     setChallengeMode(false);
     setChallengeTargetTurns(8);
     setBundle(null);
-    setShowCatalog(false);
+    setShowScenarioPicker(false);
     setShowTools(false);
     setNotice('새 상황으로 전환했습니다. 이 상황은 새 세션으로 시작됩니다.');
   };
@@ -1064,7 +1067,7 @@ export default function App() {
     setChallengeMode(challenge);
     setComposer('');
     setStreamingReply('');
-    setShowCatalog(false);
+    setShowScenarioPicker(false);
     setShowTools(false);
     upsert(session);
     setBundle(buildStarterBundle(session));
@@ -1470,7 +1473,7 @@ export default function App() {
     setCustomBrief('');
     setComposer('');
     setBundle(null);
-    setShowCatalog(false);
+    setShowScenarioPicker(false);
     setShowTools(false);
     setShowSettings(false);
     setNotice('로컬 워크스페이스를 초기화했습니다.');
@@ -1480,7 +1483,7 @@ export default function App() {
     setActiveSessionId(session.id);
     setSelectedScenarioId(session.scenarioId);
     setView('practice');
-    setShowCatalog(false);
+    setShowScenarioPicker(false);
     setShowTools(false);
   };
 
@@ -1494,7 +1497,7 @@ export default function App() {
   return (
     <>
       <div className="app-layout">
-      <aside className="sidebar">
+      <Sidebar>
         <div className="sidebar-logo">
           <div className="sidebar-logo-icon">
             <Icon name="sparkles" />
@@ -1555,7 +1558,7 @@ export default function App() {
             onClick={() => {
               handleScenarioSelect(spotlightScenario.id);
               setView('practice');
-              setShowCatalog(true);
+              setShowScenarioPicker(true);
             }}
           >
             <span className="badge badge-accent">오늘 추천</span>
@@ -1577,10 +1580,10 @@ export default function App() {
             <span>{settings.apiKey.trim() ? 'Gemini 키 연결됨' : 'Gemini 키 필요'}</span>
           </div>
         </div>
-      </aside>
+      </Sidebar>
 
       <div className="main-area">
-        <header className="page-header">
+        <TopBar>
           <div className="page-heading">
             <div className="page-title">{pageMeta.title}</div>
             <p className="page-subtitle">{pageMeta.description}</p>
@@ -1612,17 +1615,17 @@ export default function App() {
               <Icon name="settings" />
             </button>
           </div>
-        </header>
+        </TopBar>
 
         <main className={`main-content ${view === 'practice' ? 'main-content--practice' : ''}`}>
           {view === 'practice' && (
-            <div className={`practice-shell ${showTools ? 'practice-shell--tools' : ''}`}>
+            <PracticeShell showTools={showTools}>
               <section className="conversation-layout">
                 <div className="scenario-bar">
                   <button
                     type="button"
                     className="btn btn-icon"
-                    onClick={() => setShowCatalog((current) => !current)}
+                    onClick={() => setShowScenarioPicker((current) => !current)}
                     aria-label="시나리오 목록 열기"
                   >
                     <Icon name="list" />
@@ -1778,7 +1781,7 @@ export default function App() {
                   </section>
                 )}
 
-                {showCatalog && (
+                {showScenarioPicker && (
                   <section className="card catalog-popover animate-in">
                     <div className="card-header">
                         <div>
@@ -2338,11 +2341,11 @@ export default function App() {
                   </div>
                 </aside>
               )}
-            </div>
+            </PracticeShell>
           )}
 
           {view === 'library' && (
-            <div className="library-layout">
+            <LibraryView>
               <section className="card animate-in">
                 <div className="card-header">
                   <div>
@@ -2468,7 +2471,7 @@ export default function App() {
                     className="btn btn-primary"
                     onClick={() => {
                       setView('practice');
-                      setShowCatalog(false);
+                      setShowScenarioPicker(false);
                       setShowTools(false);
                     }}
                   >
@@ -2479,11 +2482,11 @@ export default function App() {
                   </button>
                 </div>
               </section>
-            </div>
+            </LibraryView>
           )}
 
           {view === 'review' && (
-            <div className="review-layout">
+            <ReviewView>
               <section className="card animate-in">
                 <div className="card-header">
                   <div>
@@ -2600,11 +2603,11 @@ export default function App() {
               <EmptyState icon={<Icon name="wave" />} title="어휘 뱅크가 비어 있습니다" description="AI 문장 교정이나 대화 요약을 실행하면 새 카드가 여기에 추가됩니다." />
                 )}
               </section>
-            </div>
+            </ReviewView>
           )}
 
           {view === 'analytics' && (
-            <div className="analytics-layout">
+            <AnalyticsView>
               <section className="stats-grid">
                 <StatCard value={String(sessions.length)} label="총 세션 수" />
                 <StatCard value={String(totalTurns)} label="전체 대화 턴" />
@@ -2725,7 +2728,7 @@ export default function App() {
                   </div>
                 </div>
               </section>
-            </div>
+            </AnalyticsView>
           )}
         </main>
 
