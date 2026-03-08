@@ -64,13 +64,17 @@ export function loadVoices(): SpeechSynthesisVoice[] {
   return window.speechSynthesis?.getVoices?.() ?? [];
 }
 
+export function loadEnglishVoices(): SpeechSynthesisVoice[] {
+  return loadVoices().filter((voice) => /^en(?:-|_|$)/i.test(voice.lang));
+}
+
 export function speakText(text: string, voiceName: string, rate = 1): void {
   if (!window.speechSynthesis || !text.trim()) {
     return;
   }
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
-  const voice = loadVoices().find((item) => item.name === voiceName);
+  const voice = loadVoices().find((item) => item.name === voiceName) ?? loadEnglishVoices()[0];
   if (voice) {
     utterance.voice = voice;
   }

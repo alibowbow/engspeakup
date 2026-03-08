@@ -14,7 +14,7 @@ import {
   resolveScenarioDetails,
 } from './lib/coaching';
 import { generateJson, generateText } from './lib/gemini';
-import { isSpeechRecognitionSupported, listenOnce, loadVoices, speakText, stopSpeaking } from './lib/speech';
+import { isSpeechRecognitionSupported, listenOnce, loadEnglishVoices, speakText, stopSpeaking } from './lib/speech';
 import {
   clearWorkspace,
   createExportBundle,
@@ -621,7 +621,9 @@ export default function App() {
   const goalProgress = Math.min(100, Math.round((weeklyMinutes / Math.max(1, settings.dailyMinutesGoal)) * 100));
   const spotlightScenario = scenarioById(spotlightScenarioIds[new Date().getDate() % spotlightScenarioIds.length]);
   const pageMeta = PAGE_META[view];
-  const suggestionChips = (bundle?.suggestions.length ? bundle.suggestions : currentScenario.warmups).slice(0, 5);
+  const hasCurrentScenarioSession = Boolean(activeSession && activeSession.scenarioId === selectedScenarioId);
+  const hasCurrentMessages = Boolean(hasCurrentScenarioSession && activeSession?.messages.length);
+  const suggestionChips = (bundle?.suggestions.length ? bundle.suggestions : currentScenario.warmups).slice(0, 3);
   const recentSessions = sortSessions(sessions).slice(0, 8);
   const sessionChallengeSnapshots = sessions.map((session) => ({
     session,
@@ -665,11 +667,16 @@ export default function App() {
     document.documentElement.style.colorScheme = settings.themeMode;
   }, [settings.themeMode]);
   useEffect(() => {
-    const applyVoices = () => setVoices(loadVoices());
+    const applyVoices = () => setVoices(loadEnglishVoices().sort((left, right) => left.name.localeCompare(right.name, 'en')));
     applyVoices();
     window.speechSynthesis?.addEventListener?.('voiceschanged', applyVoices);
     return () => window.speechSynthesis?.removeEventListener?.('voiceschanged', applyVoices);
   }, []);
+  useEffect(() => {
+    if (!settings.voiceName || !voices.length) return;
+    if (voices.some((voice) => voice.name === settings.voiceName)) return;
+    setSettings((current) => (current.voiceName ? { ...current, voiceName: '' } : current));
+  }, [voices, settings.voiceName]);
   useEffect(() => {
     if (!activeSession) return;
     setSelectedScenarioId(activeSession.scenarioId);
@@ -722,7 +729,10 @@ export default function App() {
     setNotice('새 상황으로 전환했습니다. 이 상황은 새 세션으로 시작됩니다.');
   };
 
-  const makeSession = (scenario: Scenario): Session => {
+  const makeSession = (
+    scenario: Scenario,
+    overrides?: Partial<Pick<Session, 'focusSkill' | 'customScenario' | 'roleplayMode' | 'challengeMode' | 'challengeTargetTurns' | 'notes'>>,
+  ): Session => {
     const now = new Date().toISOString();
     return {
       id: id('session'),
@@ -731,15 +741,56 @@ export default function App() {
       startedAt: now,
       updatedAt: now,
       messages: [],
-      focusSkill,
-      customScenario: customBrief,
-      roleplayMode,
-      challengeMode,
-      challengeTargetTurns,
-      notes,
+      focusSkill: overrides?.focusSkill ?? focusSkill,
+      customScenario: overrides?.customScenario ?? customBrief,
+      roleplayMode: overrides?.roleplayMode ?? roleplayMode,
+      challengeMode: overrides?.challengeMode ?? challengeMode,
+      challengeTargetTurns: overrides?.challengeTargetTurns ?? challengeTargetTurns,
+      notes: overrides?.notes ?? notes,
       completedMissionSteps: [],
       summary: null,
     };
+  };
+
+  const buildStarterBundle = (session: Session) => {
+    const sessionScenario = resolveScenarioDetails(selectedScenario, session);
+    return {
+      suggestions: sessionScenario.warmups.slice(0, 3),
+      coachTip: `이번 목표: ${sessionScenario.goals[0]}.`,
+      focusPoint: sessionScenario.challenge,
+    };
+  };
+
+  const startFreshSession = ({
+    challenge = false,
+    noticeMessage,
+  }: {
+    challenge?: boolean;
+    noticeMessage?: string;
+  } = {}) => {
+    if (selectedScenario.isCustom && !customBrief.trim()) {
+      setShowTools(true);
+      setNotice('커스텀 상황은 먼저 브리프를 입력해야 시작할 수 있습니다.');
+      return null;
+    }
+    const session = makeSession(selectedScenario, {
+      challengeMode: challenge,
+      challengeTargetTurns,
+      focusSkill,
+      customScenario: customBrief,
+      roleplayMode,
+      notes,
+    });
+    setChallengeMode(challenge);
+    setComposer('');
+    setShowCatalog(false);
+    setShowTools(false);
+    upsert(session);
+    setBundle(buildStarterBundle(session));
+    setNotice(
+      noticeMessage ?? (challenge ? `${challengeTargetTurns}턴 챌린지를 시작합니다.` : '새 말하기 세션이 준비되었습니다.'),
+    );
+    return session;
   };
 
   const ensureSession = () => {
@@ -748,16 +799,45 @@ export default function App() {
       setNotice('커스텀 상황은 먼저 브리프를 입력해야 시작할 수 있습니다.');
       return null;
     }
-    if (activeSession && activeSession.scenarioId === selectedScenarioId) return activeSession;
-    const session = makeSession(selectedScenario);
-    upsert(session);
-    setBundle({
-      suggestions: selectedScenario.warmups.slice(0, 3),
-      coachTip: `이번 목표: ${selectedScenario.goals[0]}.`,
-      focusPoint: selectedScenario.challenge,
+    if (hasCurrentScenarioSession && activeSession) return activeSession;
+    return startFreshSession({ challenge: challengeMode, noticeMessage: '새 말하기 세션이 준비되었습니다.' });
+  };
+
+  const restartConversation = () => {
+    if (hasCurrentMessages && !window.confirm('현재 대화 내용을 비우고 같은 상황으로 다시 시작할까요?')) return;
+    startFreshSession({
+      challenge: activeChallenge.enabled,
+      noticeMessage: activeChallenge.enabled
+        ? `${challengeTargetTurns}턴 챌린지를 처음부터 다시 시작합니다.`
+        : '대화 내용을 비우고 같은 상황으로 다시 시작했습니다.',
     });
-    setNotice('새 말하기 세션이 준비되었습니다.');
-    return session;
+  };
+
+  const startChallenge = () => {
+    startFreshSession({
+      challenge: true,
+      noticeMessage: `${challengeTargetTurns}턴 챌린지를 시작합니다. 첫 사용자 문장부터 점수가 계산됩니다.`,
+    });
+  };
+
+  const retryChallenge = () => {
+    if (hasCurrentMessages && !window.confirm('현재 챌린지를 버리고 같은 조건으로 다시 도전할까요?')) return;
+    startFreshSession({
+      challenge: true,
+      noticeMessage: `${challengeTargetTurns}턴 챌린지를 다시 시작합니다.`,
+    });
+  };
+
+  const stopChallenge = () => {
+    setChallengeMode(false);
+    if (hasCurrentScenarioSession && activeSession) {
+      upsert({
+        ...activeSession,
+        challengeMode: false,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+    setNotice('챌린지 모드를 정지하고 일반 연습으로 전환했습니다.');
   };
 
   const send = async (event?: FormEvent) => {
@@ -1095,11 +1175,6 @@ export default function App() {
             <p className="page-subtitle">{pageMeta.description}</p>
           </div>
           <div className="page-header-actions">
-            {view === 'practice' && !activeSession && (
-              <button type="button" className="btn btn-secondary" onClick={() => ensureSession()}>
-                세션 시작
-              </button>
-            )}
             <button type="button" className="btn btn-ghost" onClick={() => fileRef.current?.click()}>
               <Icon name="upload" />
               불러오기
@@ -1152,21 +1227,91 @@ export default function App() {
                   <div className="scenario-meta">
                     <span>{labelDifficulty(currentScenario.difficulty)}</span>
                     <span>{labelRoleplayMode(roleplayMode)}</span>
-                    <span>{activeSession ? `${activeSession.messages.length}턴` : '준비 완료'}</span>
-                    {activeChallenge.enabled ? <span>{activeChallenge.userTurns}/{activeChallenge.targetTurns}턴 챌린지</span> : null}
-                    {activeChallenge.enabled ? <span>{activeChallenge.score}점</span> : null}
+                    <span>{activeChallenge.enabled ? `챌린지 ${activeChallenge.userTurns}/${activeChallenge.targetTurns}턴` : hasCurrentMessages ? `${activeSession?.messages.length ?? 0}턴 진행` : '새 세션'}</span>
                   </div>
                   <div className="scenario-bar-actions">
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowTools((current) => !current)}>
                       {showTools ? '가이드 닫기' : '가이드'}
                     </button>
+                  </div>
+                </div>
+
+                <div className="practice-toolbar">
+                  <div className={`session-state-card ${activeChallenge.enabled ? 'session-state-card--challenge' : ''}`}>
+                    <div className="session-state-title">
+                      {activeChallenge.enabled
+                        ? activeChallenge.completed
+                          ? '챌린지 클리어'
+                          : '챌린지 진행 중'
+                        : hasCurrentMessages
+                          ? '일반 연습 진행 중'
+                          : '새 연습 준비'}
+                    </div>
+                    <div className="session-state-copy">
+                      {activeChallenge.enabled
+                        ? `${activeChallenge.userTurns}/${activeChallenge.targetTurns}턴 · ${activeChallenge.score}점 · 등급 ${activeChallenge.rank}`
+                        : hasCurrentMessages
+                          ? `현재 대화 ${activeSession?.messages.length ?? 0}턴 · 필요하면 바로 비우고 다시 시작할 수 있습니다.`
+                          : `같은 상황으로 일반 연습을 시작하거나 ${challengeTargetTurns}턴 챌린지에 바로 도전할 수 있습니다.`}
+                    </div>
+                  </div>
+
+                  <div className="practice-toolbar-actions">
+                    <label className="toolbar-select">
+                      <span>목표</span>
+                      <select
+                        className="form-select"
+                        value={challengeTargetTurns}
+                        onChange={(event) => {
+                          const next = Number(event.target.value) || 8;
+                          setChallengeTargetTurns(next);
+                          patchActive({ challengeTargetTurns: next });
+                        }}
+                      >
+                        {CHALLENGE_TARGET_OPTIONS.map((turns) => (
+                          <option key={turns} value={turns}>
+                            {turns}턴
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    {hasCurrentMessages ? (
+                      <button type="button" className="btn btn-secondary btn-sm" onClick={restartConversation}>
+                        대화 비우기
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => startFreshSession({ challenge: false, noticeMessage: '새 말하기 세션이 준비되었습니다.' })}
+                      >
+                        일반 시작
+                      </button>
+                    )}
+
+                    {activeChallenge.enabled ? (
+                      <>
+                        <button type="button" className="btn btn-primary btn-sm" onClick={retryChallenge}>
+                          재도전
+                        </button>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={stopChallenge}>
+                          챌린지 정지
+                        </button>
+                      </>
+                    ) : (
+                      <button type="button" className="btn btn-primary btn-sm" onClick={startChallenge}>
+                        챌린지 시작
+                      </button>
+                    )}
+
                     <button type="button" className="btn btn-ghost btn-sm" onClick={suggest} disabled={busy === 'suggestions'}>
                       {busy === 'suggestions' ? '생성 중...' : '답변 추천'}
                     </button>
                     <button type="button" className="btn btn-ghost btn-sm" onClick={analyze} disabled={busy === 'analysis'}>
                       {busy === 'analysis' ? '분석 중...' : '문장 분석'}
                     </button>
-                    <button type="button" className="btn btn-secondary btn-sm" onClick={recap} disabled={busy === 'recap'}>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={recap} disabled={busy === 'recap'}>
                       {busy === 'recap' ? '정리 중...' : '세션 리캡'}
                     </button>
                   </div>
@@ -1200,9 +1345,14 @@ export default function App() {
                       title="새 대화 연습을 시작해 보세요"
                       description={currentScenario.challenge}
                       action={
-                        <button type="button" className="btn btn-primary" onClick={() => ensureSession()}>
-                          세션 시작
-                        </button>
+                        <div className="empty-actions">
+                          <button type="button" className="btn btn-secondary" onClick={() => startFreshSession({ challenge: false })}>
+                            일반 시작
+                          </button>
+                          <button type="button" className="btn btn-primary" onClick={startChallenge}>
+                            챌린지 시작
+                          </button>
+                        </div>
                       }
                     />
                   )}
@@ -1342,15 +1492,6 @@ export default function App() {
                     </div>
 
                     <div className="form-grid">
-                      <ToggleField
-                        label="챌린지 모드"
-                        description="정해진 턴 수를 채우고 점수를 쌓는 도전형 연습입니다."
-                        checked={challengeMode}
-                        onChange={(checked) => {
-                          setChallengeMode(checked);
-                          patchActive({ challengeMode: checked });
-                        }}
-                      />
                       <label className="form-group">
                         <span className="form-label">목표 턴 수</span>
                         <select
@@ -1369,6 +1510,10 @@ export default function App() {
                           ))}
                         </select>
                       </label>
+                      <div className="feedback-card feedback-card--compact">
+                        <div className="feedback-label">도전 방식</div>
+                        <p>상단의 챌린지 시작 버튼으로만 시작됩니다. 재도전과 정지도 같은 위치에서 바로 할 수 있습니다.</p>
+                      </div>
                     </div>
 
                     {challengeMode && (
@@ -1949,7 +2094,7 @@ export default function App() {
                   </div>
                   <div className="feedback-card">
                     <div className="feedback-label">음성 출력</div>
-                    <p>{voices.length ? `${voices.length}개의 음성이 준비되었습니다.` : '아직 사용할 수 있는 음성이 감지되지 않았습니다.'}</p>
+                    <p>{voices.length ? `영어 음성 ${voices.length}개를 선택할 수 있습니다.` : '아직 사용할 수 있는 영어 음성이 감지되지 않았습니다.'}</p>
                   </div>
                   <div className="feedback-card">
                     <div className="feedback-label">내보내기 안전성</div>
@@ -2044,13 +2189,13 @@ export default function App() {
         <section className="settings-section">
           <div className="settings-section-title">음성</div>
           <label className="form-group">
-            <span className="form-label">음성</span>
+            <span className="form-label">영어 음성</span>
             <select
               className="form-select"
               value={settings.voiceName}
               onChange={(event) => setSettings((current) => ({ ...current, voiceName: event.target.value }))}
             >
-              <option value="">시스템 기본값</option>
+              <option value="">브라우저 기본 영어 음성</option>
               {voices.map((voice) => (
                 <option key={`${voice.name}-${voice.lang}`} value={voice.name}>
                   {voice.name} ({voice.lang})
