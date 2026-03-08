@@ -85,11 +85,11 @@ type IconName =
   | 'sun'
   | 'moon';
 
-const NAVS: Array<{ id: PracticeView; label: string; hint: string; icon: IconName }> = [
-  { id: 'practice', label: '대화 연습', hint: '실전 대화', icon: 'chat' },
-  { id: 'library', label: '시나리오', hint: '상황 라이브러리', icon: 'library' },
-  { id: 'review', label: '복습', hint: '저장 문장과 노트', icon: 'bookmark' },
-  { id: 'analytics', label: '통계', hint: '학습 진행 현황', icon: 'chart' },
+const NAVS: Array<{ id: PracticeView; label: string; mobileLabel: string; icon: IconName }> = [
+  { id: 'practice', label: '대화 연습', mobileLabel: '연습', icon: 'chat' },
+  { id: 'library', label: '시나리오', mobileLabel: '시나', icon: 'library' },
+  { id: 'review', label: '복습', mobileLabel: '복습', icon: 'bookmark' },
+  { id: 'analytics', label: '통계', mobileLabel: '통계', icon: 'chart' },
 ];
 
 const PAGE_META: Record<PracticeView, { title: string; description: string }> = {
@@ -1516,8 +1516,10 @@ export default function App() {
             >
               <Icon name={item.icon} />
               <div>
-                <div>{item.label}</div>
-                <small>{item.hint}</small>
+                <div>
+                  <span className="nav-label-desktop">{item.label}</span>
+                  <span className="nav-label-mobile">{item.mobileLabel}</span>
+                </div>
               </div>
             </button>
           ))}
@@ -1539,7 +1541,6 @@ export default function App() {
                   <span>{item.label}</span>
                   {item.ready && <span className="nav-item-status" aria-hidden="true" />}
                 </div>
-                <small>{item.hint}</small>
               </div>
             </button>
           ))}
@@ -1565,7 +1566,6 @@ export default function App() {
             <Icon name="settings" />
             <div>
               <div>설정</div>
-              <small>API, 음성, 저장 데이터</small>
             </div>
           </button>
           <div className="api-status">
