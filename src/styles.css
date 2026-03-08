@@ -1258,6 +1258,50 @@ button, input, textarea, select { font: inherit; }
 @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes toastIn { from { opacity: 0; transform: translateY(8px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within,
+  html,
+  body {
+    scroll-behavior: auto;
+  }
+
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+
+  .animate-in,
+  .message,
+  .toast,
+  .record-btn.recording,
+  .typing-dot,
+  .waveform-line {
+    animation: none !important;
+    transform: none;
+  }
+
+  .message-actions,
+  .toggle-thumb,
+  .drawer-panel,
+  .drawer-overlay,
+  .nav-item,
+  .sidebar-spotlight,
+  .btn,
+  .progress-bar-fill {
+    transition: none !important;
+  }
+
+  .toast.success .toast-icon { color: var(--green); }
+  .toast.error .toast-icon { color: var(--red); }
+  .toast.info .toast-icon { color: var(--accent); }
+
+  .record-btn.recording {
+    box-shadow: 0 0 0 2px var(--record-glow);
+  }
+}
+
 @media (max-width: 1180px) {
   .practice-shell--tools,
   .library-layout,
