@@ -62,6 +62,7 @@ import type {
 } from './types';
 
 type Busy = 'chat' | 'suggestions' | 'analysis' | 'recap' | 'challenge' | null;
+type PracticePanelTab = 'guide' | 'challenge' | 'suggestions' | 'analysis' | 'recap';
 type IconName =
   | 'chat'
   | 'library'
@@ -176,6 +177,13 @@ const CHALLENGE_SUBSCORE_LABELS: Record<keyof ChallengeReview['subscores'], stri
   vocabulary: '어휘 폭',
   naturalness: '자연스러움',
 };
+const PRACTICE_PANEL_TABS: Array<{ id: PracticePanelTab; label: string }> = [
+  { id: 'guide', label: '상황 가이드' },
+  { id: 'challenge', label: '챌린지 결과' },
+  { id: 'suggestions', label: '답변 덱' },
+  { id: 'analysis', label: '최근 분석' },
+  { id: 'recap', label: '세션 리캡' },
+];
 const TTS_VOICE_OPTIONS = getGeminiTtsVoices();
 const TTS_VOICE_GROUPS = {
   female: TTS_VOICE_OPTIONS.filter((voice) => voice.group === 'female'),
@@ -773,6 +781,7 @@ export default function App() {
   const [listening, setListening] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false);
   const [showTools, setShowTools] = useState(false);
+  const [practicePanelTab, setPracticePanelTab] = useState<PracticePanelTab>('guide');
   const [showSettings, setShowSettings] = useState(false);
   const [toastVisible, setToastVisible] = useState(true);
   const deferredSearch = useDeferredValue(search);
@@ -815,6 +824,17 @@ export default function App() {
   const hasCurrentScenarioSession = Boolean(activeSession && activeSession.scenarioId === selectedScenarioId);
   const hasCurrentMessages = Boolean(hasCurrentScenarioSession && activeSession?.messages.length);
   const suggestionChips = (bundle?.suggestions.length ? bundle.suggestions : currentScenario.warmups).slice(0, 3);
+  const openPracticePanel = (tab: PracticePanelTab) => {
+    setPracticePanelTab(tab);
+    setShowTools(true);
+  };
+  const togglePracticePanel = (tab: PracticePanelTab) => {
+    if (showTools && practicePanelTab === tab) {
+      setShowTools(false);
+      return;
+    }
+    openPracticePanel(tab);
+  };
   const recentSessions = sortSessions(sessions).slice(0, 8);
   const sessionChallengeSnapshots = sessions.map((session) => ({
     session,
@@ -977,7 +997,7 @@ export default function App() {
     noticeMessage?: string;
   } = {}) => {
     if (selectedScenario.isCustom && !customBrief.trim()) {
-      setShowTools(true);
+      openPracticePanel('guide');
       setNotice('커스텀 상황은 먼저 브리프를 입력해야 시작할 수 있습니다.');
       return null;
     }
@@ -1039,7 +1059,7 @@ export default function App() {
 
   const ensureSession = () => {
     if (selectedScenario.isCustom && !customBrief.trim()) {
-      setShowTools(true);
+      openPracticePanel('guide');
       setNotice('커스텀 상황은 먼저 브리프를 입력해야 시작할 수 있습니다.');
       return null;
     }
@@ -1058,6 +1078,7 @@ export default function App() {
   };
 
   const startChallenge = () => {
+    setPracticePanelTab('challenge');
     startFreshSession({
       challenge: true,
       noticeMessage: `${challengeTargetTurns}턴 챌린지를 시작합니다. 첫 사용자 문장부터 점수가 계산됩니다.`,
@@ -1189,7 +1210,7 @@ export default function App() {
       if (settings.autoSpeakAi) void playAssistantAudio(finalReply);
       if (challengeMode && previousUserTurns < challengeTargetTurns && previousUserTurns + 1 >= challengeTargetTurns) {
         setBusy('challenge');
-        setShowTools(true);
+        openPracticePanel('challenge');
         const result = await evaluateChallengeSession(completedSession);
         if (result.usedFallback) {
           setNotice(
@@ -1222,7 +1243,7 @@ export default function App() {
         coachTip: 'API 키가 없어 기본 워밍업 문장을 보여주고 있습니다.',
         focusPoint: selectedScenario.challenge,
       });
-      setShowTools(true);
+      openPracticePanel('suggestions');
       setNotice('AI 없이 기본 워밍업 문장을 보여주고 있습니다.');
       return;
     }
@@ -1236,7 +1257,7 @@ export default function App() {
         temperature: 0.4,
       });
       setBundle(normalizeSuggestionBundle(payload, selectedScenario));
-      setShowTools(true);
+      openPracticePanel('suggestions');
       setNotice('다음 답변 후보 3개를 준비했습니다.');
     } catch (error) {
       setNotice(error instanceof Error ? `답변 추천 실패: ${error.message}` : '답변 추천에 실패했습니다.');
@@ -1276,7 +1297,7 @@ export default function App() {
       };
       setAnalyses((current) => [entry, ...current]);
       setVocabulary((current) => mergeVocabulary(current, entry.vocabulary));
-      setShowTools(true);
+      openPracticePanel('analysis');
       setNotice('최근 문장을 분석했습니다.');
     } catch (error) {
       setNotice(error instanceof Error ? `분석 실패: ${error.message}` : '분석에 실패했습니다.');
@@ -1294,7 +1315,7 @@ export default function App() {
     if (!settings.apiKey.trim()) {
       upsert({ ...activeSession, summary: fallback });
       setVocabulary((current) => mergeVocabulary(current, fallback.notableVocabulary));
-      setShowTools(true);
+      openPracticePanel('recap');
       setNotice('API 없이 로컬 세션 리캡을 만들었습니다.');
       return;
     }
@@ -1310,11 +1331,11 @@ export default function App() {
       const summary = normalizeSummary(payload, fallback);
       upsert({ ...activeSession, summary });
       setVocabulary((current) => mergeVocabulary(current, summary.notableVocabulary));
-      setShowTools(true);
+      openPracticePanel('recap');
       setNotice('세션 리캡이 준비되었습니다.');
     } catch (error) {
       upsert({ ...activeSession, summary: fallback });
-      setShowTools(true);
+      openPracticePanel('recap');
       setNotice(error instanceof Error ? `리캡 생성 실패: ${error.message}` : '리캡 생성에 실패했습니다.');
     } finally {
       setBusy(null);
@@ -1542,8 +1563,8 @@ export default function App() {
                     <span>{activeChallenge.enabled ? `챌린지 ${activeChallenge.userTurns}/${activeChallenge.targetTurns}턴` : hasCurrentMessages ? `${activeSession?.messages.length ?? 0}턴 진행` : '새 세션'}</span>
                   </div>
                   <div className="scenario-bar-actions">
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowTools((current) => !current)}>
-                      {showTools ? '가이드 닫기' : '가이드'}
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => togglePracticePanel('guide')}>
+                      {showTools ? '패널 닫기' : '패널 열기'}
                     </button>
                   </div>
                 </div>
@@ -1636,84 +1657,6 @@ export default function App() {
                     </button>
                   </div>
                 </div>
-
-                {(busy === 'challenge' || activeChallengeReview) && (
-                  <section className="card challenge-result-card animate-in">
-                    <div className="challenge-result-head">
-                      <div>
-                        <div className="card-title">챌린지 결과</div>
-                        <div className="card-subtitle">
-                          {busy === 'challenge'
-                            ? 'AI가 전체 대화를 기준으로 최종 채점을 만들고 있습니다.'
-                            : activeChallengeReview?.verdict}
-                        </div>
-                      </div>
-                      {activeChallengeReview ? (
-                        <div className="challenge-score-badge">
-                          <strong>{activeChallengeReview.score100}</strong>
-                          <span>/100 · {activeChallengeReview.grade}</span>
-                        </div>
-                      ) : (
-                        <div className="badge badge-accent">채점 중</div>
-                      )}
-                    </div>
-
-                    {activeChallengeReview ? (
-                      <>
-                        <div className="challenge-result-meta">
-                          <span className="badge badge-accent">{activeChallengeReview.medal}</span>
-                          <span className="badge badge-neutral">{activeChallengeLevel.label}</span>
-                          {activeChallengeReview.rewards.map((reward) => (
-                            <span key={reward} className="badge badge-neutral">
-                              {reward}
-                            </span>
-                          ))}
-                        </div>
-                        <p className="insight-copy">{activeChallengeReview.summary}</p>
-                        <div className="challenge-level-card">
-                          <div className="feedback-label">회화 레벨</div>
-                          <strong>{activeChallengeLevel.label}</strong>
-                          <p>{activeChallengeLevel.summary}</p>
-                        </div>
-                        <div className="challenge-breakdown-grid">
-                          {Object.entries(activeChallengeSubscores).map(([key, value]) => (
-                            <div key={key} className="challenge-breakdown-item">
-                              <span>{CHALLENGE_SUBSCORE_LABELS[key as keyof ChallengeReview['subscores']]}</span>
-                              <strong>{value}</strong>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="analysis-grid">
-                          <div className="feedback-card">
-                            <div className="feedback-label">잘한 플레이</div>
-                            <ul className="bullet-list compact">
-                              {activeChallengeReview.strengths.map((item) => (
-                                <li key={item}>{item}</li>
-                              ))}
-                            </ul>
-                          </div>
-                          <div className="feedback-card">
-                            <div className="feedback-label">감점 포인트</div>
-                            <ul className="bullet-list compact">
-                              {activeChallengeReview.improvements.map((item) => (
-                                <li key={item}>{item}</li>
-                              ))}
-                            </ul>
-                          </div>
-                          <div className="feedback-card">
-                            <div className="feedback-label">다음 미션</div>
-                            <p>{activeChallengeReview.nextMission}</p>
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="feedback-card">
-                        <div className="feedback-label">최종 채점</div>
-                        <p>상황 대응, 자연스러움, 핵심 표현 활용, 대화 주도성을 기준으로 100점 만점 결과를 계산하는 중입니다.</p>
-                      </div>
-                    )}
-                  </section>
-                )}
 
                 {showCatalog && (
                   <section className="card catalog-popover animate-in">
@@ -1855,8 +1798,35 @@ export default function App() {
               </section>
 
               {showTools && (
-                <aside className="insights-rail">
-                  <section className="card animate-in">
+                <aside className="practice-panel animate-in">
+                  <div className="practice-panel-header">
+                    <div>
+                      <div className="card-title">도구 패널</div>
+                      <div className="card-subtitle">가이드와 결과를 같은 자리에서 전환해 보세요.</div>
+                    </div>
+                    <button type="button" className="btn btn-icon" onClick={() => setShowTools(false)} aria-label="패널 닫기">
+                      <Icon name="close" />
+                    </button>
+                  </div>
+
+                  <div className="practice-panel-tabs" role="tablist" aria-label="도구 패널 탭">
+                    {PRACTICE_PANEL_TABS.map((tab) => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={practicePanelTab === tab.id}
+                        className={`practice-panel-tab ${practicePanelTab === tab.id ? 'active' : ''}`}
+                        onClick={() => setPracticePanelTab(tab.id)}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="practice-panel-body">
+                    {practicePanelTab === 'guide' && (
+                      <section className="card practice-panel-section">
                     <div className="card-header">
                       <div>
                         <div className="card-title">상황 가이드</div>
@@ -1923,28 +1893,6 @@ export default function App() {
                         <p>상단의 챌린지 시작 버튼으로만 시작됩니다. 재도전과 정지도 같은 위치에서 바로 할 수 있습니다.</p>
                       </div>
                     </div>
-
-                    {challengeMode && (
-                      <div className="feedback-card">
-                        <div className="feedback-label">{activeChallengeReview ? '최종 챌린지 결과' : '챌린지 진행'}</div>
-                        <p>
-                          {activeChallengeReview
-                            ? `${activeChallengeReview.medal} · ${activeChallengeReview.score100}점 / 100점 · ${activeChallengeReview.grade} 등급`
-                            : `현재 ${activeChallenge.userTurns}/${activeChallenge.targetTurns}턴 진행 중이며, 종료 후 AI가 전체 대화를 평가합니다.`}
-                        </p>
-                        <div className="progress-bar-wrap">
-                          <div
-                            className="progress-bar-fill"
-                            style={{ width: `${Math.min(100, Math.round((activeChallenge.userTurns / activeChallenge.targetTurns) * 100))}%` }}
-                          />
-                        </div>
-                        <p className="insight-copy">
-                          {activeChallengeReview
-                            ? activeChallengeReview.nextMission
-                            : `남은 턴 ${activeChallenge.remainingTurns}턴 · 분석 ${activeChallenge.analysisCount}회 · 핵심 표현 사용 ${activeChallenge.expressionHits}회`}
-                        </p>
-                      </div>
-                    )}
 
                     {selectedScenario.isCustom && (
                       <label className="form-group">
@@ -2017,8 +1965,109 @@ export default function App() {
                       </div>
                     </div>
                   </section>
+                    )}
 
-                  <section className="card animate-in">
+                    {practicePanelTab === 'challenge' && (
+                      <section className="card challenge-result-card practice-panel-section">
+                        <div className="challenge-result-head">
+                          <div>
+                            <div className="card-title">챌린지 결과</div>
+                            <div className="card-subtitle">
+                              {busy === 'challenge'
+                                ? 'AI가 전체 대화를 기준으로 최종 채점을 만들고 있습니다.'
+                                : activeChallengeReview?.verdict ?? '챌린지를 완료하면 이 탭에 최종 점수와 상세 평가가 표시됩니다.'}
+                            </div>
+                          </div>
+                          {activeChallengeReview ? (
+                            <div className="challenge-score-badge">
+                              <strong>{activeChallengeReview.score100}</strong>
+                              <span>/100 · {activeChallengeReview.grade}</span>
+                            </div>
+                          ) : activeChallenge.enabled || busy === 'challenge' ? (
+                            <div className="badge badge-accent">{busy === 'challenge' ? '채점 중' : `${activeChallenge.userTurns}/${activeChallenge.targetTurns}턴`}</div>
+                          ) : null}
+                        </div>
+
+                        {activeChallengeReview ? (
+                          <>
+                            <div className="challenge-result-meta">
+                              <span className="badge badge-accent">{activeChallengeReview.medal}</span>
+                              <span className="badge badge-neutral">{activeChallengeLevel.label}</span>
+                              {activeChallengeReview.rewards.map((reward) => (
+                                <span key={reward} className="badge badge-neutral">
+                                  {reward}
+                                </span>
+                              ))}
+                            </div>
+                            <p className="insight-copy">{activeChallengeReview.summary}</p>
+                            <div className="challenge-level-card">
+                              <div className="feedback-label">회화 레벨</div>
+                              <strong>{activeChallengeLevel.label}</strong>
+                              <p>{activeChallengeLevel.summary}</p>
+                            </div>
+                            <div className="challenge-breakdown-grid">
+                              {Object.entries(activeChallengeSubscores).map(([key, value]) => (
+                                <div key={key} className="challenge-breakdown-item">
+                                  <span>{CHALLENGE_SUBSCORE_LABELS[key as keyof ChallengeReview['subscores']]}</span>
+                                  <strong>{value}</strong>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="analysis-grid">
+                              <div className="feedback-card">
+                                <div className="feedback-label">잘한 플레이</div>
+                                <ul className="bullet-list compact">
+                                  {activeChallengeReview.strengths.map((item) => (
+                                    <li key={item}>{item}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                              <div className="feedback-card">
+                                <div className="feedback-label">감점 포인트</div>
+                                <ul className="bullet-list compact">
+                                  {activeChallengeReview.improvements.map((item) => (
+                                    <li key={item}>{item}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                              <div className="feedback-card">
+                                <div className="feedback-label">다음 미션</div>
+                                <p>{activeChallengeReview.nextMission}</p>
+                              </div>
+                            </div>
+                          </>
+                        ) : activeChallenge.enabled || busy === 'challenge' ? (
+                          <div className="feedback-card">
+                            <div className="feedback-label">{busy === 'challenge' ? '최종 채점' : '챌린지 진행'}</div>
+                            <p>
+                              {busy === 'challenge'
+                                ? '상황 대응, 자연스러움, 핵심 표현 활용, 대화 주도성을 기준으로 100점 만점 결과를 계산하는 중입니다.'
+                                : `현재 ${activeChallenge.userTurns}/${activeChallenge.targetTurns}턴 진행 중이며, 종료 후 AI가 전체 대화를 평가합니다.`}
+                            </p>
+                            <div className="progress-bar-wrap">
+                              <div
+                                className="progress-bar-fill"
+                                style={{ width: `${Math.min(100, Math.round((activeChallenge.userTurns / activeChallenge.targetTurns) * 100))}%` }}
+                              />
+                            </div>
+                            <p className="insight-copy">
+                              {busy === 'challenge'
+                                ? '조금만 기다리면 점수, 등급, 세부 코멘트가 정리됩니다.'
+                                : `남은 턴 ${activeChallenge.remainingTurns}턴 · 분석 ${activeChallenge.analysisCount}회 · 핵심 표현 사용 ${activeChallenge.expressionHits}회`}
+                            </p>
+                          </div>
+                        ) : (
+                          <EmptyState
+                            icon={<Icon name="bolt" />}
+                            title="아직 챌린지 결과가 없습니다"
+                            description="상단에서 챌린지 시작을 누르고 목표 턴을 채우면 여기에서 최종 평가를 확인할 수 있습니다."
+                          />
+                        )}
+                      </section>
+                    )}
+
+                    {practicePanelTab === 'suggestions' && (
+                      <section className="card practice-panel-section">
                     <div className="card-header">
                       <div>
                         <div className="card-title">답변 덱</div>
@@ -2051,8 +2100,10 @@ export default function App() {
                       />
                     )}
                   </section>
+                    )}
 
-                  <section className="card animate-in">
+                    {practicePanelTab === 'analysis' && (
+                      <section className="card practice-panel-section">
                     <div className="card-header">
                       <div>
                         <div className="card-title">최근 분석</div>
@@ -2101,44 +2152,56 @@ export default function App() {
                       />
                     )}
                   </section>
+                    )}
 
-                  {activeSession?.summary && (
-                    <section className="card animate-in">
+                    {practicePanelTab === 'recap' && (
+                      <section className="card practice-panel-section">
                       <div className="card-header">
                         <div>
                           <div className="card-title">세션 리캡</div>
                           <div className="card-subtitle">이번 연습의 성과와 다음 할 일을 정리합니다.</div>
                         </div>
                       </div>
-                      <p className="insight-copy">{activeSession.summary.summary}</p>
-                      <div className="detail-columns">
-                        <div>
-                          <div className="mini-label">잘한 점</div>
-                          <ul className="bullet-list compact">
-                            {activeSession.summary.wins.map((item) => (
-                              <li key={item}>{item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div>
-                          <div className="mini-label">다음 집중 포인트</div>
-                          <ul className="bullet-list compact">
-                            {activeSession.summary.nextFocus.map((item) => (
-                              <li key={item}>{item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="mini-label">숙제</div>
-                        <ul className="bullet-list compact">
-                          {activeSession.summary.homework.map((item) => (
-                            <li key={item}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
+                      {activeSession?.summary ? (
+                        <>
+                          <p className="insight-copy">{activeSession.summary.summary}</p>
+                          <div className="detail-columns">
+                            <div>
+                              <div className="mini-label">잘한 점</div>
+                              <ul className="bullet-list compact">
+                                {activeSession.summary.wins.map((item) => (
+                                  <li key={item}>{item}</li>
+                                ))}
+                              </ul>
+                            </div>
+                            <div>
+                              <div className="mini-label">다음 집중 포인트</div>
+                              <ul className="bullet-list compact">
+                                {activeSession.summary.nextFocus.map((item) => (
+                                  <li key={item}>{item}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="mini-label">숙제</div>
+                            <ul className="bullet-list compact">
+                              {activeSession.summary.homework.map((item) => (
+                                <li key={item}>{item}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </>
+                      ) : (
+                        <EmptyState
+                          icon={<Icon name="wave" />}
+                          title="아직 세션 리캡이 없습니다"
+                          description="세션 리캡을 실행하면 이번 대화의 성과와 다음 과제가 여기에 정리됩니다."
+                        />
+                      )}
                     </section>
-                  )}
+                    )}
+                  </div>
                 </aside>
               )}
             </div>
