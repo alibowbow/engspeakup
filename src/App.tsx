@@ -180,9 +180,9 @@ const CHALLENGE_SUBSCORE_LABELS: Record<keyof ChallengeReview['subscores'], stri
 const PRACTICE_PANEL_TABS: Array<{ id: PracticePanelTab; label: string }> = [
   { id: 'guide', label: '상황 가이드' },
   { id: 'challenge', label: '챌린지 결과' },
-  { id: 'suggestions', label: '답변 덱' },
-  { id: 'analysis', label: '최근 분석' },
-  { id: 'recap', label: '세션 리캡' },
+  { id: 'suggestions', label: '다음 답변' },
+  { id: 'analysis', label: '문장 교정' },
+  { id: 'recap', label: '대화 요약' },
 ];
 const TTS_VOICE_OPTIONS = getGeminiTtsVoices();
 const TTS_VOICE_GROUPS = {
@@ -805,7 +805,17 @@ export default function App() {
   const favoriteMessages = sortSessions(sessions).flatMap((session) =>
     session.messages.filter((message) => message.favorite).map((message) => ({ session, message })),
   );
-  const latestAnalysis = [...analyses].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+  const activeSessionAnalyses = activeSession
+    ? [...analyses]
+        .filter((entry) => entry.sessionId === activeSession.id)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    : [];
+  const latestUserSentence = activeSession ? lastUserMessage(activeSession.messages) : null;
+  const currentSessionAnalysis =
+    (latestUserSentence &&
+      activeSessionAnalyses.find((entry) => entry.sentence.trim().toLowerCase() === latestUserSentence.text.trim().toLowerCase())) ||
+    activeSessionAnalyses[0] ||
+    null;
   const weeklySessions = sessions.filter((session) => Date.now() - new Date(session.updatedAt).getTime() < 7 * 24 * 60 * 60 * 1000);
   const totalTurns = sessions.reduce((sum, session) => sum + session.messages.length, 0);
   const weeklyMinutes = Math.round(
@@ -878,6 +888,48 @@ export default function App() {
   );
   const activeChallengeLevel = resolveChallengeLevelView(activeChallengeReview);
   const activeChallengeSubscores = resolveChallengeSubscores(activeChallengeReview);
+  const practiceToolNav: Array<{ id: PracticePanelTab; label: string; hint: string; icon: IconName; ready: boolean }> = [
+    {
+      id: 'guide',
+      label: '상황 가이드',
+      hint: '미션, 표현, 어휘 보기',
+      icon: 'list',
+      ready: true,
+    },
+    {
+      id: 'challenge',
+      label: '챌린지 결과',
+      hint: activeChallengeReview
+        ? `${activeChallengeReview.score100}점 · ${activeChallengeReview.grade} 등급`
+        : activeChallenge.enabled
+          ? `${activeChallenge.userTurns}/${activeChallenge.targetTurns}턴 진행 중`
+          : '점수와 등급 확인',
+      icon: 'bolt',
+      ready: Boolean(activeChallenge.enabled || activeChallengeReview),
+    },
+    {
+      id: 'analysis',
+      label: '문장 교정',
+      hint: currentSessionAnalysis ? '방금 쓴 문장 교정 완료' : '내 문장 다듬기',
+      icon: 'check',
+      ready: Boolean(currentSessionAnalysis),
+    },
+    {
+      id: 'suggestions',
+      label: '다음 답변',
+      hint: bundle ? '추천 문장 3개 준비됨' : '다음 문장 추천받기',
+      icon: 'sparkles',
+      ready: Boolean(bundle),
+    },
+    {
+      id: 'recap',
+      label: '대화 요약',
+      hint: activeSession?.summary ? '성과와 다음 숙제 정리됨' : '이번 연습 한 번에 정리',
+      icon: 'wave',
+      ready: Boolean(activeSession?.summary),
+    },
+  ];
+  const readyPracticeToolCount = practiceToolNav.filter((item) => item.ready && item.id !== 'guide').length;
   const selectedTtsVoice =
     TTS_VOICE_OPTIONS.find((voice) => voice.name === settings.voiceName) ??
     TTS_VOICE_OPTIONS.find((voice) => voice.name === GEMINI_TTS_DEFAULT_VOICE) ??
@@ -1260,7 +1312,7 @@ export default function App() {
       openPracticePanel('suggestions');
       setNotice('다음 답변 후보 3개를 준비했습니다.');
     } catch (error) {
-      setNotice(error instanceof Error ? `답변 추천 실패: ${error.message}` : '답변 추천에 실패했습니다.');
+      setNotice(error instanceof Error ? `다음 답변 추천 실패: ${error.message}` : '다음 답변 추천에 실패했습니다.');
     } finally {
       setBusy(null);
     }
@@ -1278,7 +1330,7 @@ export default function App() {
     }
     if (!settings.apiKey.trim()) {
       setShowSettings(true);
-      setNotice('문장 분석에는 API 키가 필요합니다.');
+      setNotice('문장 교정에는 API 키가 필요합니다.');
       return;
     }
     setBusy('analysis');
@@ -1316,7 +1368,7 @@ export default function App() {
       upsert({ ...activeSession, summary: fallback });
       setVocabulary((current) => mergeVocabulary(current, fallback.notableVocabulary));
       openPracticePanel('recap');
-      setNotice('API 없이 로컬 세션 리캡을 만들었습니다.');
+      setNotice('API 없이 로컬 대화 요약을 만들었습니다.');
       return;
     }
     setBusy('recap');
@@ -1332,11 +1384,11 @@ export default function App() {
       upsert({ ...activeSession, summary });
       setVocabulary((current) => mergeVocabulary(current, summary.notableVocabulary));
       openPracticePanel('recap');
-      setNotice('세션 리캡이 준비되었습니다.');
+      setNotice('대화 요약이 준비되었습니다.');
     } catch (error) {
       upsert({ ...activeSession, summary: fallback });
       openPracticePanel('recap');
-      setNotice(error instanceof Error ? `리캡 생성 실패: ${error.message}` : '리캡 생성에 실패했습니다.');
+      setNotice(error instanceof Error ? `대화 요약 생성 실패: ${error.message}` : '대화 요약 생성에 실패했습니다.');
     } finally {
       setBusy(null);
     }
@@ -1470,6 +1522,28 @@ export default function App() {
             </button>
           ))}
 
+          <div className="nav-section-label">코치 도구</div>
+          {practiceToolNav.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`nav-item nav-item--tool ${view === 'practice' && showTools && practicePanelTab === item.id ? 'active' : ''}`}
+              onClick={() => {
+                setView('practice');
+                openPracticePanel(item.id);
+              }}
+            >
+              <Icon name={item.icon} />
+              <div>
+                <div className="nav-item-row">
+                  <span>{item.label}</span>
+                  {item.ready && <span className="nav-item-status" aria-hidden="true" />}
+                </div>
+                <small>{item.hint}</small>
+              </div>
+            </button>
+          ))}
+
           <div className="nav-section-label">추천</div>
           <button
             type="button"
@@ -1564,7 +1638,7 @@ export default function App() {
                   </div>
                   <div className="scenario-bar-actions">
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => togglePracticePanel('guide')}>
-                      {showTools ? '패널 닫기' : '패널 열기'}
+                      {showTools ? '코치 도구 닫기' : readyPracticeToolCount ? `코치 도구 ${readyPracticeToolCount}` : '코치 도구'}
                     </button>
                   </div>
                 </div>
@@ -1647,16 +1721,58 @@ export default function App() {
                     )}
 
                     <button type="button" className="btn btn-ghost btn-sm" onClick={suggest} disabled={busy === 'suggestions' || busy === 'challenge'}>
-                      {busy === 'suggestions' ? '생성 중...' : '답변 추천'}
+                      {busy === 'suggestions' ? '생성 중...' : '다음 답변'}
                     </button>
                     <button type="button" className="btn btn-ghost btn-sm" onClick={analyze} disabled={busy === 'analysis' || busy === 'challenge'}>
-                      {busy === 'analysis' ? '분석 중...' : '문장 분석'}
+                      {busy === 'analysis' ? '교정 중...' : '문장 교정'}
                     </button>
                     <button type="button" className="btn btn-ghost btn-sm" onClick={recap} disabled={busy === 'recap' || busy === 'challenge'}>
-                      {busy === 'recap' ? '정리 중...' : '세션 리캡'}
+                      {busy === 'recap' ? '정리 중...' : '대화 요약'}
                     </button>
                   </div>
                 </div>
+
+                {(busy === 'analysis' || currentSessionAnalysis) && (
+                  <section className="card analysis-spotlight animate-in">
+                    <div className="analysis-spotlight-head">
+                      <div>
+                        <div className="feedback-label">문장 교정</div>
+                        <div className="card-title">
+                          {busy === 'analysis' ? '방금 쓴 문장을 다듬는 중입니다' : '방금 쓴 문장을 이렇게 바꾸면 더 자연스럽습니다'}
+                        </div>
+                        <div className="card-subtitle">
+                          {busy === 'analysis'
+                            ? '현재 대화 맥락을 반영해 더 정확하고 자연스러운 영어 문장으로 교정하고 있습니다.'
+                            : '내 문장과 추천 문장을 바로 비교한 뒤, 필요하면 코치 도구에서 상세 피드백까지 볼 수 있습니다.'}
+                        </div>
+                      </div>
+                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => openPracticePanel('analysis')}>
+                        코치 도구에서 자세히 보기
+                      </button>
+                    </div>
+
+                    {busy === 'analysis' ? (
+                      <div className="feedback-card">
+                        <div className="feedback-label">교정 준비 중</div>
+                        <p>문장 의도, 문법, 자연스러움을 함께 보고 있습니다.</p>
+                      </div>
+                    ) : currentSessionAnalysis ? (
+                      <>
+                        <div className="analysis-spotlight-grid">
+                          <div className="analysis-spotlight-card">
+                            <div className="mini-label">내 문장</div>
+                            <p>{currentSessionAnalysis.sentence}</p>
+                          </div>
+                          <div className="analysis-spotlight-card analysis-spotlight-card--accent">
+                            <div className="mini-label">추천 문장</div>
+                            <p>{currentSessionAnalysis.revision}</p>
+                          </div>
+                        </div>
+                        <p className="insight-copy">{currentSessionAnalysis.koreanSummary}</p>
+                      </>
+                    ) : null}
+                  </section>
+                )}
 
                 {showCatalog && (
                   <section className="card catalog-popover animate-in">
@@ -1801,8 +1917,8 @@ export default function App() {
                 <aside className="practice-panel animate-in">
                   <div className="practice-panel-header">
                     <div>
-                      <div className="card-title">도구 패널</div>
-                      <div className="card-subtitle">가이드와 결과를 같은 자리에서 전환해 보세요.</div>
+                      <div className="card-title">코치 도구</div>
+                      <div className="card-subtitle">가이드, 교정, 챌린지 결과, 대화 요약을 한 자리에서 확인합니다.</div>
                     </div>
                     <button type="button" className="btn btn-icon" onClick={() => setShowTools(false)} aria-label="패널 닫기">
                       <Icon name="close" />
@@ -2070,8 +2186,8 @@ export default function App() {
                       <section className="card practice-panel-section">
                     <div className="card-header">
                       <div>
-                        <div className="card-title">답변 덱</div>
-                        <div className="card-subtitle">현재 흐름에 맞는 다음 답변 후보입니다.</div>
+                        <div className="card-title">다음 답변</div>
+                        <div className="card-subtitle">막히지 않도록 바로 이어 말할 수 있는 다음 문장을 추천합니다.</div>
                       </div>
                     </div>
                     {bundle ? (
@@ -2095,8 +2211,8 @@ export default function App() {
                     ) : (
                       <EmptyState
                         icon={<Icon name="sparkles" />}
-                        title="아직 답변 덱이 없습니다"
-                        description="답변 추천을 누르면 현재 대화에 맞는 다음 문장을 제안합니다."
+                        title="아직 다음 답변 추천이 없습니다"
+                        description="상단의 다음 답변 버튼을 누르면 현재 흐름에 맞는 문장 후보를 바로 제안합니다."
                       />
                     )}
                   </section>
@@ -2106,22 +2222,32 @@ export default function App() {
                       <section className="card practice-panel-section">
                     <div className="card-header">
                       <div>
-                        <div className="card-title">최근 분석</div>
-                        <div className="card-subtitle">유지할 점, 고칠 점, 다시 쓸 표현을 정리합니다.</div>
+                        <div className="card-title">문장 교정</div>
+                        <div className="card-subtitle">방금 쓴 문장을 더 정확하고 자연스러운 영어로 바로 다듬습니다.</div>
                       </div>
                     </div>
-                    {latestAnalysis ? (
+                    {currentSessionAnalysis ? (
                       <>
-                        <p className="insight-copy">{latestAnalysis.overview}</p>
+                        <div className="analysis-spotlight-grid">
+                          <div className="analysis-spotlight-card">
+                            <div className="mini-label">내 문장</div>
+                            <p>{currentSessionAnalysis.sentence}</p>
+                          </div>
+                          <div className="analysis-spotlight-card analysis-spotlight-card--accent">
+                            <div className="mini-label">추천 문장</div>
+                            <p>{currentSessionAnalysis.revision}</p>
+                          </div>
+                        </div>
+                        <p className="insight-copy">{currentSessionAnalysis.overview}</p>
                         <div className="feedback-card">
-                          <div className="feedback-label">개선문</div>
-                          <p>{latestAnalysis.revision}</p>
+                          <div className="feedback-label">왜 이렇게 바꾸나요?</div>
+                          <p>{currentSessionAnalysis.koreanSummary}</p>
                         </div>
                         <div className="analysis-grid">
                           <div className="feedback-card">
                             <div className="feedback-label">잘한 점</div>
                             <ul className="bullet-list compact">
-                              {latestAnalysis.strengths.map((item) => (
+                              {currentSessionAnalysis.strengths.map((item) => (
                                 <li key={item}>{item}</li>
                               ))}
                             </ul>
@@ -2129,7 +2255,7 @@ export default function App() {
                           <div className="feedback-card">
                             <div className="feedback-label">문법</div>
                             <ul className="bullet-list compact">
-                              {latestAnalysis.grammar.map((item) => (
+                              {currentSessionAnalysis.grammar.map((item) => (
                                 <li key={item}>{item}</li>
                               ))}
                             </ul>
@@ -2137,7 +2263,7 @@ export default function App() {
                           <div className="feedback-card">
                             <div className="feedback-label">자연스러움</div>
                             <ul className="bullet-list compact">
-                              {latestAnalysis.naturalness.map((item) => (
+                              {currentSessionAnalysis.naturalness.map((item) => (
                                 <li key={item}>{item}</li>
                               ))}
                             </ul>
@@ -2147,8 +2273,8 @@ export default function App() {
                     ) : (
                       <EmptyState
                         icon={<Icon name="check" />}
-                        title="아직 분석 결과가 없습니다"
-                        description="문장 분석을 실행하면 피드백, 교정, 새 어휘가 여기에 쌓입니다."
+                        title="아직 문장 교정 결과가 없습니다"
+                        description="대화 중 문장 교정 버튼을 누르면 내 문장과 추천 문장을 바로 비교해서 볼 수 있습니다."
                       />
                     )}
                   </section>
@@ -2158,12 +2284,16 @@ export default function App() {
                       <section className="card practice-panel-section">
                       <div className="card-header">
                         <div>
-                          <div className="card-title">세션 리캡</div>
-                          <div className="card-subtitle">이번 연습의 성과와 다음 할 일을 정리합니다.</div>
+                          <div className="card-title">대화 요약</div>
+                          <div className="card-subtitle">이번 연습을 한 번에 정리해서 다음 연습으로 바로 이어지게 만듭니다.</div>
                         </div>
                       </div>
                       {activeSession?.summary ? (
                         <>
+                          <div className="feedback-card feedback-card--compact">
+                            <div className="feedback-label">대화 요약이란?</div>
+                            <p>이번 대화에서 무엇을 잘했고, 다음에 무엇을 먼저 고쳐야 하는지 한 번에 정리해 주는 마무리 노트입니다.</p>
+                          </div>
                           <p className="insight-copy">{activeSession.summary.summary}</p>
                           <div className="detail-columns">
                             <div>
@@ -2195,8 +2325,8 @@ export default function App() {
                       ) : (
                         <EmptyState
                           icon={<Icon name="wave" />}
-                          title="아직 세션 리캡이 없습니다"
-                          description="세션 리캡을 실행하면 이번 대화의 성과와 다음 과제가 여기에 정리됩니다."
+                          title="아직 대화 요약이 없습니다"
+                          description="상단의 대화 요약 버튼을 누르면 이번 연습의 성과, 다음 집중 포인트, 숙제를 한 번에 정리해 줍니다."
                         />
                       )}
                     </section>
@@ -2435,7 +2565,7 @@ export default function App() {
                     ))}
                   </div>
                 ) : (
-                  <EmptyState icon={<Icon name="check" />} title="아직 피드백이 없습니다" description="세션 안에서 문장 분석을 실행하면 교정 기록이 여기에 쌓입니다." />
+              <EmptyState icon={<Icon name="check" />} title="아직 문장 교정 기록이 없습니다" description="세션 안에서 문장 교정을 실행하면 교정 기록이 여기에 쌓입니다." />
                 )}
               </section>
 
@@ -2443,7 +2573,7 @@ export default function App() {
                 <div className="card-header">
                   <div>
                     <div className="card-title">어휘 뱅크</div>
-                    <div className="card-subtitle">분석과 리캡에서 모은 표현을 다시 확인합니다.</div>
+                    <div className="card-subtitle">문장 교정과 대화 요약에서 모은 표현을 다시 확인합니다.</div>
                   </div>
                   <span className="badge badge-neutral">{vocabulary.length}</span>
                 </div>
@@ -2463,7 +2593,7 @@ export default function App() {
                     ))}
                   </div>
                 ) : (
-                  <EmptyState icon={<Icon name="wave" />} title="어휘 뱅크가 비어 있습니다" description="AI 분석이나 세션 리캡을 실행하면 새 카드가 여기에 추가됩니다." />
+              <EmptyState icon={<Icon name="wave" />} title="어휘 뱅크가 비어 있습니다" description="AI 문장 교정이나 대화 요약을 실행하면 새 카드가 여기에 추가됩니다." />
                 )}
               </section>
             </div>
