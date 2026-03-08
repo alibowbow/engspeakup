@@ -1650,6 +1650,36 @@ export default function App() {
                   </div>
                 </div>
 
+                <section className="quick-actions" aria-label="빠른 실행">
+                  <button type="button" className="quick-action-card" onClick={() => setShowScenarioPicker((current) => !current)}>
+                    <div className="quick-action-icon" aria-hidden="true">
+                      <Icon name="list" />
+                    </div>
+                    <div>
+                      <div className="quick-action-title">시나리오 전환</div>
+                      <p className="quick-action-copy">상황을 바꿔 새로운 말하기 컨텍스트를 바로 시작하세요.</p>
+                    </div>
+                  </button>
+                  <button type="button" className="quick-action-card" onClick={activeChallenge.enabled ? retryChallenge : startChallenge}>
+                    <div className="quick-action-icon" aria-hidden="true">
+                      <Icon name="bolt" />
+                    </div>
+                    <div>
+                      <div className="quick-action-title">챌린지 부스트</div>
+                      <p className="quick-action-copy">{activeChallenge.enabled ? '현재 미션을 초기화하고 바로 재도전합니다.' : `${challengeTargetTurns}턴 목표로 집중 챌린지를 시작합니다.`}</p>
+                    </div>
+                  </button>
+                  <button type="button" className="quick-action-card" onClick={() => openPracticePanel('analysis')}>
+                    <div className="quick-action-icon" aria-hidden="true">
+                      <Icon name="sparkles" />
+                    </div>
+                    <div>
+                      <div className="quick-action-title">코치 피드백</div>
+                      <p className="quick-action-copy">문장 교정·요약·추천 답변을 한 화면에서 확인할 수 있습니다.</p>
+                    </div>
+                  </button>
+                </section>
+
                 <div className="practice-toolbar">
                   <div className={`session-state-card ${activeChallenge.enabled ? 'session-state-card--challenge' : ''}`}>
                     <div className="session-state-title">
