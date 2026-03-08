@@ -786,7 +786,6 @@ export default function App() {
   const [streamingReply, setStreamingReply] = useState('');
   const [listening, setListening] = useState(false);
   const {
-    showScenarioPicker,
     setShowScenarioPicker,
     showTools,
     setShowTools,
@@ -795,7 +794,6 @@ export default function App() {
     showSettings,
     setShowSettings,
     openPracticePanel,
-    togglePracticePanel,
   } = usePracticeUiContainer();
   const [toastVisible, setToastVisible] = useState(true);
   const deferredSearch = useDeferredValue(search);
@@ -891,48 +889,6 @@ export default function App() {
   );
   const activeChallengeLevel = resolveChallengeLevelView(activeChallengeReview);
   const activeChallengeSubscores = resolveChallengeSubscores(activeChallengeReview);
-  const practiceToolNav: Array<{ id: PracticePanelTab; label: string; hint: string; icon: IconName; ready: boolean }> = [
-    {
-      id: 'guide',
-      label: '상황 가이드',
-      hint: '미션, 표현, 어휘 보기',
-      icon: 'list',
-      ready: true,
-    },
-    {
-      id: 'challenge',
-      label: '챌린지 결과',
-      hint: activeChallengeReview
-        ? `${activeChallengeReview.score100}점 · ${activeChallengeReview.grade} 등급`
-        : activeChallenge.enabled
-          ? `${activeChallenge.userTurns}/${activeChallenge.targetTurns}턴 진행 중`
-          : '점수와 등급 확인',
-      icon: 'bolt',
-      ready: Boolean(activeChallenge.enabled || activeChallengeReview),
-    },
-    {
-      id: 'analysis',
-      label: '문장 교정',
-      hint: currentSessionAnalysis ? '방금 쓴 문장 교정 완료' : '내 문장 다듬기',
-      icon: 'check',
-      ready: Boolean(currentSessionAnalysis),
-    },
-    {
-      id: 'suggestions',
-      label: '다음 답변',
-      hint: bundle ? '추천 문장 3개 준비됨' : '다음 문장 추천받기',
-      icon: 'sparkles',
-      ready: Boolean(bundle),
-    },
-    {
-      id: 'recap',
-      label: '대화 요약',
-      hint: activeSession?.summary ? '성과와 다음 숙제 정리됨' : '이번 연습 한 번에 정리',
-      icon: 'wave',
-      ready: Boolean(activeSession?.summary),
-    },
-  ];
-  const readyPracticeToolCount = practiceToolNav.filter((item) => item.ready && item.id !== 'guide').length;
   const selectedTtsVoice =
     TTS_VOICE_OPTIONS.find((voice) => voice.name === settings.voiceName) ??
     TTS_VOICE_OPTIONS.find((voice) => voice.name === GEMINI_TTS_DEFAULT_VOICE) ??
@@ -1265,7 +1221,7 @@ export default function App() {
       if (settings.autoSpeakAi) void playAssistantAudio(finalReply);
       if (challengeMode && previousUserTurns < challengeTargetTurns && previousUserTurns + 1 >= challengeTargetTurns) {
         setBusy('challenge');
-        openPracticePanel('challenge');
+        setPracticePanelTab('challenge');
         const result = await evaluateChallengeSession(completedSession);
         if (result.usedFallback) {
           setNotice(
@@ -1298,7 +1254,6 @@ export default function App() {
         coachTip: 'API 키가 없어 기본 워밍업 문장을 보여주고 있습니다.',
         focusPoint: selectedScenario.challenge,
       });
-      openPracticePanel('suggestions');
       setNotice('AI 없이 기본 워밍업 문장을 보여주고 있습니다.');
       return;
     }
@@ -1312,7 +1267,6 @@ export default function App() {
         temperature: 0.4,
       });
       setBundle(normalizeSuggestionBundle(payload, selectedScenario));
-      openPracticePanel('suggestions');
       setNotice('다음 답변 후보 3개를 준비했습니다.');
     } catch (error) {
       setNotice(error instanceof Error ? `다음 답변 추천 실패: ${error.message}` : '다음 답변 추천에 실패했습니다.');
@@ -1352,7 +1306,6 @@ export default function App() {
       };
       setAnalyses((current) => [entry, ...current]);
       setVocabulary((current) => mergeVocabulary(current, entry.vocabulary));
-      openPracticePanel('analysis');
       setNotice('최근 문장을 분석했습니다.');
     } catch (error) {
       setNotice(error instanceof Error ? `분석 실패: ${error.message}` : '분석에 실패했습니다.');
@@ -1370,7 +1323,6 @@ export default function App() {
     if (!settings.apiKey.trim()) {
       upsert({ ...activeSession, summary: fallback });
       setVocabulary((current) => mergeVocabulary(current, fallback.notableVocabulary));
-      openPracticePanel('recap');
       setNotice('API 없이 로컬 대화 요약을 만들었습니다.');
       return;
     }
@@ -1386,11 +1338,9 @@ export default function App() {
       const summary = normalizeSummary(payload, fallback);
       upsert({ ...activeSession, summary });
       setVocabulary((current) => mergeVocabulary(current, summary.notableVocabulary));
-      openPracticePanel('recap');
       setNotice('대화 요약이 준비되었습니다.');
     } catch (error) {
       upsert({ ...activeSession, summary: fallback });
-      openPracticePanel('recap');
       setNotice(error instanceof Error ? `대화 요약 생성 실패: ${error.message}` : '대화 요약 생성에 실패했습니다.');
     } finally {
       setBusy(null);
@@ -1515,7 +1465,10 @@ export default function App() {
               key={item.id}
               type="button"
               className={`nav-item ${view === item.id ? 'active' : ''}`}
-              onClick={() => setView(item.id)}
+              onClick={() => {
+                setView(item.id);
+                if (item.id === 'practice') setShowTools(false);
+              }}
             >
               <Icon name={item.icon} />
               <div>
@@ -1530,26 +1483,23 @@ export default function App() {
           ))}
 
           <div className="nav-section-label">코치 도구</div>
-          {practiceToolNav.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`nav-item nav-item--tool ${view === 'practice' && showTools && practicePanelTab === item.id ? 'active' : ''}`}
-              onClick={() => {
-                setView('practice');
-                openPracticePanel(item.id);
-              }}
-            >
-              <Icon name={item.icon} />
-              <div>
-                <div className="nav-item-row">
-                  <span>{item.label}</span>
-                  {item.ready && <span className="nav-item-status" aria-hidden="true" />}
-                </div>
-                <small>{item.hint}</small>
+          <button
+            type="button"
+            className={`nav-item nav-item--tool ${view === 'practice' && showTools ? 'active' : ''}`}
+            onClick={() => {
+              setView('practice');
+              setShowTools(true);
+              setPracticePanelTab('guide');
+            }}
+          >
+            <Icon name="list" />
+            <div>
+              <div className="nav-item-row">
+                <span>코치 도구</span>
               </div>
-            </button>
-          ))}
+              <small>상황 가이드 · 교정 · 요약</small>
+            </div>
+          </button>
 
           <div className="nav-section-label">추천</div>
           <button
@@ -1558,7 +1508,6 @@ export default function App() {
             onClick={() => {
               handleScenarioSelect(spotlightScenario.id);
               setView('practice');
-              setShowScenarioPicker(true);
             }}
           >
             <span className="badge badge-accent">오늘 추천</span>
@@ -1619,339 +1568,10 @@ export default function App() {
 
         <main className={`main-content ${view === 'practice' ? 'main-content--practice' : ''}`}>
           {view === 'practice' && (
-            <PracticeShell showTools={showTools}>
-              <section className="conversation-layout">
-                <div className="scenario-bar">
-                  <button
-                    type="button"
-                    className="btn btn-icon"
-                    onClick={() => setShowScenarioPicker((current) => !current)}
-                    aria-label="시나리오 목록 열기"
-                  >
-                    <Icon name="list" />
-                  </button>
-                  <span className="scenario-badge">
-                    <Icon name="bolt" />
-                    {labelCategory(currentScenario.category)}
-                  </span>
-                  <div className="scenario-summary">
-                    <div className="scenario-title">{currentScenario.title}</div>
-                    <div className="scenario-caption">{currentScenario.subtitle}</div>
-                  </div>
-                  <div className="scenario-meta">
-                    <span>{labelDifficulty(currentScenario.difficulty)}</span>
-                    <span>{labelRoleplayMode(roleplayMode)}</span>
-                    <span>{activeChallenge.enabled ? `챌린지 ${activeChallenge.userTurns}/${activeChallenge.targetTurns}턴` : hasCurrentMessages ? `${activeSession?.messages.length ?? 0}턴 진행` : '새 세션'}</span>
-                  </div>
-                  <div className="scenario-bar-actions">
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => togglePracticePanel('guide')}>
-                      {showTools ? '코치 도구 닫기' : readyPracticeToolCount ? `코치 도구 ${readyPracticeToolCount}` : '코치 도구'}
-                    </button>
-                  </div>
-                </div>
+            <PracticeShell>
+              {showTools ? (
+                <section className="practice-panel practice-panel--page animate-in">
 
-                <section className="quick-actions" aria-label="빠른 실행">
-                  <button type="button" className="quick-action-card" onClick={() => setShowScenarioPicker((current) => !current)}>
-                    <div className="quick-action-icon" aria-hidden="true">
-                      <Icon name="list" />
-                    </div>
-                    <div>
-                      <div className="quick-action-title">시나리오 전환</div>
-                      <p className="quick-action-copy">상황을 바꿔 새로운 말하기 컨텍스트를 바로 시작하세요.</p>
-                    </div>
-                  </button>
-                  <button type="button" className="quick-action-card" onClick={activeChallenge.enabled ? retryChallenge : startChallenge}>
-                    <div className="quick-action-icon" aria-hidden="true">
-                      <Icon name="bolt" />
-                    </div>
-                    <div>
-                      <div className="quick-action-title">챌린지 부스트</div>
-                      <p className="quick-action-copy">{activeChallenge.enabled ? '현재 미션을 초기화하고 바로 재도전합니다.' : `${challengeTargetTurns}턴 목표로 집중 챌린지를 시작합니다.`}</p>
-                    </div>
-                  </button>
-                  <button type="button" className="quick-action-card" onClick={() => openPracticePanel('analysis')}>
-                    <div className="quick-action-icon" aria-hidden="true">
-                      <Icon name="sparkles" />
-                    </div>
-                    <div>
-                      <div className="quick-action-title">코치 피드백</div>
-                      <p className="quick-action-copy">문장 교정·요약·추천 답변을 한 화면에서 확인할 수 있습니다.</p>
-                    </div>
-                  </button>
-                </section>
-
-                <div className="practice-toolbar">
-                  <div className={`session-state-card ${activeChallenge.enabled ? 'session-state-card--challenge' : ''}`}>
-                    <div className="session-state-title">
-                      {busy === 'challenge'
-                        ? 'AI 최종 채점 중'
-                        : activeChallenge.enabled
-                          ? activeChallenge.completed
-                            ? '챌린지 클리어'
-                            : '챌린지 진행 중'
-                        : hasCurrentMessages
-                          ? '일반 연습 진행 중'
-                          : '새 연습 준비'}
-                    </div>
-                    <div className="session-state-copy">
-                      {busy === 'challenge'
-                        ? '대화 전체를 읽고 100점 만점 최종 점수와 등급을 계산하고 있습니다.'
-                        : activeChallengeReview
-                          ? `${activeChallengeReview.medal} · ${activeChallengeReview.score100}점 / 100점 · ${activeChallengeReview.grade} 등급`
-                        : activeChallenge.enabled
-                          ? `${activeChallenge.userTurns}/${activeChallenge.targetTurns}턴 진행 중 · 종료 후 AI가 100점 만점으로 최종 평가합니다.`
-                        : hasCurrentMessages
-                          ? `현재 대화 ${activeSession?.messages.length ?? 0}턴 · 필요하면 바로 비우고 다시 시작할 수 있습니다.`
-                          : `같은 상황으로 일반 연습을 시작하거나 ${challengeTargetTurns}턴 챌린지에 바로 도전할 수 있습니다.`}
-                    </div>
-                  </div>
-
-                  <div className="practice-toolbar-actions">
-                    <label className="toolbar-select">
-                      <span>목표</span>
-                      <select
-                        className="form-select"
-                        value={challengeTargetTurns}
-                        disabled={busy === 'challenge'}
-                        onChange={(event) => {
-                          const next = Number(event.target.value) || 8;
-                          setChallengeTargetTurns(next);
-                          patchActive({ challengeTargetTurns: next });
-                        }}
-                      >
-                        {CHALLENGE_TARGET_OPTIONS.map((turns) => (
-                          <option key={turns} value={turns}>
-                            {turns}턴
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    {hasCurrentMessages ? (
-                      <button type="button" className="btn btn-secondary btn-sm" onClick={restartConversation} disabled={busy === 'challenge'}>
-                        대화 비우기
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        disabled={busy === 'challenge'}
-                        onClick={() => startFreshSession({ challenge: false, noticeMessage: '새 말하기 세션이 준비되었습니다.' })}
-                      >
-                        일반 시작
-                      </button>
-                    )}
-
-                    {activeChallenge.enabled ? (
-                      <>
-                        <button type="button" className="btn btn-primary btn-sm" onClick={retryChallenge} disabled={busy === 'challenge'}>
-                          재도전
-                        </button>
-                        <button type="button" className="btn btn-ghost btn-sm" onClick={stopChallenge} disabled={busy === 'challenge'}>
-                          챌린지 정지
-                        </button>
-                      </>
-                    ) : (
-                      <button type="button" className="btn btn-primary btn-sm" onClick={startChallenge} disabled={busy === 'challenge'}>
-                        챌린지 시작
-                      </button>
-                    )}
-
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={suggest} disabled={busy === 'suggestions' || busy === 'challenge'}>
-                      {busy === 'suggestions' ? '생성 중...' : '다음 답변'}
-                    </button>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={analyze} disabled={busy === 'analysis' || busy === 'challenge'}>
-                      {busy === 'analysis' ? '교정 중...' : '문장 교정'}
-                    </button>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={recap} disabled={busy === 'recap' || busy === 'challenge'}>
-                      {busy === 'recap' ? '정리 중...' : '대화 요약'}
-                    </button>
-                  </div>
-                </div>
-
-                {(busy === 'analysis' || currentSessionAnalysis) && (
-                  <section className="card analysis-spotlight animate-in">
-                    <div className="analysis-spotlight-head">
-                      <div>
-                        <div className="feedback-label">문장 교정</div>
-                        <div className="card-title">
-                          {busy === 'analysis' ? '방금 쓴 문장을 다듬는 중입니다' : '방금 쓴 문장을 이렇게 바꾸면 더 자연스럽습니다'}
-                        </div>
-                        <div className="card-subtitle">
-                          {busy === 'analysis'
-                            ? '현재 대화 맥락을 반영해 더 정확하고 자연스러운 영어 문장으로 교정하고 있습니다.'
-                            : '내 문장과 추천 문장을 바로 비교한 뒤, 필요하면 코치 도구에서 상세 피드백까지 볼 수 있습니다.'}
-                        </div>
-                      </div>
-                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => openPracticePanel('analysis')}>
-                        코치 도구에서 자세히 보기
-                      </button>
-                    </div>
-
-                    {busy === 'analysis' ? (
-                      <div className="feedback-card">
-                        <div className="feedback-label">교정 준비 중</div>
-                        <p>문장 의도, 문법, 자연스러움을 함께 보고 있습니다.</p>
-                      </div>
-                    ) : currentSessionAnalysis ? (
-                      <>
-                        <div className="analysis-spotlight-grid">
-                          <div className="analysis-spotlight-card">
-                            <div className="mini-label">내 문장</div>
-                            <p>{currentSessionAnalysis.sentence}</p>
-                          </div>
-                          <div className="analysis-spotlight-card analysis-spotlight-card--accent">
-                            <div className="mini-label">추천 문장</div>
-                            <p>{currentSessionAnalysis.revision}</p>
-                          </div>
-                        </div>
-                        <p className="insight-copy">{currentSessionAnalysis.koreanSummary}</p>
-                      </>
-                    ) : null}
-                  </section>
-                )}
-
-                {showScenarioPicker && (
-                  <section className="card catalog-popover animate-in">
-                    <div className="card-header">
-                        <div>
-                          <div className="card-title">시나리오 목록</div>
-                          <div className="card-subtitle">총 {filteredScenarios.length}개 시나리오</div>
-                        </div>
-                      </div>
-                    <label className="form-group">
-                      <span className="form-label">검색</span>
-                      <input
-                        className="form-input"
-                        placeholder="제목, 카테고리, 태그 검색"
-                        value={search}
-                        onChange={(event) => setSearch(event.target.value)}
-                      />
-                    </label>
-                    <ScenarioCatalog groups={groupedScenarios} selectedId={selectedScenarioId} onSelect={handleScenarioSelect} />
-                  </section>
-                )}
-
-                <div ref={chatScrollRef} className="chat-feed">
-                  {!activeSession?.messages.length && (
-                    <EmptyState
-                      icon={<Icon name="chat" />}
-                      title="새 대화 연습을 시작해 보세요"
-                      description={currentScenario.challenge}
-                      action={
-                        <div className="empty-actions">
-                          <button type="button" className="btn btn-secondary" onClick={() => startFreshSession({ challenge: false })}>
-                            일반 시작
-                          </button>
-                          <button type="button" className="btn btn-primary" onClick={startChallenge}>
-                            챌린지 시작
-                          </button>
-                        </div>
-                      }
-                    />
-                  )}
-
-                  {activeSession?.messages.length ? <div className="chat-divider">현재 세션</div> : null}
-
-                  {activeSession?.messages.map((message) => (
-                    <MessageCard
-                      key={message.id}
-                      message={message}
-                      onFavorite={() => toggleFavorite(activeSession.id, message.id)}
-                      onCopy={() => navigator.clipboard.writeText(message.text).then(() => setNotice('문장을 복사했습니다.'))}
-                      onSpeak={
-                        message.role === 'assistant'
-                          ? () => void playAssistantAudio(message.text)
-                          : undefined
-                      }
-                    />
-                  ))}
-
-                  {busy === 'chat' && (
-                    <article className="message ai message-loading">
-                      <div className="message-avatar">
-                        <Icon name="sparkles" />
-                      </div>
-                      <div className="message-body">
-                        <div className="message-sender-row">
-                          <span className="message-sender">AI 코치</span>
-                        </div>
-                        <div className={`message-bubble ${streamingReply ? 'message-bubble--streaming' : ''}`}>
-                          {streamingReply ? (
-                            <span>{streamingReply}</span>
-                          ) : (
-                            <>
-                              <span className="typing-dot" />
-                              <span className="typing-dot" />
-                              <span className="typing-dot" />
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </article>
-                  )}
-                </div>
-
-                <div className="input-area">
-                  {!hasCurrentMessages && (
-                    <div className="suggestions-row">
-                      {suggestionChips.map((item) => (
-                        <button
-                          key={item}
-                          type="button"
-                          className="suggestion-chip"
-                          onClick={() => setComposer((current) => (current ? `${current} ${item}` : item))}
-                        >
-                          {item}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  <form onSubmit={send}>
-                    <div className="input-container">
-                      <textarea
-                        rows={1}
-                          value={composer}
-                          onChange={(event) => setComposer(event.target.value)}
-                          onKeyDown={handleComposerKeyDown}
-                          placeholder="영어로 다음 문장을 입력해 보세요"
-                        />
-                      <div className="input-actions">
-                        {listening && (
-                          <div className="waveform-bar" aria-hidden="true">
-                            <span className="waveform-line" />
-                            <span className="waveform-line" />
-                            <span className="waveform-line" />
-                            <span className="waveform-line" />
-                            <span className="waveform-line" />
-                          </div>
-                        )}
-                        <button
-                            type="button"
-                            className={`record-btn ${listening ? 'recording' : ''}`}
-                            onClick={voiceInput}
-                            disabled={busy === 'challenge'}
-                            aria-label="음성 입력"
-                          >
-                            <Icon name="mic" />
-                          </button>
-                          {composer.trim() && (
-                            <button type="button" className="btn btn-icon" onClick={() => setComposer('')} disabled={busy === 'challenge'} aria-label="입력 지우기">
-                              <Icon name="close" />
-                            </button>
-                          )}
-                          <button type="submit" className="send-btn" disabled={busy === 'chat' || busy === 'challenge' || !composer.trim()} aria-label="메시지 보내기">
-                            <Icon name="send" />
-                          </button>
-                      </div>
-                    </div>
-                  </form>
-                </div>
-              </section>
-
-              {showTools && (
-                <aside className="practice-panel animate-in">
                   <div className="practice-panel-header">
                     <div>
                       <div className="card-title">코치 도구</div>
@@ -2369,7 +1989,126 @@ export default function App() {
                     </section>
                     )}
                   </div>
-                </aside>
+                </section>
+              ) : (
+                <section className="conversation-layout">
+                <div ref={chatScrollRef} className="chat-feed">
+                  {!activeSession?.messages.length && (
+                    <EmptyState
+                      icon={<Icon name="chat" />}
+                      title="새 대화 연습을 시작해 보세요"
+                      description={currentScenario.challenge}
+                      action={
+                        <div className="empty-actions">
+                          <button type="button" className="btn btn-secondary" onClick={() => startFreshSession({ challenge: false })}>
+                            일반 시작
+                          </button>
+                          <button type="button" className="btn btn-primary" onClick={startChallenge}>
+                            챌린지 시작
+                          </button>
+                        </div>
+                      }
+                    />
+                  )}
+
+                  {activeSession?.messages.length ? <div className="chat-divider">현재 세션</div> : null}
+
+                  {activeSession?.messages.map((message) => (
+                    <MessageCard
+                      key={message.id}
+                      message={message}
+                      onFavorite={() => toggleFavorite(activeSession.id, message.id)}
+                      onCopy={() => navigator.clipboard.writeText(message.text).then(() => setNotice('문장을 복사했습니다.'))}
+                      onSpeak={
+                        message.role === 'assistant'
+                          ? () => void playAssistantAudio(message.text)
+                          : undefined
+                      }
+                    />
+                  ))}
+
+                  {busy === 'chat' && (
+                    <article className="message ai message-loading">
+                      <div className="message-avatar">
+                        <Icon name="sparkles" />
+                      </div>
+                      <div className="message-body">
+                        <div className="message-sender-row">
+                          <span className="message-sender">AI 코치</span>
+                        </div>
+                        <div className={`message-bubble ${streamingReply ? 'message-bubble--streaming' : ''}`}>
+                          {streamingReply ? (
+                            <span>{streamingReply}</span>
+                          ) : (
+                            <>
+                              <span className="typing-dot" />
+                              <span className="typing-dot" />
+                              <span className="typing-dot" />
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </article>
+                  )}
+                </div>
+
+                <div className="input-area">
+                  {!hasCurrentMessages && (
+                    <div className="suggestions-row">
+                      {suggestionChips.map((item) => (
+                        <button
+                          key={item}
+                          type="button"
+                          className="suggestion-chip"
+                          onClick={() => setComposer((current) => (current ? `${current} ${item}` : item))}
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <form onSubmit={send}>
+                    <div className="input-container">
+                      <textarea
+                        rows={1}
+                          value={composer}
+                          onChange={(event) => setComposer(event.target.value)}
+                          onKeyDown={handleComposerKeyDown}
+                          placeholder="영어로 다음 문장을 입력해 보세요"
+                        />
+                      <div className="input-actions">
+                        {listening && (
+                          <div className="waveform-bar" aria-hidden="true">
+                            <span className="waveform-line" />
+                            <span className="waveform-line" />
+                            <span className="waveform-line" />
+                            <span className="waveform-line" />
+                            <span className="waveform-line" />
+                          </div>
+                        )}
+                        <button
+                            type="button"
+                            className={`record-btn ${listening ? 'recording' : ''}`}
+                            onClick={voiceInput}
+                            disabled={busy === 'challenge'}
+                            aria-label="음성 입력"
+                          >
+                            <Icon name="mic" />
+                          </button>
+                          {composer.trim() && (
+                            <button type="button" className="btn btn-icon" onClick={() => setComposer('')} disabled={busy === 'challenge'} aria-label="입력 지우기">
+                              <Icon name="close" />
+                            </button>
+                          )}
+                          <button type="submit" className="send-btn" disabled={busy === 'chat' || busy === 'challenge' || !composer.trim()} aria-label="메시지 보내기">
+                            <Icon name="send" />
+                          </button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              </section>
               )}
             </PracticeShell>
           )}

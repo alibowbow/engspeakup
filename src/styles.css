@@ -414,9 +414,6 @@ button, input, textarea, select { font: inherit; }
   min-height: calc(min(100dvh, 100%) - 54px);
 }
 
-.practice-shell--tools { grid-template-columns: minmax(0, 1fr); }
-.practice-shell--tools .conversation-layout { display: none; }
-
 .conversation-layout {
   display: flex;
   flex-direction: column;
@@ -940,8 +937,7 @@ button, input, textarea, select { font: inherit; }
   background: var(--bg-1);
 }
 
-.practice-shell--tools .practice-panel {
-  border-left: none;
+.practice-panel--page {
   margin: 14px 22px 18px;
   border: 1px solid var(--border);
   border-radius: var(--r-xl);
@@ -1403,7 +1399,6 @@ button, input, textarea, select { font: inherit; }
 }
 
 @media (max-width: 1180px) {
-  .practice-shell--tools,
   .library-layout,
   .review-layout,
   .analytics-layout,
@@ -1415,14 +1410,8 @@ button, input, textarea, select { font: inherit; }
   .stats-grid { grid-template-columns: 1fr; }
 
   .practice-shell { min-height: calc(min(100dvh, 100%) - 54px); }
-  .practice-panel {
-    border-left: none;
-    border-top: 1px solid var(--border);
-    max-height: 48dvh;
-  }
-  .practice-shell--tools .practice-panel {
-    border-top: 1px solid var(--border);
-    max-height: none;
+  .practice-panel--page {
+    margin-inline: 16px;
   }
   .analysis-spotlight-grid { grid-template-columns: 1fr; }
   .library-detail-card { position: static; top: auto; }
@@ -1435,8 +1424,7 @@ button, input, textarea, select { font: inherit; }
   .quick-actions,
   .practice-toolbar { padding-inline: 24px; }
   .analysis-spotlight { margin-inline: 24px; }
-  .conversation-layout,
-  .practice-shell--tools .practice-panel { margin-inline: 16px; }
+  .conversation-layout { margin-inline: 16px; }
   .chat-feed { padding-inline: 24px; }
   .input-area { padding-inline: 24px; }
 
@@ -1573,8 +1561,7 @@ button, input, textarea, select { font: inherit; }
   .scenario-bar,
   .quick-actions,
   .practice-toolbar { padding: 12px 16px; }
-  .conversation-layout,
-  .practice-shell--tools .practice-panel {
+  .conversation-layout {
     margin: 10px 10px 12px;
     border-radius: var(--r-lg);
   }
@@ -1606,7 +1593,10 @@ button, input, textarea, select { font: inherit; }
   .practice-panel-header,
   .practice-panel-tabs,
   .practice-panel-body { padding-inline: 16px; }
-  .practice-panel { max-height: none; }
+  .practice-panel--page {
+    margin: 10px 10px 12px;
+    border-radius: var(--r-lg);
+  }
   .drawer-panel { width: 100%; }
   .toast-container { left: 16px; right: 16px; bottom: 80px; }
   .toast { min-width: 0; max-width: none; }
