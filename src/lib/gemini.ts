@@ -51,7 +51,7 @@ function extractText(payload: unknown): string {
   return candidate?.content?.parts?.map((part) => part.text ?? '').join('')?.trim() ?? '';
 }
 
-function extractJsonCandidate(text: string): string {
+export function extractJsonCandidate(text: string): string {
   const trimmed = text.trim();
   if (!trimmed) {
     return '{}';
