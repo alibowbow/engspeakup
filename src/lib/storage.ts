@@ -7,7 +7,7 @@ import type {
 } from '../types';
 import { GEMINI_TTS_DEFAULT_VOICE, isGeminiTtsVoice } from './speech';
 
-const STORAGE_KEYS = {
+export const STORAGE_KEYS = {
   settings: 'speakup-studio-settings',
   sessions: 'speakup-studio-sessions',
   analyses: 'speakup-studio-analyses',
