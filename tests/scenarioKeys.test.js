@@ -1,3 +1,4 @@
+import { describe, test, expect } from 'vitest';
 import { SCENARIO_DATA as koScenarios } from '../lang/ko.js';
 import { SCENARIO_DATA as jaScenarios } from '../lang/ja.js';
 
