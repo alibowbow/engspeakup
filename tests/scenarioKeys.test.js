@@ -23,6 +23,7 @@ function validateScenarioData(data) {
   });
 }
 
+import { describe, test, expect } from "vitest";
 describe('Scenario data structure', () => {
   test('ko.js scenarios contain required keys', () => {
     validateScenarioData(koScenarios);

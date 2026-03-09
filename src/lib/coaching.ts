@@ -80,7 +80,7 @@ function normalizeSubscore(value: unknown, fallback: number) {
   return typeof value === 'number' && Number.isFinite(value) ? clampScore(value) : fallback;
 }
 
-function normalizeSubscores(
+export function normalizeSubscores(
   payload: Partial<ChallengeSubscores> | undefined,
   fallback: ChallengeSubscores,
 ): ChallengeSubscores {
