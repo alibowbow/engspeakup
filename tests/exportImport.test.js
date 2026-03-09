@@ -1,21 +1,33 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { JSDOM } from 'jsdom';
+import { describe, test, expect } from 'vitest';
+import { createExportBundle, parseImportFile, defaultSettings } from '../src/lib/storage';
 
-test('export and import conversation JSON', async () => {
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  let html = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf8');
-  html = html.replace(/<script[^>]*tailwindcss[^>]*><\/script>/, '');
-  const dom = new JSDOM(html, { runScripts: 'dangerously', url: 'http://localhost' });
-  await new Promise(r => dom.window.document.addEventListener('DOMContentLoaded', r));
-  const { window } = dom;
-  const appState = window.eval('appState');
-  appState.currentMessages = [{ sender: 'user', text: 'hi', timestamp: '2024-01-01T00:00:00Z' }];
-  appState.currentScenario = window.findScenarioById('cafe');
-  const json = window.exportConversationToJson(true);
-  appState.currentMessages = [];
-  const file = new window.File([json], 'conv.json', { type: 'application/json' });
-  await window.importConversationFromJson(file);
-  expect(appState.currentMessages.length).toBe(1);
+describe('export and import JSON', () => {
+  test('createExportBundle removes apiKey and bundles data', () => {
+    const settings = { ...defaultSettings, apiKey: 'secret', userName: 'TestUser' };
+    const sessions = [{ id: '1', scenarioId: 'cafe', timestamp: '2024', messages: [] }];
+
+    const bundle = createExportBundle(settings, sessions, [], []);
+
+    expect(bundle.settings.apiKey).toBeUndefined();
+    expect(bundle.settings.userName).toBe('TestUser');
+    expect(bundle.sessions).toHaveLength(1);
+    expect(bundle.sessions[0].id).toBe('1');
+  });
+
+  test('parseImportFile parses valid JSON file correctly', async () => {
+    const json = JSON.stringify({
+      settings: { userName: 'ImportedUser' },
+      sessions: [{ id: '2', scenarioId: 'office', timestamp: '2025', messages: [] }],
+      analyses: [],
+      vocabulary: []
+    });
+
+    const file = new File([json], 'conv.json', { type: 'application/json' });
+    const bundle = await parseImportFile(file);
+
+    expect(bundle.settings.userName).toBe('ImportedUser');
+    expect(bundle.settings.model).toBe(defaultSettings.model); // Fallback to default
+    expect(bundle.sessions).toHaveLength(1);
+    expect(bundle.sessions[0].id).toBe('2');
+  });
 });
