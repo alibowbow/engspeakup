@@ -1,21 +1,31 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { JSDOM } from 'jsdom';
+import { test, expect } from 'vitest';
+import { createExportBundle, parseImportFile, defaultSettings } from '../src/lib/storage.ts';
 
 test('export and import conversation JSON', async () => {
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  let html = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf8');
-  html = html.replace(/<script[^>]*tailwindcss[^>]*><\/script>/, '');
-  const dom = new JSDOM(html, { runScripts: 'dangerously', url: 'http://localhost' });
-  await new Promise(r => dom.window.document.addEventListener('DOMContentLoaded', r));
-  const { window } = dom;
-  const appState = window.eval('appState');
-  appState.currentMessages = [{ sender: 'user', text: 'hi', timestamp: '2024-01-01T00:00:00Z' }];
-  appState.currentScenario = window.findScenarioById('cafe');
-  const json = window.exportConversationToJson(true);
-  appState.currentMessages = [];
-  const file = new window.File([json], 'conv.json', { type: 'application/json' });
-  await window.importConversationFromJson(file);
-  expect(appState.currentMessages.length).toBe(1);
+  const mockSettings = { ...defaultSettings };
+  const mockSessions = [
+    {
+      id: 'session-123',
+      createdAt: '2024-01-01T00:00:00Z',
+      scenarioId: 'cafe',
+      focusSkill: 'Fluency',
+      roleplayMode: 'normal',
+      customScenario: '',
+      notes: '',
+      status: 'active',
+      messages: [{ id: 'msg-1', role: 'user', text: 'hi', timestamp: 1234567890 }],
+    }
+  ];
+  const mockAnalyses = [];
+  const mockVocabulary = [];
+
+  const bundle = createExportBundle(mockSettings, mockSessions, mockAnalyses, mockVocabulary);
+  const json = JSON.stringify(bundle);
+
+  const file = new File([json], 'conv.json', { type: 'application/json' });
+  const importedBundle = await parseImportFile(file);
+
+  expect(importedBundle.sessions.length).toBe(1);
+  expect(importedBundle.sessions[0].id).toBe('session-123');
+  expect(importedBundle.sessions[0].messages[0].text).toBe('hi');
 });
