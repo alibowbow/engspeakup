@@ -223,49 +223,76 @@ export async function streamText(
   let buffer = '';
   let combined = '';
 
-  const flushEvent = (rawEvent: string) => {
+  const extractPayload = (rawEvent: string): string | null => {
     const dataLines = rawEvent
       .split(/\r?\n/)
       .filter((line) => line.startsWith('data:'))
       .map((line) => line.slice(5).trimStart());
 
     if (!dataLines.length) {
-      return;
+      return null;
     }
 
     const payloadText = dataLines.join('\n').trim();
     if (!payloadText || payloadText === '[DONE]') {
+      return null;
+    }
+
+    return payloadText;
+  };
+
+  const processPayloads = (payloads: string[]) => {
+    if (!payloads.length) {
       return;
     }
 
-    const payload = JSON.parse(payloadText) as unknown;
-    const chunkText = extractText(payload);
-    if (!chunkText) {
-      return;
+    const batchPayloadText = `[${payloads.join(',')}]`;
+    const parsedBatch = JSON.parse(batchPayloadText) as unknown[];
+    let batchText = '';
+
+    for (const payload of parsedBatch) {
+      const chunkText = extractText(payload);
+      if (chunkText) {
+        batchText += chunkText;
+      }
     }
 
-    combined += chunkText;
-    onChunk(combined);
+    if (batchText) {
+      combined += batchText;
+      onChunk(combined);
+    }
   };
 
   while (true) {
     const { done, value } = await reader.read();
     buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
 
+    const validPayloads: string[] = [];
     let separatorMatch = buffer.match(/\r?\n\r?\n/);
+
     while (separatorMatch?.index !== undefined) {
       const separatorIndex = separatorMatch.index;
       const separatorLength = separatorMatch[0].length;
       const rawEvent = buffer.slice(0, separatorIndex);
       buffer = buffer.slice(separatorIndex + separatorLength);
-      flushEvent(rawEvent);
+
+      const payload = extractPayload(rawEvent);
+      if (payload) {
+        validPayloads.push(payload);
+      }
+
       separatorMatch = buffer.match(/\r?\n\r?\n/);
     }
+
+    processPayloads(validPayloads);
 
     if (done) {
       const trailing = buffer.trim();
       if (trailing) {
-        flushEvent(trailing);
+        const trailingPayload = extractPayload(trailing);
+        if (trailingPayload) {
+          processPayloads([trailingPayload]);
+        }
       }
       break;
     }
