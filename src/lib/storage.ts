@@ -18,7 +18,6 @@ const STORAGE_KEYS = {
 export const defaultSettings: Settings = {
   apiKey: '',
   model: 'gemini-3-flash-preview',
-  saveApiKey: false,
   themeMode: 'light',
   userName: '',
   coachMode: 'balanced',
@@ -50,7 +49,7 @@ export function loadSettings(): Settings {
         ? settings.model
         : defaultSettings.model,
     voiceName: isGeminiTtsVoice(settings.voiceName) ? settings.voiceName : defaultSettings.voiceName,
-    apiKey: settings.saveApiKey ? settings.apiKey ?? '' : '',
+    apiKey: '', // API Key is never loaded from localStorage for security reasons
   };
 }
 
@@ -59,9 +58,7 @@ export function saveSettings(settings: Settings): void {
     ...settings,
     model: defaultSettings.model,
   };
-  const next = sanitized.saveApiKey
-    ? sanitized
-    : { ...sanitized, apiKey: '' };
+  const next = { ...sanitized, apiKey: '' }; // API Key is never saved to localStorage for security reasons
   window.localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(next));
 }
 
