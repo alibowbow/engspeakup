@@ -266,11 +266,11 @@ function base64ToBytes(value: string): Uint8Array {
 
 function decodePcm16(data: string): Float32Array {
   const bytes = base64ToBytes(data);
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const sampleCount = Math.floor(bytes.byteLength / 2);
+  const int16View = new Int16Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 2));
+  const sampleCount = int16View.length;
   const pcm = new Float32Array(sampleCount);
   for (let index = 0; index < sampleCount; index += 1) {
-    pcm[index] = view.getInt16(index * 2, true) / 32768;
+    pcm[index] = int16View[index] / 32768;
   }
   return pcm;
 }
