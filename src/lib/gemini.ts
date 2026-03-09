@@ -252,15 +252,15 @@ export async function streamText(
     const { done, value } = await reader.read();
     buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
 
-    let separatorMatch = buffer.match(/\r?\n\r?\n/);
-    while (separatorMatch?.index !== undefined) {
-      const separatorIndex = separatorMatch.index;
-      const separatorLength = separatorMatch[0].length;
-      const rawEvent = buffer.slice(0, separatorIndex);
-      buffer = buffer.slice(separatorIndex + separatorLength);
+    const separatorRegex = /\r?\n\r?\n/g;
+    let separatorMatch;
+    let lastIndex = 0;
+    while ((separatorMatch = separatorRegex.exec(buffer)) !== null) {
+      const rawEvent = buffer.slice(lastIndex, separatorMatch.index);
       flushEvent(rawEvent);
-      separatorMatch = buffer.match(/\r?\n\r?\n/);
+      lastIndex = separatorRegex.lastIndex;
     }
+    buffer = buffer.slice(lastIndex);
 
     if (done) {
       const trailing = buffer.trim();
