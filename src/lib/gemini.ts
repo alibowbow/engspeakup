@@ -181,14 +181,29 @@ export async function generateText({
   return text;
 }
 
-export async function generateJson<T>(request: GeminiTextRequest): Promise<T> {
+export async function generateJson<T>(
+  request: GeminiTextRequest,
+  validate: (data: unknown) => T,
+): Promise<T> {
   const raw = await generateText({
     ...request,
     responseMimeType: 'application/json',
     temperature: request.temperature ?? 0.35,
     maxOutputTokens: request.maxOutputTokens ?? 1024,
   });
-  return JSON.parse(extractJsonCandidate(raw)) as T;
+
+  try {
+    const parsed = JSON.parse(extractJsonCandidate(raw)) as unknown;
+    if (!parsed || typeof parsed !== 'object') {
+      throw new Error('Parsed AI response is not a valid JSON object or array.');
+    }
+    return validate(parsed);
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error(`Failed to parse AI response as JSON: ${error.message}`);
+    }
+    throw error;
+  }
 }
 
 export async function streamText(

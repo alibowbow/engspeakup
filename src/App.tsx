@@ -1074,14 +1074,13 @@ export default function App() {
     const fallback = buildOfflineChallengeReview(resolvedScenario, session, snapshot);
 
     try {
-      const payload = await generateJson<Partial<ChallengeReview>>({
+      const challengeReview = await generateJson<ChallengeReview>({
         apiKey: settings.apiKey.trim(),
         model: settings.model.trim(),
         systemInstruction: 'Return only valid JSON.',
         userPrompt: buildChallengeReviewPrompt(resolvedScenario, session, snapshot.targetTurns),
         temperature: 0.2,
-      });
-      const challengeReview = normalizeChallengeReview(payload, fallback);
+      }, (data) => normalizeChallengeReview(data as Partial<ChallengeReview>, fallback));
       const reviewedSession = upsert({
         ...session,
         challengeReview,
@@ -1295,14 +1294,14 @@ export default function App() {
     }
     setBusy('suggestions');
     try {
-      const payload = await generateJson<Partial<SuggestionBundle>>({
+      const bundlePayload = await generateJson<SuggestionBundle>({
         apiKey: settings.apiKey.trim(),
         model: settings.model.trim(),
         systemInstruction: 'Return only valid JSON.',
         userPrompt: buildSuggestionPrompt(selectedScenario, session),
         temperature: 0.4,
-      });
-      setBundle(normalizeSuggestionBundle(payload, selectedScenario));
+      }, (data) => normalizeSuggestionBundle(data as Partial<SuggestionBundle>, selectedScenario));
+      setBundle(bundlePayload);
       openPracticePanel('suggestions');
       setNotice('다음 답변 후보 3개를 준비했습니다.');
     } catch (error) {
@@ -1329,17 +1328,17 @@ export default function App() {
     }
     setBusy('analysis');
     try {
-      const payload = await generateJson<Partial<AnalysisEntry>>({
+      const normalizedEntry = await generateJson<Omit<AnalysisEntry, 'id' | 'createdAt'>>({
         apiKey: settings.apiKey.trim(),
         model: settings.model.trim(),
         systemInstruction: 'Return only valid JSON.',
         userPrompt: buildAnalysisPrompt(selectedScenario, activeSession, target.text),
         temperature: 0.2,
-      });
+      }, (data) => normalizeAnalysisEntry(data as Partial<AnalysisEntry>, target.text, activeSession.scenarioTitle, activeSession.id));
       const entry: AnalysisEntry = {
         id: id('analysis'),
         createdAt: new Date().toISOString(),
-        ...normalizeAnalysisEntry(payload, target.text, activeSession.scenarioTitle, activeSession.id),
+        ...normalizedEntry,
       };
       setAnalyses((current) => [entry, ...current]);
       setVocabulary((current) => mergeVocabulary(current, entry.vocabulary));
@@ -1367,14 +1366,13 @@ export default function App() {
     }
     setBusy('recap');
     try {
-      const payload = await generateJson<Partial<SessionSummary>>({
+      const summary = await generateJson<SessionSummary>({
         apiKey: settings.apiKey.trim(),
         model: settings.model.trim(),
         systemInstruction: 'Return only valid JSON.',
         userPrompt: buildRecapPrompt(selectedScenario, activeSession),
         temperature: 0.25,
-      });
-      const summary = normalizeSummary(payload, fallback);
+      }, (data) => normalizeSummary(data as Partial<SessionSummary>, fallback));
       upsert({ ...activeSession, summary });
       setVocabulary((current) => mergeVocabulary(current, summary.notableVocabulary));
       openPracticePanel('recap');
