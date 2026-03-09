@@ -2610,13 +2610,6 @@ export default function App() {
               <option value="push">직설적으로</option>
             </select>
           </label>
-
-          <ToggleField
-            label="API 키 로컬 저장"
-            description="끄면 새로고침 후 로컬 저장소에서 API 키를 지웁니다."
-            checked={settings.saveApiKey}
-            onChange={(checked) => setSettings((current) => ({ ...current, saveApiKey: checked }))}
-          />
         </section>
 
         <section className="settings-section">

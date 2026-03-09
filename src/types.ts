@@ -116,7 +116,6 @@ export interface SuggestionBundle {
 export interface Settings {
   apiKey: string;
   model: string;
-  saveApiKey: boolean;
   themeMode: ThemeMode;
   userName: string;
   coachMode: CoachMode;
