@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { JSDOM } from 'jsdom';
 
+import { test, expect } from "vitest";
 test('export and import conversation JSON', async () => {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   let html = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf8');
