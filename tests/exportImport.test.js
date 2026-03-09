@@ -1,21 +1,21 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { JSDOM } from 'jsdom';
+import { test, expect } from 'vitest';
+import { parseImportFile, createExportBundle, defaultSettings } from '../src/lib/storage.ts';
 
 test('export and import conversation JSON', async () => {
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  let html = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf8');
-  html = html.replace(/<script[^>]*tailwindcss[^>]*><\/script>/, '');
-  const dom = new JSDOM(html, { runScripts: 'dangerously', url: 'http://localhost' });
-  await new Promise(r => dom.window.document.addEventListener('DOMContentLoaded', r));
-  const { window } = dom;
-  const appState = window.eval('appState');
-  appState.currentMessages = [{ sender: 'user', text: 'hi', timestamp: '2024-01-01T00:00:00Z' }];
-  appState.currentScenario = window.findScenarioById('cafe');
-  const json = window.exportConversationToJson(true);
-  appState.currentMessages = [];
-  const file = new window.File([json], 'conv.json', { type: 'application/json' });
-  await window.importConversationFromJson(file);
-  expect(appState.currentMessages.length).toBe(1);
+  const mockSettings = { ...defaultSettings, apiKey: 'secret' };
+  const mockSessions = [{ id: '1', title: 'test', messages: [{ sender: 'user', text: 'hi', timestamp: '2024-01-01T00:00:00Z' }], createdAt: 123 }];
+
+  const bundle = createExportBundle(mockSettings, mockSessions, [], []);
+
+  // API key shouldn't be exported
+  expect(bundle.settings.apiKey).toBeUndefined();
+
+  const json = JSON.stringify(bundle);
+  const file = new File([json], 'conv.json', { type: 'application/json' });
+
+  const imported = await parseImportFile(file);
+
+  expect(imported.sessions.length).toBe(1);
+  expect(imported.sessions[0].messages.length).toBe(1);
+  expect(imported.sessions[0].messages[0].text).toBe('hi');
 });
