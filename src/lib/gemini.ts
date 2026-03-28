@@ -42,7 +42,10 @@ function toGeminiRole(role: Message['role']): 'user' | 'model' {
   return role === 'assistant' ? 'model' : 'user';
 }
 
-function extractText(payload: unknown): string {
+export function extractText(payload: unknown): string {
+  if (!payload || typeof payload !== 'object') {
+    return '';
+  }
   const candidate = (payload as {
     candidates?: Array<{
       content?: { parts?: Array<{ text?: string }> };
