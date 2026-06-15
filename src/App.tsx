@@ -67,7 +67,7 @@ type IconName =
   | 'chat' | 'library' | 'bookmark' | 'bookmarkFilled' | 'chart' | 'settings'
   | 'sparkles' | 'upload' | 'download' | 'list' | 'mic' | 'send' | 'copy'
   | 'play' | 'close' | 'bolt' | 'check' | 'wave' | 'sun' | 'moon' | 'search'
-  | 'plus' | 'flame' | 'trophy' | 'target' | 'refresh' | 'grid' | 'clock' | 'star';
+  | 'plus' | 'flame' | 'trophy' | 'target' | 'refresh' | 'grid' | 'clock' | 'star' | 'chevron';
 
 const NAVS: Array<{ id: PracticeView; label: string; mobileLabel: string; icon: IconName }> = [
   { id: 'practice', label: '대화 연습', mobileLabel: '연습', icon: 'chat' },
@@ -422,6 +422,7 @@ function Icon({ name }: { name: IconName }) {
     case 'grid': return <svg viewBox="0 0 24 24" {...stroke}><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>;
     case 'clock': return <svg viewBox="0 0 24 24" {...stroke}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>;
     case 'star': return <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 3 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.2l1-5.8L3.5 9.2l5.9-.9L12 3Z" /></svg>;
+    case 'chevron': return <svg viewBox="0 0 24 24" {...stroke}><path d="m9 6 6 6-6 6" /></svg>;
     default: return null;
   }
 }
@@ -472,7 +473,11 @@ export default function App() {
   const filteredScenarios = scenarios.filter((item) => {
     const q = deferredSearch.trim().toLowerCase();
     if (!q) return true;
-    return [item.title, item.subtitle, item.description, item.category, item.tags.join(' ')].join(' ').toLowerCase().includes(q);
+    return [
+      item.title, item.subtitle, item.description, item.category,
+      categoryMeta(item.category).label, difficultyMeta(item.difficulty).label,
+      item.tags.join(' '),
+    ].join(' ').toLowerCase().includes(q);
   });
   const favoriteMessages = sortSessions(sessions).flatMap((session) =>
     session.messages.filter((message) => message.favorite).map((message) => ({ session, message })),
@@ -603,6 +608,21 @@ export default function App() {
     setBundle(null);
     setShowTools(false);
     setNotice('새 상황으로 전환했어요. 이 상황은 새 세션으로 시작됩니다.');
+  };
+
+  // Quiet selection for browsing the library tree (no toast, keeps exploration calm).
+  const previewScenario = (nextScenarioId: string) => {
+    if (nextScenarioId === selectedScenarioId) return;
+    setSelectedScenarioId(nextScenarioId);
+    setActiveSessionId('');
+    setComposer('');
+    setStreamingReply('');
+    setNotes('');
+    setCustomBrief('');
+    setChallengeMode(false);
+    setChallengeTargetTurns(8);
+    setBundle(null);
+    setShowTools(false);
   };
 
   const makeSession = (
@@ -1339,7 +1359,7 @@ export default function App() {
                     selectedScenario={selectedScenario}
                     search={search}
                     onSearch={setSearch}
-                    onSelect={(scenarioId) => handleScenarioSelect(scenarioId)}
+                    onSelect={(scenarioId) => previewScenario(scenarioId)}
                     onPractice={() => { setView('practice'); setShowTools(false); }}
                     onComposer={setComposer}
                   />
@@ -1517,108 +1537,112 @@ function LibraryView({
   onPractice: () => void;
   onComposer: (value: string) => void;
 }) {
+  const searching = search.trim().length > 0;
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => ({ [categoryMeta(selectedScenario.category).key]: true }));
+  const groups = CATEGORY_META
+    .map((meta) => ({ meta, items: list.filter((scenario) => scenario.category === meta.key) }))
+    .filter((group) => group.items.length > 0 || !searching);
+  const allOpen = groups.length > 0 && groups.every((group) => searching || expanded[group.meta.key]);
+  const toggle = (key: string) => setExpanded((current) => ({ ...current, [key]: !current[key] }));
+  const setAll = (open: boolean) => setExpanded(Object.fromEntries(CATEGORY_META.map((meta) => [meta.key, open])));
+
   const detailCat = categoryMeta(selectedScenario.category);
   const detailDiff = difficultyMeta(selectedScenario.difficulty);
+
   return (
-    <div className="lib">
-      <div className="lib-search animate-in">
-        <Icon name="search" />
-        <input className="input" placeholder="제목, 카테고리, 태그로 검색" value={search} onChange={(e) => onSearch(e.target.value)} />
-      </div>
-
-      {CATEGORY_META.map((meta) => {
-        const items = list.filter((scenario) => scenario.category === meta.key);
-        if (!items.length) return null;
-        return (
-          <section key={meta.key} className="cat-block animate-in">
-            <div className="cat-head">
-              <span className="cat-badge" style={{ background: meta.soft, color: meta.color }}>{meta.emoji}</span>
-              <div>
-                <div className="cat-name">{meta.label}</div>
-                <div className="cat-blurb">{meta.blurb}</div>
-              </div>
-              <span className="pill cat-count">{items.length}개</span>
-            </div>
-            <div className="scn-grid">
-              {items.map((scenario) => {
-                const dm = difficultyMeta(scenario.difficulty);
-                return (
-                  <button
-                    key={scenario.id}
-                    type="button"
-                    className={`scn-card ${scenario.id === selectedId ? 'sel' : ''}`}
-                    style={{ '--cat': meta.color } as CSSProperties}
-                    onClick={() => onSelect(scenario.id)}
-                  >
-                    <div className="scn-top">
-                      <span className="scn-emoji" style={{ background: meta.soft, color: meta.color }}>{meta.emoji}</span>
-                      <div>
-                        <div className="scn-name">{scenario.title}</div>
-                        <div className="scn-sub">{scenario.subtitle}</div>
-                      </div>
-                    </div>
-                    <p className="scn-desc">{scenario.description}</p>
-                    <div className="scn-foot">
-                      <DiffPips level={dm.level} color={meta.color} />
-                      <span className="pill" style={{ background: dm.soft, color: dm.color }}>{dm.label}</span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })}
-
-      {!list.length && (
-        <EmptyState icon={<Icon name="search" />} title="검색 결과가 없어요" description="다른 키워드로 다시 찾아보세요." />
-      )}
-
-      <section className="card animate-in">
-        <div>
-          <div className="card-head">
-            <div className="cat-head" style={{ gap: 11 }}>
-              <span className="cat-badge" style={{ background: detailCat.soft, color: detailCat.color }}>{detailCat.emoji}</span>
-              <div>
-                <div className="card-title">{selectedScenario.title}</div>
-                <div className="card-sub">{selectedScenario.subtitle}</div>
-              </div>
-            </div>
-            <span className="pill" style={{ background: detailDiff.soft, color: detailDiff.color }}>{detailDiff.label}</span>
+    <div className="lib-tree-layout">
+      <aside className="card lib-tree animate-in">
+        <div className="tree-toolbar">
+          <div className="lib-search">
+            <Icon name="search" />
+            <input className="input" placeholder="시나리오 검색" value={search} onChange={(e) => onSearch(e.target.value)} />
           </div>
-          <p className="card-sub" style={{ fontSize: 14 }}>{selectedScenario.description}</p>
-          <div className="cols-2" style={{ marginTop: 16 }}>
-            <div className="block">
-              <span className="block-label">목표</span>
-              <ul className="bullets">{selectedScenario.goals.map((goal) => <li key={goal}>{goal}</li>)}</ul>
-            </div>
-            <div className="block">
-              <span className="block-label">미션 단계</span>
-              <ul className="bullets">{selectedScenario.missionSteps.map((step) => <li key={step}>{step}</li>)}</ul>
-            </div>
-          </div>
-          <div className="block" style={{ marginTop: 16 }}>
-            <span className="block-label">핵심 표현 (탭하면 입력칸에 넣어요)</span>
-            <div className="chip-row">{selectedScenario.keyExpressions.map((item) => <button key={item} type="button" className="chip" onClick={() => onComposer(item)}>{item}</button>)}</div>
-          </div>
-          <div className="block" style={{ marginTop: 16 }}>
-            <span className="block-label">어휘 미리보기</span>
-            <div className="vlist">
-              {selectedScenario.vocabulary.map((card) => (
-                <div key={card.phrase} className="vrow">
-                  <span className="vrow-icon"><Icon name="sparkles" /></span>
-                  <div>
-                    <div className="vrow-phrase">{card.phrase}</div>
-                    <div className="vrow-mean">{card.meaningKo}</div>
-                    <div className="vrow-ex">{card.example}</div>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAll(!allOpen)} disabled={searching}>
+            {allOpen ? '접기' : '펼치기'}
+          </button>
+        </div>
+        <div className="tree">
+          {groups.map(({ meta, items }) => {
+            const open = searching || Boolean(expanded[meta.key]);
+            return (
+              <div key={meta.key} className="tree-node">
+                <button type="button" className="tree-cat" onClick={() => { if (!searching) toggle(meta.key); }} aria-expanded={open}>
+                  <span className={`tree-chevron ${open ? 'open' : ''}`}><Icon name="chevron" /></span>
+                  <span className="tree-cat-badge" style={{ background: meta.soft, color: meta.color }}>{meta.emoji}</span>
+                  <span className="tree-cat-name">{meta.label}</span>
+                  <span className="pill tree-cat-count">{items.length}</span>
+                </button>
+                {open && (
+                  <div className="tree-children">
+                    {items.map((scenario) => {
+                      const dm = difficultyMeta(scenario.difficulty);
+                      return (
+                        <button
+                          key={scenario.id}
+                          type="button"
+                          className={`tree-leaf ${scenario.id === selectedId ? 'sel' : ''}`}
+                          onClick={() => onSelect(scenario.id)}
+                        >
+                          <span className="tree-leaf-dot" style={{ background: dm.color }} />
+                          <span className="tree-leaf-title">{scenario.title}</span>
+                          <span className="tree-leaf-diff" style={{ color: dm.color }}>{dm.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
-                </div>
-              ))}
+                )}
+              </div>
+            );
+          })}
+          {!groups.length && (
+            <EmptyState icon={<Icon name="search" />} title="검색 결과가 없어요" description="다른 키워드로 다시 찾아보세요." />
+          )}
+        </div>
+      </aside>
+
+      <section className="card lib-detail-pane animate-in">
+        <div className="card-head">
+          <div className="cat-head" style={{ gap: 11 }}>
+            <span className="cat-badge" style={{ background: detailCat.soft, color: detailCat.color }}>{detailCat.emoji}</span>
+            <div>
+              <div className="card-title">{selectedScenario.title}</div>
+              <div className="card-sub">{selectedScenario.subtitle}</div>
             </div>
           </div>
-          <div className="chip-row" style={{ marginTop: 18 }}>
-            <button type="button" className="btn btn-primary" onClick={() => { onSelect(selectedScenario.id); onPractice(); }}><Icon name="play" /> 이 상황으로 연습하기</button>
+          <span className="pill" style={{ background: detailDiff.soft, color: detailDiff.color }}>{detailDiff.label}</span>
+        </div>
+        <p className="card-sub" style={{ fontSize: 14 }}>{selectedScenario.description}</p>
+        <div className="cols-2" style={{ marginTop: 16 }}>
+          <div className="block">
+            <span className="block-label">목표</span>
+            <ul className="bullets">{selectedScenario.goals.map((goal) => <li key={goal}>{goal}</li>)}</ul>
           </div>
+          <div className="block">
+            <span className="block-label">미션 단계</span>
+            <ul className="bullets">{selectedScenario.missionSteps.map((step) => <li key={step}>{step}</li>)}</ul>
+          </div>
+        </div>
+        <div className="block" style={{ marginTop: 16 }}>
+          <span className="block-label">핵심 표현 (탭하면 입력칸에 넣어요)</span>
+          <div className="chip-row">{selectedScenario.keyExpressions.map((item) => <button key={item} type="button" className="chip" onClick={() => onComposer(item)}>{item}</button>)}</div>
+        </div>
+        <div className="block" style={{ marginTop: 16 }}>
+          <span className="block-label">어휘 미리보기</span>
+          <div className="vlist">
+            {selectedScenario.vocabulary.map((card) => (
+              <div key={card.phrase} className="vrow">
+                <span className="vrow-icon"><Icon name="sparkles" /></span>
+                <div>
+                  <div className="vrow-phrase">{card.phrase}</div>
+                  <div className="vrow-mean">{card.meaningKo}</div>
+                  <div className="vrow-ex">{card.example}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="chip-row" style={{ marginTop: 18 }}>
+          <button type="button" className="btn btn-primary" onClick={() => { onSelect(selectedScenario.id); onPractice(); }}><Icon name="play" /> 이 상황으로 연습하기</button>
         </div>
       </section>
     </div>
