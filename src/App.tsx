@@ -2,6 +2,7 @@ import { startTransition, useDeferredValue, useEffect, useRef, useState } from '
 import type { ChangeEvent, CSSProperties, FormEvent, KeyboardEvent, ReactNode } from 'react';
 import { focusSkillOptions, scenarios, spotlightScenarioIds } from './data/scenarios';
 import { CATEGORY_META, categoryMeta, difficultyMeta } from './data/categories';
+import { LANGUAGE_LIST, languageConfig } from './data/languages';
 import {
   buildAnalysisPrompt,
   buildChallengeReviewPrompt,
@@ -51,6 +52,7 @@ import {
 import type {
   AnalysisEntry,
   ChallengeReview,
+  LearnLanguage,
   PracticeView,
   RoleplayMode,
   Scenario,
@@ -469,6 +471,8 @@ export default function App() {
     activeSession?.scenarioId === selectedScenarioId ? resolveScenarioDetails(selectedScenario, activeSession) : selectedScenario;
   const cat = categoryMeta(currentScenario.category);
   const diff = difficultyMeta(currentScenario.difficulty);
+  const langCfg = languageConfig(settings.targetLanguage);
+  const isEnglishMode = settings.targetLanguage === 'en';
 
   const filteredScenarios = scenarios.filter((item) => {
     const q = deferredSearch.trim().toLowerCase();
@@ -652,6 +656,9 @@ export default function App() {
 
   const offlineOpening = (session: Session) => {
     const resolved = resolveScenarioDetails(selectedScenario, session);
+    if (settings.targetLanguage === 'ja') {
+      return `こんにちは！🙂 「${resolved.title}」の練習を始めましょう。最後までこの役を続けます。準備ができたら、最初の一言をどうぞ。`;
+    }
     return `Hi there! 🙂 We're practicing "${resolved.title}". I'll stay in character the whole time — start whenever you're ready, and I'll react like the real thing. What would you like to say first?`;
   };
 
@@ -669,7 +676,7 @@ export default function App() {
         model: settings.model.trim(),
         systemInstruction: buildConversationSystemPrompt(selectedScenario, session, settings),
         history: [],
-        userPrompt: 'Begin the roleplay now. In character, greet me warmly in one or two short sentences, set the scene, and ask one simple opening question to get me talking. Keep it natural, spoken, and friendly.',
+        userPrompt: `Begin the roleplay now in ${langCfg.promptLabel}. In character, greet me warmly in one or two short sentences, set the scene, and ask one simple opening question to get me talking. Keep it natural, spoken, and friendly.`,
         maxOutputTokens: CHAT_MAX_OUTPUT_TOKENS,
       };
       let reply = '';
@@ -714,7 +721,7 @@ export default function App() {
     try {
       const payload = await generateJson<Partial<ChallengeReview>>({
         apiKey: settings.apiKey.trim(), model: settings.model.trim(), systemInstruction: 'Return only valid JSON.',
-        userPrompt: buildChallengeReviewPrompt(resolvedScenario, session, snapshot.targetTurns), temperature: 0.2,
+        userPrompt: buildChallengeReviewPrompt(resolvedScenario, session, snapshot.targetTurns, langCfg.promptLabel), temperature: 0.2,
       });
       const challengeReview = normalizeChallengeReview(payload, fallback);
       const reviewedSession = upsert({ ...session, challengeReview, updatedAt: new Date().toISOString() });
@@ -761,7 +768,7 @@ export default function App() {
   };
 
   const playAssistantAudio = async (text: string, voiceName = settings.voiceName, cacheKey?: string) => {
-    const result = await speakText({ text, apiKey: settings.apiKey.trim(), voiceName, rate: settings.speechRate, cacheKey });
+    const result = await speakText({ text, apiKey: settings.apiKey.trim(), voiceName, rate: settings.speechRate, cacheKey, languageName: langCfg.promptLabel, speechLang: langCfg.speechLang });
     if (result === 'browser-fallback-daily') setNotice('Gemini TTS 일일 한도를 모두 써서 기본 브라우저 음성으로 전환했어요.');
     else if (result === 'browser-fallback') setNotice('Gemini TTS를 쓸 수 없어 이번 재생은 브라우저 음성으로 전환했어요.');
     else if (result === 'none') setNotice('음성을 재생할 수 없어요.');
@@ -853,7 +860,7 @@ export default function App() {
     try {
       const payload = await generateJson<Partial<SuggestionBundle>>({
         apiKey: settings.apiKey.trim(), model: settings.model.trim(), systemInstruction: 'Return only valid JSON.',
-        userPrompt: buildSuggestionPrompt(selectedScenario, session), temperature: 0.4,
+        userPrompt: buildSuggestionPrompt(selectedScenario, session, langCfg.promptLabel), temperature: 0.4,
       });
       setBundle(normalizeSuggestionBundle(payload, selectedScenario));
       openTools('suggestions');
@@ -874,7 +881,7 @@ export default function App() {
     try {
       const payload = await generateJson<Partial<AnalysisEntry>>({
         apiKey: settings.apiKey.trim(), model: settings.model.trim(), systemInstruction: 'Return only valid JSON.',
-        userPrompt: buildAnalysisPrompt(selectedScenario, activeSession, target.text), temperature: 0.2,
+        userPrompt: buildAnalysisPrompt(selectedScenario, activeSession, target.text, langCfg.promptLabel), temperature: 0.2,
       });
       const entry: AnalysisEntry = {
         id: id('analysis'), createdAt: new Date().toISOString(),
@@ -905,7 +912,7 @@ export default function App() {
     try {
       const payload = await generateJson<Partial<typeof fallback>>({
         apiKey: settings.apiKey.trim(), model: settings.model.trim(), systemInstruction: 'Return only valid JSON.',
-        userPrompt: buildRecapPrompt(selectedScenario, activeSession), temperature: 0.25,
+        userPrompt: buildRecapPrompt(selectedScenario, activeSession, langCfg.promptLabel), temperature: 0.25,
       });
       const summary = normalizeSummary(payload, fallback);
       upsert({ ...activeSession, summary });
@@ -937,12 +944,12 @@ export default function App() {
       return;
     }
     stopRef.current = listenOnce({
-      lang: 'en-US',
+      lang: langCfg.speechLang,
       onResult: (transcript) => setComposer((current) => (current ? `${current} ${transcript}` : transcript)),
       onError: setNotice,
       onEnd: () => { setListening(false); stopRef.current = null; },
     });
-    if (stopRef.current) { setListening(true); setNotice('영어 음성을 듣고 있어요.'); }
+    if (stopRef.current) { setListening(true); setNotice(`${langCfg.label} 음성을 듣고 있어요.`); }
   };
 
   const importData = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -997,6 +1004,13 @@ export default function App() {
 
   const toggleThemeMode = () =>
     setSettings((current) => ({ ...current, themeMode: current.themeMode === 'dark' ? 'light' : 'dark' }));
+
+  const setLanguage = (code: LearnLanguage) => {
+    if (code === settings.targetLanguage) return;
+    setSettings((current) => ({ ...current, targetLanguage: code }));
+    setBundle(null);
+    setNotice(`${languageConfig(code).label} 회화 모드로 전환했어요.`);
+  };
 
   const onExport = () => exportFile(`speakup-${new Date().toISOString().slice(0, 10)}.json`, createExportBundle(settings, sessions, analyses, vocabulary));
 
@@ -1054,6 +1068,20 @@ export default function App() {
             </div>
             <div className="topbar-spacer" />
             <div className="topbar-actions">
+              <div className="lang-seg" role="group" aria-label="연습 언어">
+                {LANGUAGE_LIST.map((l) => (
+                  <button
+                    key={l.code}
+                    type="button"
+                    className={`lang-seg-btn ${settings.targetLanguage === l.code ? 'on' : ''}`}
+                    onClick={() => setLanguage(l.code)}
+                    aria-pressed={settings.targetLanguage === l.code}
+                  >
+                    <span className="lang-flag">{l.flag}</span>
+                    <span className="lang-short">{l.short}</span>
+                  </button>
+                ))}
+              </div>
               <button type="button" className="btn-icon" onClick={() => fileRef.current?.click()} aria-label="불러오기"><Icon name="upload" /></button>
               <button type="button" className="btn-icon" onClick={onExport} aria-label="내보내기"><Icon name="download" /></button>
               <button type="button" className="btn-icon" onClick={toggleThemeMode} aria-label="테마 전환"><Icon name={settings.themeMode === 'dark' ? 'sun' : 'moon'} /></button>
@@ -1148,7 +1176,7 @@ export default function App() {
                 </div>
 
                 <div className="composer">
-                  {!hasCurrentMessages && suggestionChips.length > 0 && (
+                  {!hasCurrentMessages && suggestionChips.length > 0 && (isEnglishMode || bundle) && (
                     <div className="composer-chips">
                       {suggestionChips.map((item) => (
                         <button key={item} type="button" className="chip" onClick={() => setComposer((current) => (current ? `${current} ${item}` : item))}>{item}</button>
@@ -1157,7 +1185,7 @@ export default function App() {
                   )}
                   <form onSubmit={send}>
                     <div className="composer-box">
-                      <textarea rows={1} value={composer} onChange={(e) => setComposer(e.target.value)} onKeyDown={handleComposerKeyDown} placeholder="영어로 다음 문장을 입력해 보세요" />
+                      <textarea rows={1} value={composer} onChange={(e) => setComposer(e.target.value)} onKeyDown={handleComposerKeyDown} placeholder={langCfg.composerPlaceholder} />
                       {listening && (
                         <div className="wave" aria-hidden="true"><span /><span /><span /><span /></div>
                       )}
@@ -1219,24 +1247,33 @@ export default function App() {
                           <span className="block-label">미션 단계</span>
                           <ul className="bullets">{currentScenario.missionSteps.map((step) => <li key={step}>{step}</li>)}</ul>
                         </div>
-                        <div className="block">
-                          <span className="block-label">핵심 표현 (탭하면 입력)</span>
-                          <div className="chip-row">
-                            {currentScenario.keyExpressions.map((item) => (
-                              <button key={item} type="button" className="chip" onClick={() => setComposer((c) => (c ? `${c} ${item}` : item))}>{item}</button>
-                            ))}
+                        {isEnglishMode ? (
+                          <>
+                            <div className="block">
+                              <span className="block-label">핵심 표현 (탭하면 입력)</span>
+                              <div className="chip-row">
+                                {currentScenario.keyExpressions.map((item) => (
+                                  <button key={item} type="button" className="chip" onClick={() => setComposer((c) => (c ? `${c} ${item}` : item))}>{item}</button>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="block">
+                              <span className="block-label">어휘 세트</span>
+                              <div className="vocab-chips">
+                                {currentScenario.vocabulary.map((card) => (
+                                  <button key={card.phrase} type="button" className="vocab-chip" onClick={() => navigator.clipboard.writeText(card.example).then(() => setNotice('예문을 복사했어요.'))}>
+                                    <strong>{card.phrase}</strong><span>{card.meaningKo}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="note">
+                            <span className="block-label">{langCfg.label} 표현</span>
+                            {langCfg.label} 회화에서는 ‘다음 답변’ 추천이 상황에 맞는 {langCfg.label} 문장을 제안하고, AI가 먼저 {langCfg.label}로 말을 건넵니다. (내장 핵심 표현·어휘 세트는 영어 모드에서 제공돼요.)
                           </div>
-                        </div>
-                        <div className="block">
-                          <span className="block-label">어휘 세트</span>
-                          <div className="vocab-chips">
-                            {currentScenario.vocabulary.map((card) => (
-                              <button key={card.phrase} type="button" className="vocab-chip" onClick={() => navigator.clipboard.writeText(card.example).then(() => setNotice('예문을 복사했어요.'))}>
-                                <strong>{card.phrase}</strong><span>{card.meaningKo}</span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
+                        )}
                       </>
                     )}
 
@@ -1489,6 +1526,13 @@ export default function App() {
 
           <section className="settings-group">
             <h3>연습</h3>
+            <label className="field">
+              <span className="field-label">연습 언어</span>
+              <select className="select" value={settings.targetLanguage} onChange={(e) => setLanguage(e.target.value as LearnLanguage)}>
+                {LANGUAGE_LIST.map((l) => <option key={l.code} value={l.code}>{l.flag} {l.label}</option>)}
+              </select>
+              <span className="field-hint">AI 대화·문장 교정·추천·요약·음성 인식/낭독이 선택한 언어로 진행돼요.</span>
+            </label>
             <label className="field">
               <span className="field-label">표시 이름</span>
               <input className="input" value={settings.userName} onChange={(e) => setSettings((c) => ({ ...c, userName: e.target.value }))} placeholder="선택 입력" />

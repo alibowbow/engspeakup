@@ -17,6 +17,7 @@ interface GeminiSpeechRequest {
   voiceName: string;
   rate?: number;
   model?: string;
+  languageName?: string;
 }
 
 export type GeminiSpeechErrorKind = 'quota-daily' | 'quota-temporary' | 'unknown';
@@ -138,7 +139,7 @@ function classifySpeechError(status: number, payloadText: string): GeminiSpeechE
   return 'unknown';
 }
 
-function buildSpeechPrompt(text: string, rate = 1): string {
+function buildSpeechPrompt(text: string, rate = 1, languageName = 'English'): string {
   const paceInstruction =
     rate < 0.92
       ? 'Speak slightly slower than your normal pace.'
@@ -146,7 +147,7 @@ function buildSpeechPrompt(text: string, rate = 1): string {
         ? 'Speak slightly faster than your normal pace.'
         : 'Speak at a natural conversation pace.';
 
-  return `Read the following text verbatim in clear, natural English.
+  return `Read the following text verbatim in clear, natural ${languageName}.
 ${paceInstruction}
 Text:
 ${text}`.trim();
@@ -280,6 +281,7 @@ export async function generateSpeechAudio({
   voiceName,
   rate = 1,
   model = GEMINI_TTS_MODEL,
+  languageName = 'English',
 }: GeminiSpeechRequest): Promise<{ data: string; mimeType?: string }> {
   const response = await fetch(
     `${API_ROOT}/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
@@ -291,7 +293,7 @@ export async function generateSpeechAudio({
       body: JSON.stringify({
         contents: [
           {
-            parts: [{ text: buildSpeechPrompt(text, rate) }],
+            parts: [{ text: buildSpeechPrompt(text, rate, languageName) }],
           },
         ],
         generationConfig: {

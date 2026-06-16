@@ -1,6 +1,7 @@
 import type { CoachMode, Scenario } from '../types';
 import { extraScenarios } from './extraScenarios';
 import { moreScenarios } from './moreScenarios';
+import { expansionScenarios } from './expansionScenarios';
 
 export const modelPresets = [
   'gemini-3-flash-preview',
@@ -335,6 +336,7 @@ export const scenarios: Scenario[] = [
   },
   ...extraScenarios,
   ...moreScenarios,
+  ...expansionScenarios,
 ];
 
 export const spotlightScenarioIds = [

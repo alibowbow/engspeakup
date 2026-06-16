@@ -20,6 +20,7 @@ export const defaultSettings: Settings = {
   model: 'gemini-3-flash-preview',
   saveApiKey: false,
   themeMode: 'light',
+  targetLanguage: 'en',
   userName: '',
   coachMode: 'balanced',
   voiceName: GEMINI_TTS_DEFAULT_VOICE,

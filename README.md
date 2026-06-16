@@ -18,8 +18,10 @@
 - 세션을 시작하면 AI가 상황에 맞게 먼저 인사하고 대화를 이끌어 주는 오프닝 추가
 - 코치 도구 패널이 대화를 가리지 않고 나란히 열리도록 레이아웃 개선
 - 카테고리별 컬러·이모지 아이덴티티, 시나리오 카드/통계 대시보드 시각화 강화
-- 시나리오 콘텐츠 확장 (`src/data/scenarios.ts` + `extraScenarios.ts` + `moreScenarios.ts`)
+- 시나리오 콘텐츠 확장 — 총 62개 (`scenarios.ts` + `extraScenarios.ts` + `moreScenarios.ts` + `expansionScenarios.ts`)
 - 카테고리/난이도 비주얼 메타데이터는 `src/data/categories.ts`에서 한 곳으로 관리
+- 시나리오 라이브러리를 접이식 트리(카테고리 → 시나리오) + 상세 2단 구조로 개편
+- **다국어 회화 지원**: 영어/일본어 전환 (상단 토글·설정). 선택 언어로 AI 대화·문장 교정·답변 추천·요약·챌린지 채점·음성 인식(`ja-JP`)·TTS 낭독이 모두 동작. 언어 설정은 `src/data/languages.ts`에서 관리하며, 시나리오 상황은 양 언어가 공유합니다.
 
 ## 실행
 

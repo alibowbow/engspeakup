@@ -336,7 +336,13 @@ async function playGeminiAudio(data: string): Promise<void> {
   await context.close().catch(() => undefined);
 }
 
-function speakWithBrowser(text: string, rate = 1): Promise<'browser' | 'none'> {
+function pickVoiceForLang(speechLang: string): SpeechSynthesisVoice | undefined {
+  const prefix = speechLang.slice(0, 2).toLowerCase();
+  const voices = loadVoices();
+  return voices.find((voice) => voice.lang?.toLowerCase().startsWith(prefix));
+}
+
+function speakWithBrowser(text: string, rate = 1, speechLang = 'en-US'): Promise<'browser' | 'none'> {
   if (!window.speechSynthesis || !text.trim()) {
     return Promise.resolve('none');
   }
@@ -344,12 +350,12 @@ function speakWithBrowser(text: string, rate = 1): Promise<'browser' | 'none'> {
   return new Promise((resolve) => {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    const voice = loadEnglishVoices()[0];
+    const voice = pickVoiceForLang(speechLang);
     if (voice) {
       utterance.voice = voice;
       utterance.lang = voice.lang;
     } else {
-      utterance.lang = 'en-US';
+      utterance.lang = speechLang;
     }
     utterance.rate = rate;
     utterance.onend = () => resolve('browser');
@@ -399,12 +405,16 @@ export async function speakText({
   voiceName,
   rate = 1,
   cacheKey,
+  languageName = 'English',
+  speechLang = 'en-US',
 }: {
   text: string;
   apiKey: string;
   voiceName: string;
   rate?: number;
   cacheKey?: string;
+  languageName?: string;
+  speechLang?: string;
 }): Promise<SpeakResult> {
   if (!text.trim()) {
     return 'none';
@@ -424,7 +434,7 @@ export async function speakText({
   }
 
   if (!apiKey.trim() || isDailyQuotaBlocked()) {
-    const fallbackResult = await speakWithBrowser(text, rate);
+    const fallbackResult = await speakWithBrowser(text, rate, speechLang);
     return fallbackResult === 'browser'
       ? isDailyQuotaBlocked()
         ? 'browser-fallback-daily'
@@ -439,6 +449,7 @@ export async function speakText({
       text,
       voiceName: isGeminiTtsVoice(voiceName) ? voiceName : GEMINI_TTS_DEFAULT_VOICE,
       rate,
+      languageName,
     });
     if (cacheKey && audio.data) {
       await writeCachedAudio({
@@ -455,7 +466,7 @@ export async function speakText({
     if (isDailyQuotaError) {
       writeBlockedDate(getPacificDateKey());
     }
-    const fallbackResult = await speakWithBrowser(text, rate);
+    const fallbackResult = await speakWithBrowser(text, rate, speechLang);
     if (fallbackResult === 'browser') {
       return isDailyQuotaError ? 'browser-fallback-daily' : 'browser-fallback';
     }

@@ -10,6 +10,7 @@ import type {
   SuggestionBundle,
   VocabularyCard,
 } from '../types';
+import { languageName } from '../data/languages';
 
 const coachModeGuide: Record<CoachMode, string> = {
   gentle: 'Be warm, encouraging, and low-pressure. Prefer confidence building over correction density.',
@@ -152,10 +153,15 @@ export function buildConversationSystemPrompt(
   const userRole = session.roleplayMode === 'normal' ? resolved.userRole : resolved.aiRole;
   const aiRole = session.roleplayMode === 'normal' ? resolved.aiRole : resolved.userRole;
   const learnerName = settings.userName.trim() || 'the learner';
+  const lang = languageName(settings.targetLanguage);
+  const isEnglish = settings.targetLanguage === 'en';
+  const expressionsLine = isEnglish
+    ? `Important expressions to encourage: ${resolved.keyExpressions.join(' | ')}`
+    : `Speak only in natural, situation-appropriate ${lang}. Do not insert English vocabulary unless the learner does first.`;
   return `
-You are SpeakUp Studio, an elite English speaking coach and roleplay partner.
-The learner name is ${learnerName}.
-Respond in English unless the learner explicitly asks for Korean.
+You are SpeakUp Studio, an elite ${lang} speaking coach and roleplay partner.
+The learner is a Korean speaker practicing ${lang}. Their name is ${learnerName}.
+Respond in ${lang} unless the learner explicitly asks for Korean.
 Stay fully inside the scenario and move the conversation forward naturally.
 Keep each reply to 1-3 short paragraphs or 1-4 concise sentences.
 Ask at most one follow-up question at a time.
@@ -169,7 +175,7 @@ Learner role: ${userRole}
 Your role: ${aiRole}
 Conversation goals: ${resolved.goals.join(' | ')}
 Mission steps: ${resolved.missionSteps.join(' | ')}
-Important expressions to encourage: ${resolved.keyExpressions.join(' | ')}
+${expressionsLine}
 Focus skill: ${session.focusSkill}
 Learner notes: ${session.notes || 'none'}
 Scenario tone: ${resolved.systemTone}
@@ -180,14 +186,14 @@ If the learner is doing well, raise the realism and detail.
 `.trim();
 }
 
-export function buildSuggestionPrompt(scenario: Scenario, session: Session): string {
+export function buildSuggestionPrompt(scenario: Scenario, session: Session, language = 'English'): string {
   const resolved = resolveScenarioDetails(scenario, session);
   const lastTurns = session.messages
     .slice(-6)
     .map((message) => `${message.role.toUpperCase()}: ${message.text}`)
     .join('\n');
   return `
-You are helping an English learner produce the next reply in a roleplay.
+You are helping a Korean learner of ${language} produce the next reply in a roleplay.
 Return strict JSON with this shape:
 {
   "suggestions": ["", "", ""],
@@ -204,9 +210,10 @@ ${lastTurns || 'No conversation yet.'}
 
 Rules:
 - Give exactly 3 suggestions.
-- Make each suggestion sound natural and sayable aloud.
+- Write every suggestion in ${language}, natural and sayable aloud.
 - Keep them short to medium length.
 - Make the learner sound competent, not robotic.
+- Write coachTip and focusPoint in Korean.
 `.trim();
 }
 
@@ -214,10 +221,12 @@ export function buildAnalysisPrompt(
   scenario: Scenario,
   session: Session,
   sentence: string,
+  language = 'English',
 ): string {
   const resolved = resolveScenarioDetails(scenario, session);
   return `
-You are an English speaking coach for a Korean learner.
+You are a ${language} speaking coach for a Korean learner of ${language}.
+The learner sentence is written in ${language}.
 Analyze one learner sentence in context and return strict JSON with this shape:
 {
   "overview": "",
@@ -243,18 +252,19 @@ Learner sentence: ${sentence}
 Rules:
 - Keep the tone constructive and specific.
 - If grammar is solid, say so plainly.
-- Revision should be one polished sentence.
-- Vocabulary can include up to 3 useful chunks from the improved sentence or scenario.
+- Revision should be one polished ${language} sentence.
+- koreanSummary must be written in Korean.
+- Vocabulary phrases must be in ${language}, with up to 3 useful chunks from the improved sentence or scenario.
 `.trim();
 }
 
-export function buildRecapPrompt(scenario: Scenario, session: Session): string {
+export function buildRecapPrompt(scenario: Scenario, session: Session, language = 'English'): string {
   const resolved = resolveScenarioDetails(scenario, session);
   const transcript = session.messages
     .map((message) => `${message.role.toUpperCase()}: ${message.text}`)
     .join('\n');
   return `
-You are summarizing an English speaking practice session for a Korean learner.
+You are summarizing a ${language} speaking practice session for a Korean learner.
 Return strict JSON with this shape:
 {
   "summary": "",
@@ -288,13 +298,14 @@ export function buildChallengeReviewPrompt(
   scenario: Scenario,
   session: Session,
   targetTurns: number,
+  language = 'English',
 ): string {
   const resolved = resolveScenarioDetails(scenario, session);
   const transcript = session.messages
     .map((message) => `${message.role.toUpperCase()}: ${message.text}`)
     .join('\n');
   return `
-You are grading a completed English speaking challenge for a Korean learner.
+You are grading a completed ${language} speaking challenge for a Korean learner.
 Return strict JSON with this shape:
 {
   "score100": 0,
@@ -328,7 +339,7 @@ Transcript:
 ${transcript}
 
 Rules:
-- Evaluate the learner strictly against realistic spoken English performance, not effort.
+- Evaluate the learner strictly against realistic spoken ${language} performance, not effort.
 - Reaching ${targetTurns} turns alone must not earn a high score.
 - score100 must be an integer from 0 to 100.
 - grade must match this strict scale exactly: S = 97-100, A = 89-96, B = 78-88, C = 66-77, D = 0-65.

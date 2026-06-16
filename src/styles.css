@@ -243,6 +243,11 @@ ul { list-style: none; }
 .topbar-spacer { flex: 1; }
 .topbar-actions { display: flex; align-items: center; gap: 8px; }
 
+.lang-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--r-md); background: var(--surface-3); border: 1px solid var(--line); }
+.lang-seg-btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 11px; border-radius: 10px; font-size: 12.5px; font-weight: 700; color: var(--muted); transition: background 0.15s, color 0.15s; }
+.lang-seg-btn .lang-flag { font-size: 14px; line-height: 1; }
+.lang-seg-btn.on { background: var(--surface); color: var(--brand); box-shadow: var(--shadow-xs); }
+
 /* ============================ Buttons ============================ */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -782,6 +787,7 @@ ul { list-style: none; }
   .subscores { grid-template-columns: 1fr 1fr; }
   .stat-grid { grid-template-columns: 1fr 1fr; }
   .ctx-actions .label-hide { display: none; }
+  .lang-short { display: none; }
 }
 
 /* =====================================================================

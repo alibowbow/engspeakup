@@ -10,6 +10,8 @@ export type RoleplayMode = 'normal' | 'reverse';
 
 export type ThemeMode = 'dark' | 'light';
 
+export type LearnLanguage = 'en' | 'ja';
+
 export interface VocabularyCard {
   phrase: string;
   meaningKo: string;
@@ -118,6 +120,7 @@ export interface Settings {
   model: string;
   saveApiKey: boolean;
   themeMode: ThemeMode;
+  targetLanguage: LearnLanguage;
   userName: string;
   coachMode: CoachMode;
   voiceName: string;
